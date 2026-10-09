@@ -3,6 +3,8 @@ import {
   connecter,
   creerAnnonce,
   deconnecter,
+  discordActif,
+  envoyerLienCourriel,
   lireAnnonces,
   modeDemo,
   retirerAnnonce,
@@ -108,8 +110,8 @@ export default function App() {
               <button type="button" className="lien" onClick={deconnecter}>Se déconnecter</button>
             </p>
           ) : (
-            <button type="button" className="bouton" onClick={() => connecter().catch(() => setErreur('La connexion avec Discord a échoué. Réessaie dans un instant.'))}>
-              Se connecter avec Discord
+            <button type="button" className="bouton" onClick={() => setFormulaireOuvert(true)}>
+              Se connecter
             </button>
           )}
           <button type="button" className="bouton principal" onClick={() => setFormulaireOuvert(true)}>
@@ -438,19 +440,7 @@ function Formulaire({ utilisateur, ouvert, fermer, apresPublication }) {
       aria-labelledby="titre-formulaire"
     >
       {!utilisateur ? (
-        <div className="dialogue-connexion">
-          <div className="dialogue-haut">
-            <h2 id="titre-formulaire">Publier une annonce</h2>
-            <button type="button" className="bouton petit" onClick={fermer}>Fermer</button>
-          </div>
-          <p>
-            Connecte-toi avec Discord pour publier. Ton nom Discord est rempli tout seul pour que les
-            joueurs puissent te joindre, et tu pourras retirer ton annonce quand ton groupe est complet.
-          </p>
-          <button type="button" className="bouton principal large" onClick={() => connecter().catch(() => {})}>
-            Se connecter avec Discord
-          </button>
-        </div>
+        <PanneauConnexion fermer={fermer} />
       ) : (
       <form onSubmit={envoyer} noValidate>
         <div className="dialogue-haut">
@@ -587,5 +577,73 @@ function Formulaire({ utilisateur, ouvert, fermer, apresPublication }) {
       </form>
       )}
     </dialog>
+  )
+}
+
+function PanneauConnexion({ fermer }) {
+  const [courriel, setCourriel] = useState('')
+  const [etat, setEtat] = useState('attente')
+  const [probleme, setProbleme] = useState('')
+
+  const envoyer = async (e) => {
+    e.preventDefault()
+    if (!/^\S+@\S+\.\S+$/.test(courriel.trim())) {
+      setProbleme('Écris une adresse courriel valide.')
+      return
+    }
+    setEtat('envoi')
+    setProbleme('')
+    try {
+      const resultat = await envoyerLienCourriel(courriel.trim())
+      setEtat(resultat === 'envoye' ? 'envoye' : 'attente')
+    } catch {
+      setEtat('attente')
+      setProbleme("Le courriel n'a pas été envoyé. Réessaie dans quelques minutes.")
+    }
+  }
+
+  return (
+    <div className="dialogue-connexion">
+      <div className="dialogue-haut">
+        <h2 id="titre-formulaire">Se connecter</h2>
+        <button type="button" className="bouton petit" onClick={fermer}>Fermer</button>
+      </div>
+
+      {etat === 'envoye' ? (
+        <p role="status">
+          Courriel envoyé à <strong>{courriel.trim()}</strong>. Clique sur le lien dans le message pour te
+          connecter. Regarde aussi dans tes pourriels.
+        </p>
+      ) : (
+        <>
+          <p>
+            Il faut être connecté pour publier. Tu reçois un lien par courriel, sans mot de passe. Ton
+            courriel n'est jamais affiché sur le site, et tu pourras retirer ton annonce quand ton groupe
+            est complet.
+          </p>
+          <form className="formulaire-courriel" onSubmit={envoyer} noValidate>
+            <label className="champ">
+              <span>Ton courriel</span>
+              <input
+                type="email"
+                autoComplete="email"
+                value={courriel}
+                onChange={(e) => setCourriel(e.target.value)}
+                aria-invalid={!!probleme}
+              />
+              {probleme && <span className="msg-erreur" role="alert">{probleme}</span>}
+            </label>
+            <button type="submit" className="bouton principal large" disabled={etat === 'envoi'}>
+              {etat === 'envoi' ? 'Envoi…' : 'Recevoir un lien de connexion'}
+            </button>
+          </form>
+          {discordActif && (
+            <button type="button" className="bouton large" onClick={() => connecter().catch(() => {})}>
+              Se connecter avec Discord
+            </button>
+          )}
+        </>
+      )}
+    </div>
   )
 }

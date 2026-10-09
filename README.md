@@ -23,18 +23,25 @@ Sans configuration, le site tourne en **mode démo**: les annonces restent dans 
    - `VITE_SUPABASE_ANON_KEY`
 5. Netlify > Deploys > Trigger deploy.
 
-## Brancher la connexion Discord
+## Connexion par courriel
+
+Elle marche dès que le projet Supabase existe (le fournisseur « Email » est activé par défaut).
+
+1. Supabase > Authentication > URL Configuration: mets l'adresse de ton site Netlify dans « Site URL ».
+2. Avant le lancement, branche un vrai service de courriel (Supabase > Authentication > SMTP Settings, par exemple avec Resend). Le service de courriel intégré à Supabase envoie seulement quelques messages par heure, ce qui ne suffira pas quand le monde va arriver.
+
+## Connexion Discord (facultative)
 
 1. discord.com/developers/applications > New Application.
 2. OAuth2: copie le Client ID et le Client Secret.
-3. Supabase > Authentication > Sign In / Providers > Discord: active-le et colle le Client ID et le Client Secret. Copie l'adresse « Callback URL » que Supabase affiche.
-4. De retour dans Discord > OAuth2 > Redirects: colle cette adresse et sauvegarde.
-5. Supabase > Authentication > URL Configuration: mets l'adresse de ton site Netlify dans « Site URL ».
+3. Supabase > Authentication > Sign In / Providers > Discord: active-le, colle le Client ID et le Client Secret, et copie la « Callback URL ».
+4. Discord > OAuth2 > Redirects: colle cette adresse et sauvegarde.
+5. Netlify > Environment variables: ajoute `VITE_DISCORD_ACTIF` = `1`, puis redéploie. Le bouton Discord apparaît alors dans la fenêtre de connexion.
 
-Sans Supabase, le bouton de connexion est simulé (mode démo).
+Sans Supabase, la connexion est simulée (mode démo).
 
 ## Limites de la version 1
 
-- Connexion Discord obligatoire pour publier (5 annonces actives par joueur au maximum). La connexion Battle.net avec import du personnage viendra après, une fois qu'on aura confirmé que l'API de Blizzard voit les personnages de Forever.
+- Connexion obligatoire pour publier, par courriel (Discord en option) (5 annonces actives par joueur au maximum). La connexion Battle.net avec import du personnage viendra après, une fois qu'on aura confirmé que l'API de Blizzard voit les personnages de Forever.
 - Les annonces expirent automatiquement (1 à 6 heures). Le joueur peut retirer son annonce ou marquer un rôle comme trouvé; rien d'autre n'est modifiable.
 - Les noms de donjons et de champs de bataille viennent de guides publics écrits avant le lancement (4 novembre 2026): à revérifier après la sortie.

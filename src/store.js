@@ -7,6 +7,8 @@ const url = import.meta.env.VITE_SUPABASE_URL
 const cle = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 export const modeDemo = !(url && cle)
+// La connexion Discord s'affiche seulement une fois configurée (VITE_DISCORD_ACTIF=1 dans Netlify).
+export const discordActif = import.meta.env.VITE_DISCORD_ACTIF === '1'
 const supabase = modeDemo ? null : createClient(url, cle)
 
 const CLE_DEMO = 'forever-demo-annonces'
@@ -103,7 +105,7 @@ function versUtilisateur(u) {
   const m = u.user_metadata ?? {}
   return {
     id: u.id,
-    nom: m.custom_claims?.global_name || m.full_name || m.name || 'Joueur',
+    nom: m.custom_claims?.global_name || m.full_name || m.name || u.email?.split('@')[0] || 'Joueur',
     contact: m.full_name || m.name || '',
   }
 }
@@ -189,4 +191,19 @@ export async function retirerRole(annonce, role) {
   }
   const { error } = await supabase.from('annonces').update({ roles }).eq('id', annonce.id)
   if (error) throw error
+}
+
+// Connexion par courriel: le joueur reçoit un lien, sans mot de passe.
+// Retourne 'envoye' (courriel parti) ou 'connecte' (mode démo: connexion directe).
+export async function envoyerLienCourriel(courriel) {
+  if (modeDemo) {
+    await connecter()
+    return 'connecte'
+  }
+  const { error } = await supabase.auth.signInWithOtp({
+    email: courriel,
+    options: { emailRedirectTo: window.location.origin },
+  })
+  if (error) throw error
+  return 'envoye'
 }
