@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { creerAnnonce, lireAnnonces, modeDemo } from './store.js'
+import {
+  connecter,
+  creerAnnonce,
+  deconnecter,
+  lireAnnonces,
+  modeDemo,
+  retirerAnnonce,
+  retirerRole,
+  suivreUtilisateur,
+} from './store.js'
 import {
   AUTRE_DONJON,
   CHAMPS_DE_BATAILLE,
@@ -37,6 +46,7 @@ export default function App() {
   const [filtres, setFiltres] = useState(FILTRES_VIDES)
   const [formulaireOuvert, setFormulaireOuvert] = useState(false)
   const [message, setMessage] = useState('')
+  const [utilisateur, setUtilisateur] = useState(null)
 
   const charger = useCallback(async () => {
     try {
@@ -54,6 +64,8 @@ export default function App() {
     const minuterie = setInterval(charger, 30000)
     return () => clearInterval(minuterie)
   }, [charger])
+
+  useEffect(() => suivreUtilisateur(setUtilisateur), [])
 
   useEffect(() => {
     if (!message) return
@@ -89,9 +101,21 @@ export default function App() {
             Annonce ton groupe ou rejoins-en un. Donjons et PvP, pour le Québec et la francophonie.
           </p>
         </div>
-        <button type="button" className="bouton principal" onClick={() => setFormulaireOuvert(true)}>
-          Publier une annonce
-        </button>
+        <div className="actions">
+          {utilisateur ? (
+            <p className="session">
+              <span>Connecté: <strong>{utilisateur.nom}</strong></span>
+              <button type="button" className="lien" onClick={deconnecter}>Se déconnecter</button>
+            </p>
+          ) : (
+            <button type="button" className="bouton" onClick={() => connecter().catch(() => setErreur('La connexion avec Discord a échoué. Réessaie dans un instant.'))}>
+              Se connecter avec Discord
+            </button>
+          )}
+          <button type="button" className="bouton principal" onClick={() => setFormulaireOuvert(true)}>
+            Publier une annonce
+          </button>
+        </div>
       </header>
 
       {modeDemo && (
@@ -203,7 +227,7 @@ export default function App() {
         <ul className="liste">
           {visibles.map((a) => (
             <li key={a.id}>
-              <Carte annonce={a} />
+              <Carte annonce={a} proprietaire={!!utilisateur && a.user_id === utilisateur.id} apres={charger} />
             </li>
           ))}
         </ul>
@@ -215,6 +239,7 @@ export default function App() {
       </footer>
 
       <Formulaire
+        utilisateur={utilisateur}
         ouvert={formulaireOuvert}
         fermer={() => setFormulaireOuvert(false)}
         apresPublication={async () => {
@@ -229,8 +254,19 @@ export default function App() {
   )
 }
 
-function Carte({ annonce: a }) {
+function Carte({ annonce: a, proprietaire, apres }) {
   const [copie, setCopie] = useState(false)
+  const [probleme, setProbleme] = useState('')
+
+  const gerer = async (action) => {
+    setProbleme('')
+    try {
+      await action()
+      await apres()
+    } catch {
+      setProbleme("Le changement n'a pas fonctionné. Réessaie dans un instant.")
+    }
+  }
 
   const copier = async () => {
     try {
@@ -265,6 +301,10 @@ function Carte({ annonce: a }) {
         </p>
       )}
 
+      {a.activite === 'donjon' && a.roles.length === 0 && (
+        <p className="roles"><span className="role">Groupe complet</span></p>
+      )}
+
       {a.note && <p className="note">{a.note}</p>}
 
       <div className="carte-bas">
@@ -279,6 +319,20 @@ function Carte({ annonce: a }) {
           </button>
         </div>
       </div>
+
+      {proprietaire && (
+        <div className="gestion">
+          {ROLES.filter((r) => a.roles.includes(r.id)).map((r) => (
+            <button key={r.id} type="button" className="bouton petit" onClick={() => gerer(() => retirerRole(a, r.id))}>
+              {r.nom} trouvé
+            </button>
+          ))}
+          <button type="button" className="bouton petit danger" onClick={() => gerer(() => retirerAnnonce(a.id))}>
+            Retirer l'annonce
+          </button>
+          {probleme && <p className="msg-erreur" role="alert">{probleme}</p>}
+        </div>
+      )}
     </article>
   )
 }
@@ -298,7 +352,7 @@ const FORMULAIRE_VIDE = {
   heures: 3,
 }
 
-function Formulaire({ ouvert, fermer, apresPublication }) {
+function Formulaire({ utilisateur, ouvert, fermer, apresPublication }) {
   const dialogue = useRef(null)
   const [champs, setChamps] = useState(FORMULAIRE_VIDE)
   const [erreurs, setErreurs] = useState({})
@@ -311,6 +365,10 @@ function Formulaire({ ouvert, fermer, apresPublication }) {
     if (ouvert && !d.open) d.showModal()
     if (!ouvert && d.open) d.close()
   }, [ouvert])
+
+  useEffect(() => {
+    if (utilisateur?.contact) setChamps((c) => (c.contact ? c : { ...c, contact: utilisateur.contact }))
+  }, [utilisateur])
 
   const maj = (cle, valeur) => setChamps((c) => ({ ...c, [cle]: valeur }))
 
@@ -379,6 +437,21 @@ function Formulaire({ ouvert, fermer, apresPublication }) {
       onClick={(e) => e.target === dialogue.current && fermer()}
       aria-labelledby="titre-formulaire"
     >
+      {!utilisateur ? (
+        <div className="dialogue-connexion">
+          <div className="dialogue-haut">
+            <h2 id="titre-formulaire">Publier une annonce</h2>
+            <button type="button" className="bouton petit" onClick={fermer}>Fermer</button>
+          </div>
+          <p>
+            Connecte-toi avec Discord pour publier. Ton nom Discord est rempli tout seul pour que les
+            joueurs puissent te joindre, et tu pourras retirer ton annonce quand ton groupe est complet.
+          </p>
+          <button type="button" className="bouton principal large" onClick={() => connecter().catch(() => {})}>
+            Se connecter avec Discord
+          </button>
+        </div>
+      ) : (
       <form onSubmit={envoyer} noValidate>
         <div className="dialogue-haut">
           <h2 id="titre-formulaire">Publier une annonce</h2>
@@ -512,6 +585,7 @@ function Formulaire({ ouvert, fermer, apresPublication }) {
           {envoi ? 'Publication…' : "Publier l'annonce"}
         </button>
       </form>
+      )}
     </dialog>
   )
 }
