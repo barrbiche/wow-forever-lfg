@@ -40,6 +40,12 @@ Elle marche dès que le projet Supabase existe (le fournisseur « Email » est a
 
 Sans Supabase, la connexion est simulée (mode démo).
 
+## Annonces automatiques dans Discord
+
+1. Discord: dans le canal voulu, Modifier le canal > Intégrations > Webhooks > Nouveau webhook > Copier l'URL du webhook.
+2. Supabase > SQL Editor: roule le contenu de `supabase/discord.sql`.
+3. Dans une autre requête, range l'adresse du webhook dans la table `reglages` (la requête est en commentaire à la fin du fichier). Ne mets jamais cette adresse dans GitHub: le repo est public.
+
 ## Limites de la version 1
 
 - Connexion obligatoire pour publier, par courriel (Discord en option) (5 annonces actives par joueur au maximum). La connexion Battle.net avec import du personnage viendra après, une fois qu'on aura confirmé que l'API de Blizzard voit les personnages de Forever.
