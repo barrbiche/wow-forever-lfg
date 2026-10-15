@@ -88,7 +88,7 @@ const STYLES_SITE = [
   ['alliance', 'Alliance'],
   ['horde', 'Horde'],
 ]
-const COULEURS_BARRE = { '': '#0a0f1b', alliance: '#071229', horde: '#130606' }
+const COULEURS_BARRE = { '': '#0a0f1b', alliance: '#071229', horde: '#0b0404' }
 
 function styleEnregistre() {
   const v = document.documentElement.dataset.style

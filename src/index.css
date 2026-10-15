@@ -1256,7 +1256,7 @@ h2 {
 }
 
 .styles button {
-  --pt: var(--gold-light);
+  --pt: #f2c25f;
   font: inherit;
   font-size: 0.85rem;
   font-weight: 600;
@@ -1286,7 +1286,7 @@ h2 {
 }
 
 .styles button[data-style='horde'] {
-  --pt: #e0452f;
+  --pt: #d92a22;
 }
 
 .styles button:hover {
@@ -1334,41 +1334,41 @@ h2 {
     linear-gradient(180deg, #071229, #10285a);
 }
 
-/* ---------- Style Horde: noir, rouge braise et coins taillés ---------- */
+/* ---------- Style Horde: fer noir, rouge sang et os, coins taillés ---------- */
 
 :root[data-style='horde'] {
   color-scheme: dark;
-  --bg: #0d0808;
-  --bg-2: #1a0c0b;
-  --surface: #221211;
-  --field: #160b0a;
-  --ink: #f4eae5;
-  --muted: #c4aaa3;
-  --line: #5f2c26;
-  --gold: #dc5a2c;
-  --gold-light: #f58a55;
-  --gold-ink: #1a0702;
-  --gold-line: #ff9b66;
+  --bg: #0a0808;
+  --bg-2: #161111;
+  --surface: #1f1919;
+  --field: #120d0d;
+  --ink: #f1e9e2;
+  --muted: #b8aba3;
+  --line: #4f3d3b;
+  --gold: #a50f15;
+  --gold-light: #d92a22;
+  --gold-ink: #ffffff;
+  --gold-line: #ff6b5e;
   --alliance: #8ab4ff;
   --alliance-ink: #08111f;
-  --horde: #ff8f86;
-  --horde-ink: #240b0a;
+  --horde: #ff5a4d;
+  --horde-ink: #1f0504;
   --tank: #7fb0ff;
   --heal: #6fdca0;
-  --dps: #ff8f80;
-  --focus: #ffb88f;
-  --danger: #ff8f86;
-  --shadow: 0 8px 22px rgb(0 0 0 / 0.5);
+  --dps: #ffa08f;
+  --focus: #ff9a8c;
+  --danger: #ff6b5e;
+  --shadow: 0 8px 22px rgb(0 0 0 / 0.55);
   --radius: 6px;
   --r-bouton: 5px;
   --r-champ: 5px;
   --haut-fond:
-    radial-gradient(520px 260px at 6% -10%, rgb(225 80 40 / 0.5), transparent 70%),
-    radial-gradient(520px 260px at 94% -10%, rgb(170 25 25 / 0.55), transparent 70%),
-    radial-gradient(560px 220px at 50% 115%, rgb(255 120 60 / 0.3), transparent 70%),
-    linear-gradient(180deg, #130606, #2c0f0c);
+    radial-gradient(520px 260px at 6% -10%, rgb(215 30 25 / 0.55), transparent 70%),
+    radial-gradient(520px 260px at 94% -10%, rgb(140 10 10 / 0.6), transparent 70%),
+    radial-gradient(560px 220px at 50% 115%, rgb(200 30 25 / 0.28), transparent 70%),
+    linear-gradient(180deg, #0b0404, #360909);
   --motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M0 36L22 8L44 36' fill='none' stroke='white' stroke-width='1.2'/%3E%3C/svg%3E");
-  --titre-1: #ffe9d2;
-  --titre-2: #ff9b66;
-  --titre-3: #dc5a2c;
+  --titre-1: #fff1e6;
+  --titre-2: #ff7d6e;
+  --titre-3: #d92b20;
 }
