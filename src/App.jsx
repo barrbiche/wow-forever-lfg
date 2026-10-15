@@ -21,7 +21,6 @@ import {
   PVP_PEU_IMPORTE,
   REGIONS,
   ROLES,
-  RULESETS,
   nomDe,
 } from './data.js'
 
@@ -77,13 +76,12 @@ function partRestante(a) {
   return Math.max(0, Math.min(1, restant / total))
 }
 
-const FILTRES_VIDES = { activite: 'tout', faction: '', ruleset: '', region: '', role: '', niveau: '' }
+const FILTRES_VIDES = { activite: 'tout', faction: '', region: '', role: '', niveau: '' }
 
 function correspond(a, f) {
   const niveau = Number(f.niveau)
   if (f.activite !== 'tout' && a.activite !== f.activite) return false
   if (f.faction && a.faction !== f.faction) return false
-  if (f.ruleset && a.ruleset !== f.ruleset) return false
   if (f.region && a.region !== f.region) return false
   if (f.role && !a.roles.includes(f.role)) return false
   if (niveau && (niveau < a.niveau_min || niveau > a.niveau_max)) return false
@@ -137,7 +135,7 @@ export default function App() {
   )
 
   const filtresActifs = JSON.stringify(filtres) !== JSON.stringify(FILTRES_VIDES)
-  const nbAutres = [filtres.ruleset, filtres.region, filtres.role].filter(Boolean).length
+  const nbAutres = [filtres.region, filtres.role].filter(Boolean).length
 
   const changer = (cle) => (e) => setFiltres((f) => ({ ...f, [cle]: e.target.value }))
   const basculerFaction = (id) => setFiltres((f) => ({ ...f, faction: f.faction === id ? '' : id }))
@@ -233,15 +231,6 @@ export default function App() {
               Autres filtres{nbAutres > 0 ? ` (${nbAutres})` : ''}
             </summary>
             <div className="grille-filtres">
-              <label className="champ">
-                <span>Règles de jeu</span>
-                <select value={filtres.ruleset} onChange={changer('ruleset')}>
-                  <option value="">Toutes</option>
-                  {RULESETS.map((r) => (
-                    <option key={r.id} value={r.id}>{r.nom}</option>
-                  ))}
-                </select>
-              </label>
               <label className="champ">
                 <span>Région</span>
                 <select value={filtres.region} onChange={changer('region')}>
@@ -366,7 +355,6 @@ function Carte({ annonce: a, proprietaire, apres }) {
         <li className="chip fort">
           {a.niveau_min === a.niveau_max ? `Niveau ${a.niveau_min}` : `Niveaux ${a.niveau_min} à ${a.niveau_max}`}
         </li>
-        <li className="chip">{RULESETS.find((r) => r.id === a.ruleset)?.carte ?? a.ruleset}</li>
         <li className="chip">{a.region}</li>
       </ul>
 
@@ -428,7 +416,6 @@ const FORMULAIRE_VIDE = {
   activite: 'donjon',
   cible: '',
   faction: 'alliance',
-  ruleset: 'normal',
   region: 'US',
   niveau_min: '',
   niveau_max: '',
@@ -502,7 +489,7 @@ function Formulaire({ utilisateur, ouvert, fermer, apresPublication }) {
           activite: champs.activite,
           cible: champs.cible || PVP_PEU_IMPORTE,
           faction: champs.faction,
-          ruleset: champs.ruleset,
+          ruleset: 'normal', // champ gardé en base, plus demandé aux joueurs
           region: champs.region,
           niveau_min: Number(champs.niveau_min),
           niveau_max: Number(champs.niveau_max),
@@ -516,7 +503,6 @@ function Formulaire({ utilisateur, ouvert, fermer, apresPublication }) {
       setChamps((c) => ({
         ...FORMULAIRE_VIDE,
         faction: c.faction,
-        ruleset: c.ruleset,
         region: c.region,
         perso: c.perso,
         contact: c.contact,
@@ -609,17 +595,11 @@ function Formulaire({ utilisateur, ouvert, fermer, apresPublication }) {
             </label>
           </div>
 
-          <div className="trois">
+          <div className="deux">
             <label className="champ">
               <span>Faction</span>
               <select value={champs.faction} onChange={(e) => maj('faction', e.target.value)}>
                 {FACTIONS.map((f) => <option key={f.id} value={f.id}>{f.nom}</option>)}
-              </select>
-            </label>
-            <label className="champ">
-              <span>Règles de jeu</span>
-              <select value={champs.ruleset} onChange={(e) => maj('ruleset', e.target.value)}>
-                {RULESETS.map((r) => <option key={r.id} value={r.id}>{r.nom}</option>)}
               </select>
             </label>
             <label className="champ">

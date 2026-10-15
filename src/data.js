@@ -62,13 +62,6 @@ export const FACTIONS = [
   { id: 'horde', nom: 'Horde' },
 ]
 
-// Hardcore arrive après le lancement: on l'ajoutera à ce moment-là.
-export const RULESETS = [
-  { id: 'normal', nom: 'Normal', carte: 'Règles normales' },
-  { id: 'pvp', nom: 'PvP', carte: 'Règles PvP' },
-  { id: 'rp', nom: 'Jeu de rôle', carte: 'Règles jeu de rôle' },
-]
-
 export const REGIONS = [
   { id: 'US', nom: 'Amérique (US)' },
   { id: 'EU', nom: 'Europe (EU)' },
