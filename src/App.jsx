@@ -57,7 +57,6 @@ const FILTRES_VIDES = {
   region: '',
   role: '',
   niveau: '',
-  ruleset: '',
   style: '',
   langue: '',
   genre: '',
@@ -71,8 +70,6 @@ function correspond(a, f) {
   if (f.planifies && !a.debut) return false
   if (f.faction && a.faction !== f.faction) return false
   if (f.region && a.region !== f.region) return false
-  // Les champs de bataille peuvent mélanger les règles de jeu: ce filtre ne vise que donjons et raids.
-  if (f.ruleset && a.activite !== 'pvp' && a.ruleset !== f.ruleset) return false
   if (f.style && a.style !== f.style) return false
   if (f.langue && a.langue !== f.langue) return false
   if (f.role && !a.roles.includes(f.role)) return false
@@ -187,7 +184,7 @@ export default function App() {
   const nbPlanifies = useMemo(() => annonces.filter((a) => a.debut).length, [annonces])
 
   const filtresActifs = JSON.stringify(filtres) !== JSON.stringify(FILTRES_VIDES)
-  const nbAutres = [filtres.region, filtres.role, filtres.ruleset, filtres.style].filter(Boolean).length
+  const nbAutres = [filtres.region, filtres.role, filtres.style].filter(Boolean).length
   const raids = raidsOuverts()
 
   const changer = (cle) => (e) => setFiltres((f) => ({ ...f, [cle]: e.target.value }))
@@ -368,15 +365,6 @@ export default function App() {
                       ))}
                     </select>
                   </label>
-                  <label className="champ">
-                    <span>Règles de jeu (donjons et raids)</span>
-                    <select value={filtres.ruleset} onChange={changer('ruleset')}>
-                      <option value="">Toutes</option>
-                      {RULESETS.map((r) => (
-                        <option key={r.id} value={r.id}>{r.nom}</option>
-                      ))}
-                    </select>
-                  </label>
                 </div>
               </details>
             </section>
@@ -434,7 +422,7 @@ export default function App() {
         <footer className="pied">
           <p>
             Les annonces disparaissent toutes seules quand leur durée est écoulée. Dans Forever, les groupes
-            Alliance et Horde ne se mélangent pas, et les donjons et raids demandent les mêmes règles de jeu.
+            Alliance et Horde ne se mélangent pas.
           </p>
           {LIEN_DISCORD && (
             <p>
@@ -519,7 +507,7 @@ function Carte({ annonce: a, proprietaire, utilisateur, onConnexion, apres }) {
             Départ {departTexte(a.debut)}
           </li>
         )}
-        {a.activite !== 'pvp' && a.ruleset && (
+        {a.activite !== 'pvp' && a.ruleset && a.ruleset !== 'normal' && (
           <li className="chip">{RULESETS.find((r) => r.id === a.ruleset)?.carte ?? a.ruleset}</li>
         )}
         <li className="chip">{a.region}</li>
@@ -587,7 +575,6 @@ const FORMULAIRE_VIDE = {
   cible: '',
   faction: 'alliance',
   region: 'US',
-  ruleset: 'normal',
   style: 'relax',
   langue: 'fr',
   classe: '',
@@ -603,7 +590,7 @@ const FORMULAIRE_VIDE = {
 }
 
 // Ce qui est gardé dans le navigateur d'une annonce à l'autre.
-const CHAMPS_DU_PROFIL = ['perso', 'classe', 'contact', 'faction', 'region', 'langue', 'ruleset']
+const CHAMPS_DU_PROFIL = ['perso', 'classe', 'contact', 'faction', 'region', 'langue']
 const versProfil = (champs) => Object.fromEntries(CHAMPS_DU_PROFIL.map((cle) => [cle, champs[cle]]))
 
 const CHOIX_GENRE = [
@@ -756,7 +743,7 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
           activite: champs.activite,
           cible: champs.cible || PVP_PEU_IMPORTE,
           faction: champs.faction,
-          ruleset: champs.activite === 'pvp' ? 'normal' : champs.ruleset, // champs de bataille: règles mélangées
+          ruleset: 'normal', // le choix des règles n'est plus demandé; la base exige une valeur
           style: champs.style,
           langue: champs.langue,
           classe: champs.classe || null,
@@ -929,16 +916,6 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
               </select>
             </label>
           </div>
-
-          {!pvp && (
-            <label className="champ">
-              <span>Règles de jeu</span>
-              <select value={champs.ruleset} onChange={(e) => maj('ruleset', e.target.value)}>
-                {RULESETS.map((r) => <option key={r.id} value={r.id}>{r.nom}</option>)}
-              </select>
-              <small className="aide">Un groupe de donjon ou de raid ne peut pas mélanger les règles.</small>
-            </label>
-          )}
 
           {!pvp && (
             <fieldset className="groupe">

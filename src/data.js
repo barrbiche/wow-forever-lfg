@@ -116,7 +116,7 @@ export const FACTIONS = [
   { id: 'horde', nom: 'Horde' },
 ]
 
-// Les groupes de donjon et de raid ne peuvent pas mélanger les règles de jeu (les champs de bataille, oui).
+// Les règles de jeu servent seulement aux guildes; les annonces n’en demandent plus.
 // Hardcore arrive après le lancement: on l'ajoutera à ce moment-là.
 export const RULESETS = [
   { id: 'normal', nom: 'Normal', carte: 'Règles normales' },

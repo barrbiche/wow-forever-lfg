@@ -229,7 +229,8 @@ begin
       when 'voleur' then 'Voleur' when 'pretre' then 'Prêtre' when 'chaman' then 'Chaman'
       when 'mage' then 'Mage' when 'demoniste' then 'Démoniste' else 'Druide' end;
   end if;
-  if new.activite <> 'pvp' then
+  -- Les règles de jeu ne sont plus demandées dans le formulaire: on les écrit seulement si elles ne sont pas « normales ».
+  if new.activite <> 'pvp' and new.ruleset <> 'normal' then
     details := details || ' · ' || case new.ruleset
       when 'pvp' then 'Règles PvP'
       when 'rp' then 'Règles jeu de rôle'
