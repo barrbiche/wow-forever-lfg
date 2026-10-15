@@ -353,6 +353,7 @@ export default function App() {
           <p className="vide">Chargement des annonces…</p>
         ) : visibles.length === 0 && !erreur ? (
           <div className="vide">
+            <span className="vide-icone" aria-hidden="true"><Icone nom="raid" taille={30} /></span>
             <p>
               {filtresActifs
                 ? 'Aucune annonce avec ces filtres.'
@@ -459,7 +460,7 @@ function Carte({ annonce: a, proprietaire, apres }) {
         <p className="roles">
           <span>Cherche</span>
           {ROLES.filter((r) => a.roles.includes(r.id)).map((r) => (
-            <span key={r.id} className="role">
+            <span key={r.id} className={`role ${r.id}`}>
               <Icone nom={r.id} taille={15} />
               {r.nom}
             </span>
