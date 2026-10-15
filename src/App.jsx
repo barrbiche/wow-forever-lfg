@@ -139,6 +139,32 @@ function correspond(a, f) {
   return true
 }
 
+// ---------- Style du site (Neutre, Alliance ou Horde), gardé dans le navigateur ----------
+
+const STYLES_SITE = [
+  ['', 'Neutre'],
+  ['alliance', 'Alliance'],
+  ['horde', 'Horde'],
+]
+const COULEURS_BARRE = { '': '#0a0f1b', alliance: '#071229', horde: '#130606' }
+
+function styleEnregistre() {
+  const v = document.documentElement.dataset.style
+  return v === 'alliance' || v === 'horde' ? v : ''
+}
+
+function appliquerStyle(style) {
+  if (style) document.documentElement.dataset.style = style
+  else delete document.documentElement.dataset.style
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', COULEURS_BARRE[style])
+  try {
+    if (style) localStorage.setItem('forever-style', style)
+    else localStorage.removeItem('forever-style')
+  } catch {
+    // navigation privée: le style n'est pas gardé pour la prochaine visite
+  }
+}
+
 // ---------- Page ----------
 
 export default function App() {
@@ -149,6 +175,12 @@ export default function App() {
   const [formulaireOuvert, setFormulaireOuvert] = useState(false)
   const [message, setMessage] = useState('')
   const [utilisateur, setUtilisateur] = useState(null)
+  const [styleSite, setStyleSite] = useState(styleEnregistre)
+
+  const choisirStyle = (style) => {
+    appliquerStyle(style)
+    setStyleSite(style)
+  }
 
   const charger = useCallback(async () => {
     try {
@@ -204,6 +236,20 @@ export default function App() {
                 Trouve ton groupe pour les donjons{raids ? ', les raids' : ''} et le PvP. Pour le Québec et la
                 francophonie.
               </p>
+              <div className="styles" role="group" aria-label="Style du site">
+                <span className="styles-titre">Style</span>
+                {STYLES_SITE.map(([id, nom]) => (
+                  <button
+                    key={id || 'neutre'}
+                    type="button"
+                    data-style={id || 'neutre'}
+                    aria-pressed={styleSite === id}
+                    onClick={() => choisirStyle(id)}
+                  >
+                    {nom}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           <div className="actions">
@@ -380,6 +426,7 @@ export default function App() {
       </main>
 
       <Formulaire
+        factionParDefaut={styleSite === 'horde' ? 'horde' : 'alliance'}
         utilisateur={utilisateur}
         ouvert={formulaireOuvert}
         fermer={() => setFormulaireOuvert(false)}
@@ -535,9 +582,9 @@ const CHOIX_ACTIVITE = [
   ['pvp', 'Du PvP', 'Champ de bataille ou monde ouvert.'],
 ]
 
-function Formulaire({ utilisateur, ouvert, fermer, apresPublication }) {
+function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublication }) {
   const dialogue = useRef(null)
-  const [champs, setChamps] = useState(FORMULAIRE_VIDE)
+  const [champs, setChamps] = useState({ ...FORMULAIRE_VIDE, faction: factionParDefaut })
   const [erreurs, setErreurs] = useState({})
   const [envoi, setEnvoi] = useState(false)
   const [erreurServeur, setErreurServeur] = useState('')
@@ -549,6 +596,11 @@ function Formulaire({ utilisateur, ouvert, fermer, apresPublication }) {
     if (ouvert && !d.open) d.showModal()
     if (!ouvert && d.open) d.close()
   }, [ouvert])
+
+  // Choisir le style Horde ou Alliance propose aussi cette faction dans le formulaire.
+  useEffect(() => {
+    setChamps((c) => ({ ...c, faction: factionParDefaut }))
+  }, [factionParDefaut])
 
   useEffect(() => {
     if (utilisateur?.contact) setChamps((c) => (c.contact ? c : { ...c, contact: utilisateur.contact }))

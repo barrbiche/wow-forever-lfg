@@ -13,6 +13,16 @@
       rel="stylesheet"
     />
     <title>Babillard Forever</title>
+    <script>
+      // Applique le style choisi (Alliance ou Horde) avant l'affichage, pour éviter un flash de couleurs.
+      try {
+        var s = localStorage.getItem('forever-style')
+        if (s === 'alliance' || s === 'horde') {
+          document.documentElement.dataset.style = s
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', s === 'horde' ? '#130606' : '#071229')
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

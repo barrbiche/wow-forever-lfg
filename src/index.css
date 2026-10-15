@@ -23,6 +23,17 @@
   --danger: #a52e2a;
   --shadow: 0 6px 18px rgb(60 40 10 / 0.14);
   --radius: 14px;
+  --r-bouton: 11px;
+  --r-champ: 10px;
+  --haut-fond:
+    radial-gradient(520px 260px at 6% -10%, rgb(70 120 230 / 0.42), transparent 70%),
+    radial-gradient(520px 260px at 94% -10%, rgb(225 80 70 / 0.38), transparent 70%),
+    radial-gradient(560px 220px at 50% 115%, rgb(224 166 59 / 0.26), transparent 70%),
+    linear-gradient(180deg, #0a0f1b, #131b2f);
+  --motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M22 0L44 22L22 44L0 22Z' fill='none' stroke='white' stroke-width='1'/%3E%3C/svg%3E");
+  --titre-1: #fff6d6;
+  --titre-2: #f2c25f;
+  --titre-3: #d8962a;
   --titre: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
   --fantasy: 'Cinzel', Georgia, 'Times New Roman', serif;
   --texte: 'Instrument Sans', 'Segoe UI', system-ui, sans-serif;
@@ -100,12 +111,8 @@ h2 {
   overflow: hidden;
   color: #ffffff;
   padding: 26px 16px 70px;
-  border-bottom: 1px solid rgb(224 166 59 / 0.45);
-  background:
-    radial-gradient(520px 260px at 6% -10%, rgb(70 120 230 / 0.42), transparent 70%),
-    radial-gradient(520px 260px at 94% -10%, rgb(225 80 70 / 0.38), transparent 70%),
-    radial-gradient(560px 220px at 50% 115%, rgb(224 166 59 / 0.26), transparent 70%),
-    linear-gradient(180deg, #0a0f1b, #131b2f);
+  border-bottom: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  background: var(--haut-fond);
 }
 
 /* Fin motif en losanges, très discret */
@@ -114,7 +121,7 @@ h2 {
   position: absolute;
   inset: 0;
   opacity: 0.07;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M22 0L44 22L22 44L0 22Z' fill='none' stroke='white' stroke-width='1'/%3E%3C/svg%3E");
+  background-image: var(--motif);
   pointer-events: none;
 }
 
@@ -129,7 +136,7 @@ h2 {
 
 .titre-bloc {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 14px;
 }
 
@@ -146,10 +153,10 @@ h2 {
   font-size: 2.1rem;
   font-weight: 700;
   line-height: 1;
-  background: radial-gradient(circle at 50% 35%, rgb(224 166 59 / 0.25), rgb(224 166 59 / 0.04) 70%);
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--gold) 25%, transparent), color-mix(in srgb, var(--gold) 4%, transparent) 70%);
   box-shadow:
-    0 0 0 4px rgb(224 166 59 / 0.12),
-    0 0 26px rgb(224 166 59 / 0.35);
+    0 0 0 4px color-mix(in srgb, var(--gold) 12%, transparent),
+    0 0 26px color-mix(in srgb, var(--gold) 35%, transparent);
 }
 
 .haut h1 {
@@ -159,7 +166,7 @@ h2 {
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--gold-light);
-  background: linear-gradient(180deg, #fff6d6 0%, #f2c25f 55%, #d8962a 100%);
+  background: linear-gradient(180deg, var(--titre-1) 0%, var(--titre-2) 55%, var(--titre-3) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -249,7 +256,7 @@ h2 {
   font-weight: 600;
   min-height: 44px;
   padding: 0 18px;
-  border-radius: 11px;
+  border-radius: var(--r-bouton);
   border: 1.5px solid color-mix(in srgb, var(--ink) 70%, transparent);
   background: transparent;
   color: var(--ink);
@@ -378,7 +385,7 @@ h2 {
 .bandeau {
   margin: 0 0 16px;
   padding: 10px 14px;
-  border-radius: 11px;
+  border-radius: var(--r-bouton);
   border: 1.5px dashed var(--gold-line);
   background: color-mix(in srgb, var(--gold) 9%, transparent);
   color: var(--ink);
@@ -388,7 +395,7 @@ h2 {
 .erreur {
   margin: 0 0 16px;
   padding: 10px 14px;
-  border-radius: 11px;
+  border-radius: var(--r-bouton);
   border: 1.5px solid var(--danger);
   color: var(--danger);
 }
@@ -431,7 +438,7 @@ h2 {
   font-size: 0.95rem;
   min-height: 44px;
   padding: 0 8px;
-  border-radius: 11px;
+  border-radius: var(--r-bouton);
   border: 1.5px solid var(--line);
   background: var(--field);
   color: var(--ink);
@@ -541,7 +548,7 @@ h2 {
   color: var(--ink);
   background: var(--field);
   border: 1.5px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--r-champ);
   min-height: 44px;
   padding: 8px 10px;
   width: 100%;
@@ -905,7 +912,7 @@ h2 {
   max-height: calc(100dvh - 24px);
   padding: 0;
   border: 1px solid color-mix(in srgb, var(--gold) 55%, var(--line));
-  border-radius: 16px;
+  border-radius: calc(var(--radius) + 2px);
   background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 8%, var(--surface)), var(--surface) 90px);
   color: var(--ink);
   box-shadow: 0 24px 60px rgb(0 0 0 / 0.5);
@@ -1043,7 +1050,7 @@ h2 {
   padding: 0 14px;
   border: 1.5px solid var(--line);
   background: var(--field);
-  border-radius: 11px;
+  border-radius: var(--r-bouton);
   cursor: pointer;
   font-weight: 600;
 }
@@ -1109,4 +1116,138 @@ h2 {
     opacity: 0;
     transform: translate(-50%, 8px);
   }
+}
+
+/* ---------- Choix du style du site ---------- */
+
+.styles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.styles-titre {
+  margin-right: 2px;
+  font-size: 0.85rem;
+  color: rgb(255 255 255 / 0.7);
+}
+
+.styles button {
+  --pt: var(--gold-light);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1.5px solid rgb(255 255 255 / 0.35);
+  background: rgb(255 255 255 / 0.06);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.styles button::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--pt);
+  box-shadow: 0 0 0 1.5px rgb(255 255 255 / 0.55);
+}
+
+.styles button[data-style='alliance'] {
+  --pt: #5b8def;
+}
+
+.styles button[data-style='horde'] {
+  --pt: #e0452f;
+}
+
+.styles button:hover {
+  background: rgb(255 255 255 / 0.16);
+}
+
+.styles button[aria-pressed='true'] {
+  color: var(--gold-ink);
+  border-color: var(--gold-line);
+  background: linear-gradient(180deg, var(--gold-light), var(--gold));
+}
+
+/* ---------- Style Alliance: bleu royal et or, coins arrondis ---------- */
+
+:root[data-style='alliance'] {
+  color-scheme: dark;
+  --bg: #08101f;
+  --bg-2: #0d1a36;
+  --surface: #12203f;
+  --field: #0b1630;
+  --ink: #eef2fb;
+  --muted: #aab7d6;
+  --line: #2b4585;
+  --gold: #e0a63b;
+  --gold-light: #f2c25f;
+  --gold-ink: #1b1403;
+  --gold-line: #d3a23a;
+  --alliance: #8ab4ff;
+  --alliance-ink: #08111f;
+  --horde: #f08882;
+  --horde-ink: #240b0a;
+  --tank: #7fb0ff;
+  --heal: #6fdca0;
+  --dps: #ff8f80;
+  --focus: #9cc4ff;
+  --danger: #f08882;
+  --shadow: 0 8px 22px rgb(0 0 0 / 0.42);
+  --radius: 18px;
+  --r-bouton: 13px;
+  --r-champ: 11px;
+  --haut-fond:
+    radial-gradient(560px 280px at 6% -10%, rgb(80 140 255 / 0.55), transparent 70%),
+    radial-gradient(520px 260px at 94% -10%, rgb(70 120 230 / 0.4), transparent 70%),
+    radial-gradient(560px 220px at 50% 115%, rgb(232 184 74 / 0.3), transparent 70%),
+    linear-gradient(180deg, #071229, #10285a);
+}
+
+/* ---------- Style Horde: noir, rouge braise et coins taillés ---------- */
+
+:root[data-style='horde'] {
+  color-scheme: dark;
+  --bg: #0d0808;
+  --bg-2: #1a0c0b;
+  --surface: #221211;
+  --field: #160b0a;
+  --ink: #f4eae5;
+  --muted: #c4aaa3;
+  --line: #5f2c26;
+  --gold: #dc5a2c;
+  --gold-light: #f58a55;
+  --gold-ink: #1a0702;
+  --gold-line: #ff9b66;
+  --alliance: #8ab4ff;
+  --alliance-ink: #08111f;
+  --horde: #ff8f86;
+  --horde-ink: #240b0a;
+  --tank: #7fb0ff;
+  --heal: #6fdca0;
+  --dps: #ff8f80;
+  --focus: #ffb88f;
+  --danger: #ff8f86;
+  --shadow: 0 8px 22px rgb(0 0 0 / 0.5);
+  --radius: 6px;
+  --r-bouton: 5px;
+  --r-champ: 5px;
+  --haut-fond:
+    radial-gradient(520px 260px at 6% -10%, rgb(225 80 40 / 0.5), transparent 70%),
+    radial-gradient(520px 260px at 94% -10%, rgb(170 25 25 / 0.55), transparent 70%),
+    radial-gradient(560px 220px at 50% 115%, rgb(255 120 60 / 0.3), transparent 70%),
+    linear-gradient(180deg, #130606, #2c0f0c);
+  --motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M0 36L22 8L44 36' fill='none' stroke='white' stroke-width='1.2'/%3E%3C/svg%3E");
+  --titre-1: #ffe9d2;
+  --titre-2: #ff9b66;
+  --titre-3: #dc5a2c;
 }
