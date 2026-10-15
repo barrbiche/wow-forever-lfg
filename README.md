@@ -1,6 +1,6 @@
 # Babillard Forever
 
-Petit site pour trouver du monde avec qui jouer dans WoW Forever: annonces de groupes pour les donjons et le PvP, avec filtres (faction, règles de jeu, région, rôle, niveau).
+Petit site pour trouver du monde avec qui jouer dans WoW Forever: annonces de groupes (donjons, raids, PvP) ou de joueurs seuls, agenda des sorties planifiées, babillard de guildes qui recrutent, avec filtres (faction, règles de jeu, région, rôle, niveau, langue).
 
 Stack: Vite + React, base de données Supabase, hébergement Netlify (déploiement automatique à chaque push sur `main`).
 
@@ -23,6 +23,7 @@ Sans configuration, le site tourne en **mode démo**: les annonces restent dans 
    - `VITE_SUPABASE_ANON_KEY`
 5. Netlify > Deploys > Trigger deploy.
 6. SQL Editor > New query: colle aussi `supabase/ameliorations.sql`, puis Run (style de jeu, langue, heure de départ, raids, message Discord à jour). Roule-le **avant** de déployer une version du site qui s'en sert. On peut le relancer sans problème.
+7. SQL Editor > New query: colle aussi `supabase/ameliorations2.sql`, puis Run (joueurs seuls, classe, contacts cachés aux visiteurs, guildes, signalements, alertes Discord par type). Il faut le rouler **après** `ameliorations.sql`, et **juste après** le déploiement du site qui s'en sert: les visiteurs non connectés ne peuvent plus lire la colonne `contact`, et l'ancienne version du site (qui demandait toutes les colonnes) ne marcherait plus. On peut le relancer sans problème.
 
 ## Connexion par courriel
 
@@ -46,6 +47,25 @@ Sans Supabase, la connexion est simulée (mode démo).
 1. Discord: dans le canal voulu, Modifier le canal > Intégrations > Webhooks > Nouveau webhook > Copier l'URL du webhook.
 2. Supabase > SQL Editor: roule le contenu de `supabase/discord.sql`.
 3. Dans une autre requête, range l'adresse du webhook dans la table `reglages` (la requête est en commentaire à la fin du fichier). Ne mets jamais cette adresse dans GitHub: le repo est public.
+
+### Réglages facultatifs (table `reglages`, après `ameliorations2.sql`)
+
+Chaque réglage est une ligne `cle` / `valeur`. Tout est facultatif: sans eux, tout va dans le canal du réglage `discord_webhook`.
+
+| `cle` | Rôle |
+| --- | --- |
+| `discord_webhook_donjon`, `discord_webhook_raid`, `discord_webhook_pvp` | Un canal Discord par type d'annonce (sinon `discord_webhook`). |
+| `discord_webhook_guilde` | Canal des guildes qui recrutent (sinon, rien n'est publié). |
+| `discord_webhook_moderation` | Canal privé qui reçoit un message à chaque signalement (« Signalement 2/3 »). À 3, l'annonce ou la guilde est masquée. |
+| `discord_role_tank`, `discord_role_heal`, `discord_role_dps` | Identifiant (nombre) du rôle Discord à mentionner quand un groupe cherche ce rôle. |
+
+Pour que le monde voie le lien du Discord au bas du site, ajoute la variable Netlify `VITE_DISCORD_INVITE` (adresse d'invitation, par exemple `https://discord.gg/…`) et redéploie.
+
+## Contacts, signalements et modération
+
+- Les contacts (Discord, BattleTag) ne sont visibles que pour les gens connectés: la base refuse de les donner aux visiteurs anonymes. Ça freine le moissonnage en masse, mais tout compte inscrit peut les lire. Le canal Discord, lui, montre le contact: garde-le réservé aux membres.
+- Chaque personne connectée peut signaler une annonce ou une guilde (une fois chacune). Après 3 signalements de comptes différents, elle est masquée automatiquement. Des faux comptes pourraient abuser de ça: surveille le canal de modération.
+- Les guildes restent affichées 7, 14 ou 30 jours; 2 inscriptions actives par joueur.
 
 ## Limites de la version 1
 

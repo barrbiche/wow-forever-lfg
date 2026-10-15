@@ -1118,6 +1118,127 @@ h2 {
   }
 }
 
+/* ---------- Onglets Groupes / Guildes ---------- */
+
+.onglets {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.onglet {
+  flex: 1;
+  font: inherit;
+  font-family: var(--fantasy);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.05em;
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: var(--r-bouton);
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+
+.onglet:hover {
+  border-color: var(--gold-line);
+}
+
+.onglet[aria-pressed='true'] {
+  background: linear-gradient(180deg, var(--gold-light), var(--gold));
+  border-color: var(--gold-line);
+  color: var(--gold-ink);
+}
+
+.onglet-nombre {
+  margin-left: 6px;
+  font-family: var(--texte);
+  font-size: 0.85rem;
+  letter-spacing: 0;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+
+/* ---------- Agenda des groupes planifiés ---------- */
+
+.jour {
+  margin: 10px 0 -4px;
+}
+
+.jour h2 {
+  font-family: var(--fantasy);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold-line);
+}
+
+/* ---------- Classe, signalement, invitation ---------- */
+
+.chip.classe {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.classe-point {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--ink) 35%, transparent);
+}
+
+.signaler-ligne {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.signaler {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.signalement {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  max-width: 320px;
+  margin-left: auto;
+}
+
+.signalement-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.signale {
+  color: var(--muted);
+}
+
+.invitation {
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration-color: var(--gold-line);
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+
+.intro-guildes {
+  margin: 0;
+  color: var(--muted);
+}
+
+.pied p {
+  margin: 0 0 8px;
+}
+
 /* ---------- Choix du style du site ---------- */
 
 .styles {

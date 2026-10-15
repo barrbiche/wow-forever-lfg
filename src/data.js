@@ -45,6 +45,9 @@ export const DONJONS_CLASSIQUES = [
 
 export const AUTRE_DONJON = 'Autre donjon'
 
+// Un joueur seul qui n'a pas de donjon précis en tête.
+export const DONJON_PEU_IMPORTE = 'Un donjon, peu importe'
+
 // Plages de niveaux suggérées: elles se remplissent toutes seules quand on choisit un donjon
 // (et restent modifiables). Nouveaux donjons: guides publics avant le lancement.
 // Pour Excavation Site, les sources se contredisent (24-29 ou 26-31): on prend la plage la plus large.
@@ -127,6 +130,38 @@ export const STYLES = [
   { id: 'relax', nom: 'Relax' },
   { id: 'competitif', nom: 'Compétitif' },
   { id: 'carry', nom: 'Carry offert' },
+]
+
+// Les neuf classes de WoW Classic (couleurs officielles du jeu, utilisées en petits points seulement).
+export const CLASSES = [
+  { id: 'guerrier', nom: 'Guerrier', couleur: '#C79C6E' },
+  { id: 'paladin', nom: 'Paladin', couleur: '#F58CBA' },
+  { id: 'chasseur', nom: 'Chasseur', couleur: '#ABD473' },
+  { id: 'voleur', nom: 'Voleur', couleur: '#FFF569' },
+  { id: 'pretre', nom: 'Prêtre', couleur: '#FFFFFF' },
+  { id: 'chaman', nom: 'Chaman', couleur: '#0070DE' },
+  { id: 'mage', nom: 'Mage', couleur: '#69CCF0' },
+  { id: 'demoniste', nom: 'Démoniste', couleur: '#9482C9' },
+  { id: 'druide', nom: 'Druide', couleur: '#FF7D0A' },
+]
+
+export const MOTIFS_SIGNALEMENT = [
+  { id: 'spam', nom: 'Spam ou publicité' },
+  { id: 'faux_contact', nom: 'Faux contact' },
+  { id: 'inapproprie', nom: 'Contenu inapproprié' },
+  { id: 'autre', nom: 'Autre' },
+]
+
+export const FOCUS_GUILDE = [
+  { id: 'donjon', nom: 'Donjons' },
+  { id: 'raid', nom: 'Raids' },
+  { id: 'pvp', nom: 'PvP' },
+]
+
+export const DUREES_GUILDE = [
+  { jours: 7, nom: '7 jours' },
+  { jours: 14, nom: '14 jours' },
+  { jours: 30, nom: '30 jours' },
 ]
 
 export const LANGUES = [
