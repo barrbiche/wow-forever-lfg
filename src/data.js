@@ -45,6 +45,9 @@ export const DONJONS_CLASSIQUES = [
 
 export const AUTRE_DONJON = 'Autre donjon'
 
+// Valeur par défaut du formulaire PvP: pas besoin de choisir un champ de bataille précis.
+export const PVP_PEU_IMPORTE = 'Groupe PvP'
+
 export const CHAMPS_DE_BATAILLE = [
   'Warsong Gulch',
   'Arathi Basin',
