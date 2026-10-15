@@ -45,6 +45,57 @@ export const DONJONS_CLASSIQUES = [
 
 export const AUTRE_DONJON = 'Autre donjon'
 
+// Plages de niveaux suggérées: elles se remplissent toutes seules quand on choisit un donjon
+// (et restent modifiables). Nouveaux donjons: guides publics avant le lancement.
+// Pour Excavation Site, les sources se contredisent (24-29 ou 26-31): on prend la plage la plus large.
+// Donjons classiques: plages habituelles de WoW Classic, à revérifier dans Forever.
+export const NIVEAUX_DONJONS = {
+  'Hall of Thanes': [13, 18],
+  'Ruins of Lordaeron': [15, 20],
+  'Excavation Site: Wetlands': [24, 31],
+  'City of Dalaran': [28, 33],
+  'The Drowned City': [35, 40],
+  "Krol'dok Stronghold": [40, 45],
+  'Alcaz Island Prison': [48, 53],
+  'Blackmaw Hold': [55, 60],
+  "Shaper's Terrace": [58, 60],
+  'Ragefire Chasm': [13, 18],
+  'Wailing Caverns': [15, 25],
+  'The Deadmines': [18, 23],
+  'Shadowfang Keep': [22, 30],
+  'Blackfathom Deeps': [24, 32],
+  'The Stockade': [24, 31],
+  Gnomeregan: [29, 38],
+  'Razorfen Kraul': [30, 40],
+  'Scarlet Monastery: Graveyard': [26, 36],
+  'Scarlet Monastery: Library': [29, 39],
+  'Scarlet Monastery: Armory': [32, 42],
+  'Scarlet Monastery: Cathedral': [35, 45],
+  'Razorfen Downs': [40, 50],
+  Uldaman: [42, 52],
+  "Zul'Farrak": [44, 54],
+  Maraudon: [46, 55],
+  "Temple of Atal'Hakkar": [50, 60],
+  'Blackrock Depths': [52, 60],
+  'Lower Blackrock Spire': [55, 60],
+  'Upper Blackrock Spire': [58, 60],
+  'Stratholme: Living': [58, 60],
+  'Stratholme: Undead': [58, 60],
+  Scholomance: [58, 60],
+  'Dire Maul: East': [58, 60],
+  'Dire Maul: West': [58, 60],
+  'Dire Maul: North': [58, 60],
+}
+
+// Les raids ouvrent le 9 décembre 2026 (niveau 60 requis). Avant, le formulaire montre « Dès le 9 décembre ».
+export const RAIDS = [
+  { nom: 'Barrow Deeps', taille: 10 },
+  { nom: 'Hyjal Summit', taille: 20 },
+  { nom: "Onyxia's Lair", taille: 40 },
+]
+export const RAIDS_OUVERTS_LE = new Date(2026, 11, 9)
+export const raidsOuverts = () => Date.now() >= RAIDS_OUVERTS_LE.getTime()
+
 // Valeur par défaut du formulaire PvP: pas besoin de choisir un champ de bataille précis.
 export const PVP_PEU_IMPORTE = 'Groupe PvP'
 
@@ -60,6 +111,27 @@ export const CHAMPS_DE_BATAILLE = [
 export const FACTIONS = [
   { id: 'alliance', nom: 'Alliance' },
   { id: 'horde', nom: 'Horde' },
+]
+
+// Les groupes de donjon et de raid ne peuvent pas mélanger les règles de jeu (les champs de bataille, oui).
+// Hardcore arrive après le lancement: on l'ajoutera à ce moment-là.
+export const RULESETS = [
+  { id: 'normal', nom: 'Normal', carte: 'Règles normales' },
+  { id: 'pvp', nom: 'PvP', carte: 'Règles PvP' },
+  { id: 'rp', nom: 'Jeu de rôle', carte: 'Règles jeu de rôle' },
+]
+
+// Les mêmes quatre styles que l'outil de groupe du jeu (Blizzard ne les a pas encore définis).
+export const STYLES = [
+  { id: 'apprentissage', nom: 'Apprentissage' },
+  { id: 'relax', nom: 'Relax' },
+  { id: 'competitif', nom: 'Compétitif' },
+  { id: 'carry', nom: 'Carry offert' },
+]
+
+export const LANGUES = [
+  { id: 'fr', nom: 'Français' },
+  { id: 'en', nom: 'English' },
 ]
 
 export const REGIONS = [

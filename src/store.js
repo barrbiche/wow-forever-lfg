@@ -28,21 +28,21 @@ function annoncesDemo() {
     {
       id: 'demo-1', created_at: minutes(6), expires_at: dansHeures(2.5),
       user_id: 'demo-autre', activite: 'donjon', cible: 'Scarlet Monastery: Library', faction: 'alliance',
-      ruleset: 'normal', region: 'US', niveau_min: 33, niveau_max: 41,
+      ruleset: 'normal', style: 'relax', langue: 'fr', debut: null, region: 'US', niveau_min: 33, niveau_max: 41,
       roles: ['tank', 'heal'], perso: 'Thalyn', contact: 'thalyn#2481',
       note: 'On est 3 DPS, on part dans 10 min. Micro pas obligatoire.',
     },
     {
       id: 'demo-2', created_at: minutes(18), expires_at: dansHeures(1.6),
       user_id: 'demo-autre', activite: 'pvp', cible: 'Warsong Gulch', faction: 'horde',
-      ruleset: 'pvp', region: 'US', niveau_min: 10, niveau_max: 19,
+      ruleset: 'normal', style: 'competitif', langue: 'fr', debut: null, region: 'US', niveau_min: 10, niveau_max: 19,
       roles: [], perso: 'Grumash', contact: 'Grumash#1190',
       note: 'Groupe de 5 pour jouer ensemble, on cherche 5 autres Québécois.',
     },
     {
-      id: 'demo-3', created_at: minutes(41), expires_at: dansHeures(5),
+      id: 'demo-3', created_at: minutes(41), expires_at: dansHeures(4), debut: dansHeures(3),
       user_id: 'demo-autre', activite: 'donjon', cible: 'The Deadmines', faction: 'alliance',
-      ruleset: 'normal', region: 'EU', niveau_min: 17, niveau_max: 24,
+      ruleset: 'normal', style: 'apprentissage', langue: 'fr', region: 'EU', niveau_min: 18, niveau_max: 23,
       roles: ['dps', 'dps'], perso: 'Mirabelle', contact: 'mirabelle_wow',
       note: 'Tank et heal sont prêts, il nous manque du DPS. Ce soir à 20 h.',
     },
@@ -78,7 +78,11 @@ export async function lireAnnonces() {
 }
 
 export async function creerAnnonce(champs, heures) {
-  const annonce = { ...champs, expires_at: dansHeures(heures) }
+  // Annonce planifiée: elle reste affichée jusqu'à 1 h après l'heure de départ.
+  const expires_at = champs.debut
+    ? new Date(new Date(champs.debut).getTime() + 3600000).toISOString()
+    : dansHeures(heures)
+  const annonce = { ...champs, debut: champs.debut || null, expires_at }
   if (modeDemo) {
     const complete = {
       ...annonce,

@@ -18,10 +18,16 @@ import {
   DONJONS_NOUVEAUX,
   DUREES,
   FACTIONS,
+  LANGUES,
+  NIVEAUX_DONJONS,
   PVP_PEU_IMPORTE,
+  RAIDS,
   REGIONS,
   ROLES,
+  RULESETS,
+  STYLES,
   nomDe,
+  raidsOuverts,
 } from './data.js'
 
 // ---------- Petites icônes (dessinées à la main, héritent la couleur du texte) ----------
@@ -32,7 +38,10 @@ const CHEMINS = {
   tank: 'M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z',
   heal: 'M12 5v14M5 12h14',
   dps: 'M6 18L18 6M13 6h5v5M6 14l4 4M4 20l3-3',
+  raid: 'M4 21V8h3v3h3V8h4v3h3V8h3v13M3 21h18M10 21v-4a2 2 0 014 0v4',
+  horloge: 'M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18z',
 }
+const NOMS_ACTIVITE = { donjon: 'Donjon', raid: 'Raid', pvp: 'PvP' }
 
 function Icone({ nom, taille = 18 }) {
   return (
@@ -69,6 +78,35 @@ function reste(iso) {
   return m ? `${h} h ${m} min` : `${h} h`
 }
 
+// « aujourd'hui 20 h », « demain 19 h 30 », « samedi 20 h »
+function departTexte(iso) {
+  const d = new Date(iso)
+  const jours = Math.round((new Date(d).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000)
+  const h = d.getHours()
+  const m = d.getMinutes()
+  const heure = `${h} h${m ? ` ${String(m).padStart(2, '0')}` : ''}`
+  const jour = jours <= 0 ? "aujourd'hui" : jours === 1 ? 'demain' : d.toLocaleDateString('fr-CA', { weekday: 'long' })
+  return `${jour} ${heure}`
+}
+
+function avantDepart(iso) {
+  return new Date(iso).getTime() <= Date.now() ? 'Départ en cours' : `Départ dans ${reste(iso)}`
+}
+
+// Valeur pour <input type="datetime-local">, en heure locale.
+function versChampDate(d) {
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+// Proposition de départ: la prochaine heure pile, au moins 30 minutes plus tard.
+function departParDefaut() {
+  const d = new Date(Date.now() + 30 * 60000)
+  d.setMinutes(0, 0, 0)
+  d.setHours(d.getHours() + 1)
+  return versChampDate(d)
+}
+
 function partRestante(a) {
   const total = new Date(a.expires_at).getTime() - new Date(a.created_at).getTime()
   const restant = new Date(a.expires_at).getTime() - Date.now()
@@ -76,13 +114,26 @@ function partRestante(a) {
   return Math.max(0, Math.min(1, restant / total))
 }
 
-const FILTRES_VIDES = { activite: 'tout', faction: '', region: '', role: '', niveau: '' }
+const FILTRES_VIDES = {
+  activite: 'tout',
+  faction: '',
+  region: '',
+  role: '',
+  niveau: '',
+  ruleset: '',
+  style: '',
+  langue: '',
+}
 
 function correspond(a, f) {
   const niveau = Number(f.niveau)
   if (f.activite !== 'tout' && a.activite !== f.activite) return false
   if (f.faction && a.faction !== f.faction) return false
   if (f.region && a.region !== f.region) return false
+  // Les champs de bataille peuvent mélanger les règles de jeu: ce filtre ne vise que donjons et raids.
+  if (f.ruleset && a.activite !== 'pvp' && a.ruleset !== f.ruleset) return false
+  if (f.style && a.style !== f.style) return false
+  if (f.langue && a.langue !== f.langue) return false
   if (f.role && !a.roles.includes(f.role)) return false
   if (niveau && (niveau < a.niveau_min || niveau > a.niveau_max)) return false
   return true
@@ -135,7 +186,8 @@ export default function App() {
   )
 
   const filtresActifs = JSON.stringify(filtres) !== JSON.stringify(FILTRES_VIDES)
-  const nbAutres = [filtres.region, filtres.role].filter(Boolean).length
+  const nbAutres = [filtres.region, filtres.role, filtres.ruleset, filtres.style].filter(Boolean).length
+  const raids = raidsOuverts()
 
   const changer = (cle) => (e) => setFiltres((f) => ({ ...f, [cle]: e.target.value }))
   const basculerFaction = (id) => setFiltres((f) => ({ ...f, faction: f.faction === id ? '' : id }))
@@ -149,7 +201,8 @@ export default function App() {
             <div>
               <h1>Babillard Forever</h1>
               <p className="sous-titre">
-                Trouve ton groupe pour les donjons et le PvP. Pour le Québec et la francophonie.
+                Trouve ton groupe pour les donjons{raids ? ', les raids' : ''} et le PvP. Pour le Québec et la
+                francophonie.
               </p>
             </div>
           </div>
@@ -195,10 +248,11 @@ export default function App() {
 
         <section className="filtres" aria-label="Filtres">
           <div className="filtres-ligne">
-            <div className="segments" role="group" aria-label="Type d'activité">
+            <div className={`segments${raids ? ' quatre' : ''}`} role="group" aria-label="Type d'activité">
               {[
                 ['tout', 'Tout'],
                 ['donjon', 'Donjons'],
+                ...(raids ? [['raid', 'Raids']] : []),
                 ['pvp', 'PvP'],
               ].map(([id, nom]) => (
                 <button
@@ -226,6 +280,17 @@ export default function App() {
             </label>
           </div>
 
+          <div className="pastilles">
+            <button
+              type="button"
+              className="pastille"
+              aria-pressed={filtres.langue === 'fr'}
+              onClick={() => setFiltres((f) => ({ ...f, langue: f.langue === 'fr' ? '' : 'fr' }))}
+            >
+              Français seulement
+            </button>
+          </div>
+
           <details className="plus">
             <summary>
               Autres filtres{nbAutres > 0 ? ` (${nbAutres})` : ''}
@@ -245,6 +310,24 @@ export default function App() {
                 <select value={filtres.role} onChange={changer('role')}>
                   <option value="">Tous</option>
                   {ROLES.map((r) => (
+                    <option key={r.id} value={r.id}>{r.nom}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="champ">
+                <span>Style de jeu</span>
+                <select value={filtres.style} onChange={changer('style')}>
+                  <option value="">Tous</option>
+                  {STYLES.map((r) => (
+                    <option key={r.id} value={r.id}>{r.nom}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="champ">
+                <span>Règles de jeu (donjons et raids)</span>
+                <select value={filtres.ruleset} onChange={changer('ruleset')}>
+                  <option value="">Toutes</option>
+                  {RULESETS.map((r) => (
                     <option key={r.id} value={r.id}>{r.nom}</option>
                   ))}
                 </select>
@@ -290,8 +373,8 @@ export default function App() {
         )}
 
         <footer className="pied">
-          Les annonces disparaissent toutes seules quand leur durée est écoulée. Les groupes Alliance et
-          Horde ne peuvent pas se mélanger dans Forever.
+          Les annonces disparaissent toutes seules quand leur durée est écoulée. Dans Forever, les groupes
+          Alliance et Horde ne se mélangent pas, et les donjons et raids demandent les mêmes règles de jeu.
         </footer>
       </main>
 
@@ -342,7 +425,7 @@ function Carte({ annonce: a, proprietaire, apres }) {
       <div className="carte-haut">
         <span className="carte-icone">
           <Icone nom={a.activite} taille={22} />
-          <span className="sr">{a.activite === 'donjon' ? 'Donjon' : 'PvP'}</span>
+          <span className="sr">{NOMS_ACTIVITE[a.activite]}</span>
         </span>
         <div className="carte-titre">
           <h2>{a.cible}</h2>
@@ -355,7 +438,21 @@ function Carte({ annonce: a, proprietaire, apres }) {
         <li className="chip fort">
           {a.niveau_min === a.niveau_max ? `Niveau ${a.niveau_min}` : `Niveaux ${a.niveau_min} à ${a.niveau_max}`}
         </li>
+        {a.activite === 'raid' && (
+          <li className="chip fort">{RAIDS.find((r) => r.nom === a.cible)?.taille ?? ''} joueurs</li>
+        )}
+        {a.debut && (
+          <li className="chip depart">
+            <Icone nom="horloge" taille={14} />
+            Départ {departTexte(a.debut)}
+          </li>
+        )}
+        {a.activite !== 'pvp' && a.ruleset && (
+          <li className="chip">{RULESETS.find((r) => r.id === a.ruleset)?.carte ?? a.ruleset}</li>
+        )}
         <li className="chip">{a.region}</li>
+        {a.style && <li className="chip">{nomDe(STYLES, a.style)}</li>}
+        {a.langue && <li className="chip">{a.langue === 'en' ? 'English' : 'Français'}</li>}
       </ul>
 
       {a.roles.length > 0 && (
@@ -370,7 +467,7 @@ function Carte({ annonce: a, proprietaire, apres }) {
         </p>
       )}
 
-      {a.activite === 'donjon' && a.roles.length === 0 && (
+      {a.activite !== 'pvp' && a.roles.length === 0 && (
         <p className="roles"><span className="role complet">Groupe complet</span></p>
       )}
 
@@ -379,7 +476,7 @@ function Carte({ annonce: a, proprietaire, apres }) {
       <div className="carte-bas">
         <div className="auteur">
           <strong>{a.perso}</strong>
-          <span>Expire dans {reste(a.expires_at)}</span>
+          <span>{a.debut ? avantDepart(a.debut) : `Expire dans ${reste(a.expires_at)}`}</span>
         </div>
         <div className="contact">
           <code>{a.contact}</code>
@@ -417,14 +514,25 @@ const FORMULAIRE_VIDE = {
   cible: '',
   faction: 'alliance',
   region: 'US',
+  ruleset: 'normal',
+  style: 'relax',
+  langue: 'fr',
   niveau_min: '',
   niveau_max: '',
   roles: [],
   perso: '',
   contact: '',
   note: '',
+  quand: 'maintenant',
+  debut: '',
   heures: 3,
 }
+
+const CHOIX_ACTIVITE = [
+  ['donjon', 'Un donjon', 'Complète ton groupe.'],
+  ['raid', 'Un raid', '10, 20 ou 40 joueurs.'],
+  ['pvp', 'Du PvP', 'Champ de bataille ou monde ouvert.'],
+]
 
 function Formulaire({ utilisateur, ouvert, fermer, apresPublication }) {
   const dialogue = useRef(null)
@@ -432,6 +540,7 @@ function Formulaire({ utilisateur, ouvert, fermer, apresPublication }) {
   const [erreurs, setErreurs] = useState({})
   const [envoi, setEnvoi] = useState(false)
   const [erreurServeur, setErreurServeur] = useState('')
+  const raids = raidsOuverts()
 
   useEffect(() => {
     const d = dialogue.current
@@ -450,9 +559,33 @@ function Formulaire({ utilisateur, ouvert, fermer, apresPublication }) {
   }
 
   // En PvP, aucun champ de bataille précis n'est exigé: « Groupe PvP » est choisi d'avance.
+  // Un raid est toujours de niveau 60.
   const changerActivite = (activite) => {
-    setChamps((c) => ({ ...c, activite, cible: activite === 'pvp' ? PVP_PEU_IMPORTE : '', roles: [] }))
-    setErreurs((e) => ({ ...e, cible: undefined, roles: undefined }))
+    setChamps((c) => ({
+      ...c,
+      activite,
+      cible: activite === 'pvp' ? PVP_PEU_IMPORTE : '',
+      roles: [],
+      niveau_min: activite === 'raid' ? '60' : c.activite === 'raid' ? '' : c.niveau_min,
+      niveau_max: activite === 'raid' ? '60' : c.activite === 'raid' ? '' : c.niveau_max,
+    }))
+    setErreurs((e) => ({ ...e, cible: undefined, roles: undefined, niveau_min: undefined, niveau_max: undefined }))
+  }
+
+  // Choisir un donjon remplit les niveaux suggérés (modifiables ensuite).
+  const choisirCible = (cible) => {
+    const plage = NIVEAUX_DONJONS[cible]
+    setChamps((c) => ({
+      ...c,
+      cible,
+      ...(c.activite === 'donjon' && plage ? { niveau_min: String(plage[0]), niveau_max: String(plage[1]) } : {}),
+    }))
+    setErreurs((e) => ({ ...e, cible: undefined, niveau_min: undefined, niveau_max: undefined }))
+  }
+
+  const choisirQuand = (quand) => {
+    setChamps((c) => ({ ...c, quand, debut: quand === 'plus_tard' ? c.debut || departParDefaut() : '' }))
+    setErreurs((e) => ({ ...e, debut: undefined }))
   }
 
   const basculerRole = (id) => {
@@ -468,12 +601,19 @@ function Formulaire({ utilisateur, ouvert, fermer, apresPublication }) {
     const min = Number(champs.niveau_min)
     const max = Number(champs.niveau_max)
     if (champs.activite === 'donjon' && !champs.cible) e.cible = 'Choisis un donjon.'
+    if (champs.activite === 'raid' && !champs.cible) e.cible = 'Choisis un raid.'
     if (!(min >= 1 && min <= 60)) e.niveau_min = 'Entre 1 et 60.'
     if (!(max >= 1 && max <= 60)) e.niveau_max = 'Entre 1 et 60.'
     else if (max < min) e.niveau_max = 'Doit être au moins égal au niveau minimum.'
     if (!champs.perso.trim()) e.perso = 'Écris le nom de ton personnage.'
     if (!champs.contact.trim()) e.contact = 'Écris ton Discord ou ton BattleTag pour que les gens te trouvent.'
-    if (champs.activite === 'donjon' && champs.roles.length === 0) e.roles = 'Choisis au moins un rôle recherché.'
+    if (champs.activite !== 'pvp' && champs.roles.length === 0) e.roles = 'Choisis au moins un rôle recherché.'
+    if (champs.quand === 'plus_tard') {
+      const t = new Date(champs.debut).getTime()
+      if (!champs.debut || Number.isNaN(t)) e.debut = 'Choisis la date et l’heure du départ.'
+      else if (t <= Date.now()) e.debut = 'Le départ doit être dans le futur.'
+      else if (t > Date.now() + 70 * 3600000) e.debut = 'Le départ doit être dans les 3 prochains jours.'
+    }
     setErreurs(e)
     return Object.keys(e).length === 0
   }
@@ -489,14 +629,17 @@ function Formulaire({ utilisateur, ouvert, fermer, apresPublication }) {
           activite: champs.activite,
           cible: champs.cible || PVP_PEU_IMPORTE,
           faction: champs.faction,
-          ruleset: 'normal', // champ gardé en base, plus demandé aux joueurs
+          ruleset: champs.activite === 'pvp' ? 'normal' : champs.ruleset, // champs de bataille: règles mélangées
+          style: champs.style,
+          langue: champs.langue,
           region: champs.region,
           niveau_min: Number(champs.niveau_min),
           niveau_max: Number(champs.niveau_max),
-          roles: champs.roles,
+          roles: champs.activite === 'pvp' ? [] : champs.roles,
           perso: champs.perso.trim(),
           contact: champs.contact.trim(),
           note: champs.note.trim(),
+          debut: champs.quand === 'plus_tard' ? new Date(champs.debut).toISOString() : null,
         },
         Number(champs.heures),
       )
@@ -504,6 +647,8 @@ function Formulaire({ utilisateur, ouvert, fermer, apresPublication }) {
         ...FORMULAIRE_VIDE,
         faction: c.faction,
         region: c.region,
+        ruleset: c.ruleset,
+        langue: c.langue,
         perso: c.perso,
         contact: c.contact,
       }))
@@ -518,6 +663,7 @@ function Formulaire({ utilisateur, ouvert, fermer, apresPublication }) {
 
   const erreur = (cle) => (erreurs[cle] ? <span className="msg-erreur">{erreurs[cle]}</span> : null)
   const pvp = champs.activite === 'pvp'
+  const raid = champs.activite === 'raid'
 
   return (
     <dialog
@@ -539,32 +685,38 @@ function Formulaire({ utilisateur, ouvert, fermer, apresPublication }) {
           <fieldset className="groupe">
             <legend>Tu cherches un groupe pour</legend>
             <div className="choix-activite">
-              {[
-                ['donjon', 'Un donjon', 'Choisis le donjon et les rôles qu’il te manque.'],
-                ['pvp', 'Du PvP', 'Champ de bataille ou PvP en monde ouvert.'],
-              ].map(([id, titre, description]) => (
-                <button
-                  key={id}
-                  type="button"
-                  className="choix"
-                  aria-pressed={champs.activite === id}
-                  onClick={() => changerActivite(id)}
-                >
-                  <Icone nom={id} taille={24} />
-                  <strong>{titre}</strong>
-                  <span>{description}</span>
-                </button>
-              ))}
+              {CHOIX_ACTIVITE.map(([id, titre, description]) => {
+                const ferme = id === 'raid' && !raids
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    className="choix"
+                    aria-pressed={champs.activite === id}
+                    disabled={ferme}
+                    onClick={() => changerActivite(id)}
+                  >
+                    <Icone nom={id} taille={24} />
+                    <strong>{titre}</strong>
+                    <span>{ferme ? 'Dès le 9 décembre.' : description}</span>
+                  </button>
+                )
+              })}
             </div>
           </fieldset>
 
           <label className="champ">
-            <span>{pvp ? 'Champ de bataille (facultatif)' : 'Donjon'}</span>
-            <select value={champs.cible} onChange={(e) => maj('cible', e.target.value)} aria-invalid={!!erreurs.cible}>
+            <span>{pvp ? 'Champ de bataille (facultatif)' : raid ? 'Raid' : 'Donjon'}</span>
+            <select value={champs.cible} onChange={(e) => choisirCible(e.target.value)} aria-invalid={!!erreurs.cible}>
               {pvp ? (
                 <>
                   <option value={PVP_PEU_IMPORTE}>Peu importe</option>
                   {CHAMPS_DE_BATAILLE.map((d) => <option key={d}>{d}</option>)}
+                </>
+              ) : raid ? (
+                <>
+                  <option value="">Choisir…</option>
+                  {RAIDS.map((r) => <option key={r.nom} value={r.nom}>{r.nom} ({r.taille} joueurs)</option>)}
                 </>
               ) : (
                 <>
@@ -594,6 +746,9 @@ function Formulaire({ utilisateur, ouvert, fermer, apresPublication }) {
               {erreur('niveau_max')}
             </label>
           </div>
+          {champs.activite === 'donjon' && NIVEAUX_DONJONS[champs.cible] && (
+            <p className="aide">Niveaux suggérés pour ce donjon. Tu peux les changer.</p>
+          )}
 
           <div className="deux">
             <label className="champ">
@@ -609,6 +764,31 @@ function Formulaire({ utilisateur, ouvert, fermer, apresPublication }) {
               </select>
             </label>
           </div>
+
+          <div className="deux">
+            <label className="champ">
+              <span>Style de jeu</span>
+              <select value={champs.style} onChange={(e) => maj('style', e.target.value)}>
+                {STYLES.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
+              </select>
+            </label>
+            <label className="champ">
+              <span>Langue du groupe</span>
+              <select value={champs.langue} onChange={(e) => maj('langue', e.target.value)}>
+                {LANGUES.map((l) => <option key={l.id} value={l.id}>{l.nom}</option>)}
+              </select>
+            </label>
+          </div>
+
+          {!pvp && (
+            <label className="champ">
+              <span>Règles de jeu</span>
+              <select value={champs.ruleset} onChange={(e) => maj('ruleset', e.target.value)}>
+                {RULESETS.map((r) => <option key={r.id} value={r.id}>{r.nom}</option>)}
+              </select>
+              <small className="aide">Un groupe de donjon ou de raid ne peut pas mélanger les règles.</small>
+            </label>
+          )}
 
           {!pvp && (
             <fieldset className="groupe">
@@ -641,16 +821,54 @@ function Formulaire({ utilisateur, ouvert, fermer, apresPublication }) {
 
           <label className="champ">
             <span>Message (facultatif)</span>
-            <textarea rows="2" maxLength={160} value={champs.note} onChange={(e) => maj('note', e.target.value)} placeholder="Ex.: on part à 20 h, micro pas obligatoire." />
+            <textarea rows="2" maxLength={160} value={champs.note} onChange={(e) => maj('note', e.target.value)} placeholder="Ex.: micro pas obligatoire, on y va tranquille." />
             <small>{champs.note.length} / 160</small>
           </label>
 
-          <label className="champ">
-            <span>L'annonce reste affichée</span>
-            <select value={champs.heures} onChange={(e) => maj('heures', e.target.value)}>
-              {DUREES.map((d) => <option key={d.heures} value={d.heures}>{d.nom}</option>)}
-            </select>
-          </label>
+          <fieldset className="groupe">
+            <legend>Quand?</legend>
+            <div className="choix-activite">
+              {[
+                ['maintenant', 'Maintenant', 'On part dès que le groupe est plein.'],
+                ['plus_tard', 'Plus tard', 'Choisis le jour et l’heure du départ.'],
+              ].map(([id, titre, description]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className="choix"
+                  aria-pressed={champs.quand === id}
+                  onClick={() => choisirQuand(id)}
+                >
+                  <strong>{titre}</strong>
+                  <span>{description}</span>
+                </button>
+              ))}
+            </div>
+          </fieldset>
+
+          {champs.quand === 'plus_tard' ? (
+            <label className="champ">
+              <span>Départ (dans les 3 prochains jours)</span>
+              <input
+                type="datetime-local"
+                step="300"
+                min={versChampDate(new Date())}
+                max={versChampDate(new Date(Date.now() + 70 * 3600000))}
+                value={champs.debut}
+                onChange={(e) => maj('debut', e.target.value)}
+                aria-invalid={!!erreurs.debut}
+              />
+              {erreur('debut')}
+              <small className="aide">L'annonce reste affichée jusqu'à 1 heure après le départ.</small>
+            </label>
+          ) : (
+            <label className="champ">
+              <span>L'annonce reste affichée</span>
+              <select value={champs.heures} onChange={(e) => maj('heures', e.target.value)}>
+                {DUREES.map((d) => <option key={d.heures} value={d.heures}>{d.nom}</option>)}
+              </select>
+            </label>
+          )}
 
           {modeDemo && (
             <p className="bandeau" role="note">
