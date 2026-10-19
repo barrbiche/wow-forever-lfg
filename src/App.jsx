@@ -201,19 +201,52 @@ export default function App() {
   return (
     <>
       <header className="haut">
+        <svg className="haut-infini" viewBox="0 0 240 120" aria-hidden="true" focusable="false">
+          <path
+            className="eco"
+            pathLength="1"
+            d="M120 60C148 18 215 14 215 60C215 106 148 102 120 60C92 18 25 14 25 60C25 106 92 102 120 60Z"
+          />
+          <path
+            className="trait"
+            pathLength="1"
+            d="M120 60C148 18 215 14 215 60C215 106 148 102 120 60C92 18 25 14 25 60C25 106 92 102 120 60Z"
+          />
+        </svg>
         <div className="haut-contenu">
           <div className="titre-bloc">
-            <span className="marque" aria-hidden="true">∞</span>
-            <div>
-              <h1>Babillard Forever</h1>
-              <p className="sous-titre">
-                Trouve ton groupe pour les donjons{raids ? ', les raids' : ''} et le PvP. Pour le Québec et la
-                francophonie.
-              </p>
+            <h1>
+              <span>Babillard</span> <span>Forever</span>
+            </h1>
+            <p className="sous-titre">
+              Trouve ton groupe pour les donjons{raids ? ', les raids' : ''} et le PvP. Pour le Québec et la
+              francophonie.
+            </p>
+            <div className="actions">
+              {utilisateur ? (
+                <p className="session">
+                  <span>Connecté: <strong>{utilisateur.nom}</strong></span>
+                  <button type="button" className="lien" onClick={deconnecter}>Se déconnecter</button>
+                </p>
+              ) : (
+                <button type="button" className="bouton" onClick={ouvrirConnexion}>
+                  Se connecter
+                </button>
+              )}
+              <button type="button" className="bouton principal" onClick={() => setFormulaireOuvert(true)}>
+                Publier une annonce
+              </button>
             </div>
+            {!chargement && (
+              <p className="vivant">
+                <span className="point" aria-hidden="true" />
+                {annonces.length === 0
+                  ? "Aucune annonce pour l'instant. Sois le premier."
+                  : `${annonces.length} ${annonces.length > 1 ? 'annonces actives' : 'annonce active'} en ce moment`}
+              </p>
+            )}
           </div>
           <div className="styles" role="group" aria-label="Apparence du site">
-            <span className="styles-titre">Apparence</span>
             {STYLES_SITE.map(([id, nom]) => (
               <button
                 key={id || 'neutre'}
@@ -226,21 +259,6 @@ export default function App() {
               />
             ))}
           </div>
-          <div className="actions">
-            {utilisateur ? (
-              <p className="session">
-                <span>Connecté: <strong>{utilisateur.nom}</strong></span>
-                <button type="button" className="lien" onClick={deconnecter}>Se déconnecter</button>
-              </p>
-            ) : (
-              <button type="button" className="bouton" onClick={ouvrirConnexion}>
-                Se connecter
-              </button>
-            )}
-            <button type="button" className="bouton principal" onClick={() => setFormulaireOuvert(true)}>
-              Publier une annonce
-            </button>
-          </div>
         </div>
       </header>
 
@@ -251,28 +269,30 @@ export default function App() {
           </p>
         )}
 
-        <div className="onglets" role="group" aria-label="Section du site">
-          <button type="button" className="onglet" aria-pressed={vue === 'groupes'} onClick={() => setVue('groupes')}>
-            Groupes <span className="onglet-nombre">{annonces.length}</span>
-          </button>
-          <button type="button" className="onglet" aria-pressed={vue === 'guildes'} onClick={() => setVue('guildes')}>
-            Guildes <span className="onglet-nombre">{guildes ? guildes.length : 0}</span>
-          </button>
-        </div>
-
-        <div className="factions" role="group" aria-label="Filtrer par faction">
-          {FACTIONS.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              className={`faction-bouton ${f.id}`}
-              aria-pressed={filtres.faction === f.id}
-              onClick={() => basculerFaction(f.id)}
-            >
-              <span className="faction-nombre">{comptes.filter((a) => a.faction === f.id).length}</span>
-              <span className="faction-nom">{f.nom}</span>
+        <div className="barre">
+          <div className="onglets" role="group" aria-label="Section du site">
+            <button type="button" className="onglet" aria-pressed={vue === 'groupes'} onClick={() => setVue('groupes')}>
+              Groupes <span className="onglet-nombre">{annonces.length}</span>
             </button>
-          ))}
+            <button type="button" className="onglet" aria-pressed={vue === 'guildes'} onClick={() => setVue('guildes')}>
+              Guildes <span className="onglet-nombre">{guildes ? guildes.length : 0}</span>
+            </button>
+          </div>
+
+          <div className="factions" role="group" aria-label="Filtrer par faction">
+            {FACTIONS.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                className={`faction-bouton ${f.id}`}
+                aria-pressed={filtres.faction === f.id}
+                onClick={() => basculerFaction(f.id)}
+              >
+                <span className="faction-nombre">{comptes.filter((a) => a.faction === f.id).length}</span>
+                <span className="faction-nom">{f.nom}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {vue === 'guildes' ? (
@@ -482,98 +502,111 @@ function Carte({ annonce: a, proprietaire, utilisateur, onConnexion, apres }) {
 
   return (
     <article className={`carte ${a.faction}`}>
-      <div className="carte-haut">
-        <span className="carte-icone">
-          <Icone nom={joueur ? 'joueur' : a.activite} taille={22} />
-          <span className="sr">
-            {joueur ? `Joueur seul, ${NOMS_ACTIVITE[a.activite].toLowerCase()}` : NOMS_ACTIVITE[a.activite]}
-          </span>
-        </span>
-        <div className="carte-titre">
-          <h2>{a.cible}</h2>
-          <span className={`faction ${a.faction}`}>
-            {nomDe(FACTIONS, a.faction)}
-            {joueur ? ' · joueur seul' : ''}
-          </span>
-        </div>
-        <span className="depuis">{depuis(a.created_at)}</span>
-      </div>
-
-      <ul className="infos">
-        <li className="chip fort">
+      <div className="carte-plaque">
+        <Icone nom={joueur ? 'joueur' : a.activite} taille={26} />
+        <strong className="plaque-niveau" aria-hidden="true">
+          {a.niveau_min === a.niveau_max ? a.niveau_min : `${a.niveau_min}–${a.niveau_max}`}
+        </strong>
+        <span className="plaque-unite" aria-hidden="true">{a.niveau_min === a.niveau_max ? 'niveau' : 'niveaux'}</span>
+        <span className="sr">
+          {joueur ? `Joueur seul, ${NOMS_ACTIVITE[a.activite].toLowerCase()}` : NOMS_ACTIVITE[a.activite]}.{' '}
           {a.niveau_min === a.niveau_max ? `Niveau ${a.niveau_min}` : `Niveaux ${a.niveau_min} à ${a.niveau_max}`}
-        </li>
-        {classe && (
-          <li className="chip classe">
-            <span className="classe-point" style={{ background: classe.couleur }} aria-hidden="true" />
-            {classe.nom}
-          </li>
-        )}
-        {a.activite === 'raid' && (
-          <li className="chip fort">{RAIDS.find((r) => r.nom === a.cible)?.taille ?? ''} joueurs</li>
-        )}
-        {a.debut && (
-          <li className="chip depart">
-            <Icone nom="horloge" taille={14} />
-            Départ {departTexte(a.debut)}
-          </li>
-        )}
-        {a.activite !== 'pvp' && a.ruleset && a.ruleset !== 'normal' && (
-          <li className="chip">{RULESETS.find((r) => r.id === a.ruleset)?.carte ?? a.ruleset}</li>
-        )}
-        <li className="chip">{a.region}</li>
-        {a.style && <li className="chip">{nomDe(STYLES, a.style)}</li>}
-        {a.langue && <li className="chip">{a.langue === 'en' ? 'English' : 'Français'}</li>}
-      </ul>
+        </span>
+      </div>
 
-      {a.roles.length > 0 && (
-        <p className="roles">
-          <span>{joueur ? 'Joue' : 'Cherche'}</span>
-          {ROLES.filter((r) => a.roles.includes(r.id)).map((r) => (
-            <span key={r.id} className={`role ${r.id}`}>
-              <Icone nom={r.id} taille={15} />
-              {r.nom}
+      <div className="carte-corps">
+        <div className="carte-haut">
+          <div className="carte-titre">
+            <h2>{a.cible}</h2>
+            <span className={`faction ${a.faction}`}>
+              {nomDe(FACTIONS, a.faction)}
+              {joueur ? ' · joueur seul' : ''}
             </span>
-          ))}
-        </p>
-      )}
-
-      {!joueur && a.activite !== 'pvp' && a.roles.length === 0 && (
-        <p className="roles"><span className="role complet">Groupe complet</span></p>
-      )}
-
-      {a.note && <p className="note">{a.note}</p>}
-
-      <div className="carte-bas">
-        <div className="auteur">
-          <strong>{a.perso}</strong>
-          <span>{a.debut ? avantDepart(a.debut) : `Expire dans ${reste(a.expires_at)}`}</span>
+          </div>
+          <span className="depuis">{depuis(a.created_at)}</span>
         </div>
-        <Contact contact={a.contact} onConnexion={onConnexion} />
-      </div>
 
-      <div className="duree" aria-hidden="true">
-        <span style={{ width: `${Math.round(partRestante(a) * 100)}%` }} />
-      </div>
+        <ul className="infos">
+          {classe && (
+            <li className="chip classe">
+              <span className="classe-point" style={{ background: classe.couleur }} aria-hidden="true" />
+              {classe.nom}
+            </li>
+          )}
+          {a.activite === 'raid' && (
+            <li className="chip fort">{RAIDS.find((r) => r.nom === a.cible)?.taille ?? ''} joueurs</li>
+          )}
+          {a.debut && (
+            <li className="chip depart">
+              <Icone nom="horloge" taille={14} />
+              Départ {departTexte(a.debut)}
+            </li>
+          )}
+          {a.activite !== 'pvp' && a.ruleset && a.ruleset !== 'normal' && (
+            <li className="chip">{RULESETS.find((r) => r.id === a.ruleset)?.carte ?? a.ruleset}</li>
+          )}
+          <li className="chip">{a.region}</li>
+          {a.style && <li className="chip">{nomDe(STYLES, a.style)}</li>}
+          {a.langue && <li className="chip">{a.langue === 'en' ? 'English' : 'Français'}</li>}
+        </ul>
 
-      {proprietaire ? (
-        <div className="gestion">
-          {!joueur &&
-            ROLES.filter((r) => a.roles.includes(r.id)).map((r) => (
-              <button key={r.id} type="button" className="bouton petit" onClick={() => gerer(() => retirerRole(a, r.id))}>
-                {r.nom} trouvé
-              </button>
+        {a.roles.length > 0 && (
+          <p className="roles">
+            <span>{joueur ? 'Joue' : 'Cherche'}</span>
+            {ROLES.filter((r) => a.roles.includes(r.id)).map((r) => (
+              <span key={r.id} className={`role ${r.id}`}>
+                <Icone nom={r.id} taille={15} />
+                {r.nom}
+              </span>
             ))}
-          <button type="button" className="bouton petit danger" onClick={() => gerer(() => retirerAnnonce(a.id))}>
-            {joueur ? "J'ai trouvé un groupe" : "Retirer l'annonce"}
-          </button>
-          {probleme && <p className="msg-erreur" role="alert">{probleme}</p>}
+          </p>
+        )}
+
+        {!joueur && a.activite !== 'pvp' && a.roles.length === 0 && (
+          <p className="roles"><span className="role complet">Groupe complet</span></p>
+        )}
+
+        {a.note && <p className="note">{a.note}</p>}
+
+        <div className="carte-bas">
+          <div className="auteur">
+            <span
+              className="avatar"
+              aria-hidden="true"
+              style={classe ? { '--anneau': classe.couleur } : undefined}
+            >
+              {(a.perso || '?').trim().charAt(0).toUpperCase()}
+            </span>
+            <div className="auteur-texte">
+              <strong>{a.perso}</strong>
+              <span>{a.debut ? avantDepart(a.debut) : `Expire dans ${reste(a.expires_at)}`}</span>
+              <span className="duree" aria-hidden="true">
+                <span style={{ width: `${Math.round(partRestante(a) * 100)}%` }} />
+              </span>
+            </div>
+          </div>
+          <Contact contact={a.contact} onConnexion={onConnexion} />
         </div>
-      ) : (
-        <div className="signaler-ligne">
-          <Signalement type="annonce" id={a.id} utilisateur={utilisateur} onConnexion={onConnexion} />
-        </div>
-      )}
+
+        {proprietaire ? (
+          <div className="gestion">
+            {!joueur &&
+              ROLES.filter((r) => a.roles.includes(r.id)).map((r) => (
+                <button key={r.id} type="button" className="bouton petit" onClick={() => gerer(() => retirerRole(a, r.id))}>
+                  {r.nom} trouvé
+                </button>
+              ))}
+            <button type="button" className="bouton petit danger" onClick={() => gerer(() => retirerAnnonce(a.id))}>
+              {joueur ? "J'ai trouvé un groupe" : "Retirer l'annonce"}
+            </button>
+            {probleme && <p className="msg-erreur" role="alert">{probleme}</p>}
+          </div>
+        ) : (
+          <div className="signaler-ligne">
+            <Signalement type="annonce" id={a.id} utilisateur={utilisateur} onConnexion={onConnexion} />
+          </div>
+        )}
+      </div>
     </article>
   )
 }

@@ -117,63 +117,69 @@ function CarteGuilde({ guilde: g, proprietaire, utilisateur, onConnexion, apres 
 
   return (
     <article className={`carte guilde ${g.faction}`}>
-      <div className="carte-haut">
-        <span className="carte-icone">
-          <Icone nom="guilde" taille={22} />
-          <span className="sr">Guilde</span>
-        </span>
-        <div className="carte-titre">
-          <h2>{g.nom}</h2>
-          <span className={`faction ${g.faction}`}>{nomDe(FACTIONS, g.faction)}</span>
-        </div>
-        <span className="depuis">{depuis(g.created_at)}</span>
+      <div className="carte-plaque">
+        <Icone nom="guilde" taille={30} />
+        <span className="plaque-unite">Guilde</span>
+        {g.niveau_min > 1 && <span className="plaque-unite">dès le niv. {g.niveau_min}</span>}
       </div>
 
-      <ul className="infos">
-        {g.focus?.map((f) => (
-          <li key={f} className="chip fort">{nomDe(FOCUS_GUILDE, f)}</li>
-        ))}
-        {g.niveau_min > 1 && <li className="chip">Dès le niveau {g.niveau_min}</li>}
-        <li className="chip">{RULESETS.find((r) => r.id === g.ruleset)?.carte ?? g.ruleset}</li>
-        <li className="chip">{g.region}</li>
-        <li className="chip">{nomDe(STYLES, g.style)}</li>
-        <li className="chip">{g.langue === 'en' ? 'English' : 'Français'}</li>
-      </ul>
+      <div className="carte-corps">
+        <div className="carte-haut">
+          <div className="carte-titre">
+            <h2>{g.nom}</h2>
+            <span className={`faction ${g.faction}`}>{nomDe(FACTIONS, g.faction)}</span>
+          </div>
+          <span className="depuis">{depuis(g.created_at)}</span>
+        </div>
 
-      {g.roles?.length > 0 && (
-        <p className="roles">
-          <span>Recrute</span>
-          {ROLES.filter((r) => g.roles.includes(r.id)).map((r) => (
-            <span key={r.id} className={`role ${r.id}`}>
-              <Icone nom={r.id} taille={15} />
-              {r.nom}
-            </span>
+        <ul className="infos">
+          {g.focus?.map((f) => (
+            <li key={f} className="chip fort">{nomDe(FOCUS_GUILDE, f)}</li>
           ))}
-        </p>
-      )}
+          <li className="chip">{RULESETS.find((r) => r.id === g.ruleset)?.carte ?? g.ruleset}</li>
+          <li className="chip">{g.region}</li>
+          <li className="chip">{nomDe(STYLES, g.style)}</li>
+          <li className="chip">{g.langue === 'en' ? 'English' : 'Français'}</li>
+        </ul>
 
-      {g.description && <p className="note">{g.description}</p>}
+        {g.roles?.length > 0 && (
+          <p className="roles">
+            <span>Recrute</span>
+            {ROLES.filter((r) => g.roles.includes(r.id)).map((r) => (
+              <span key={r.id} className={`role ${r.id}`}>
+                <Icone nom={r.id} taille={15} />
+                {r.nom}
+              </span>
+            ))}
+          </p>
+        )}
 
-      <div className="carte-bas">
-        <div className="auteur">
-          <strong>{g.perso}</strong>
-          <span>Encore {jours} {jours > 1 ? 'jours' : 'jour'}</span>
+        {g.description && <p className="note">{g.description}</p>}
+
+        <div className="carte-bas">
+          <div className="auteur">
+            <span className="avatar" aria-hidden="true">{(g.perso || '?').trim().charAt(0).toUpperCase()}</span>
+            <div className="auteur-texte">
+              <strong>{g.perso}</strong>
+              <span>Encore {jours} {jours > 1 ? 'jours' : 'jour'}</span>
+            </div>
+          </div>
+          <Contact contact={g.contact} onConnexion={onConnexion} />
         </div>
-        <Contact contact={g.contact} onConnexion={onConnexion} />
+
+        {proprietaire ? (
+          <div className="gestion">
+            <button type="button" className="bouton petit danger" onClick={retirer}>
+              Retirer la guilde
+            </button>
+            {probleme && <p className="msg-erreur" role="alert">{probleme}</p>}
+          </div>
+        ) : (
+          <div className="signaler-ligne">
+            <Signalement type="guilde" id={g.id} utilisateur={utilisateur} onConnexion={onConnexion} />
+          </div>
+        )}
       </div>
-
-      {proprietaire ? (
-        <div className="gestion">
-          <button type="button" className="bouton petit danger" onClick={retirer}>
-            Retirer la guilde
-          </button>
-          {probleme && <p className="msg-erreur" role="alert">{probleme}</p>}
-        </div>
-      ) : (
-        <div className="signaler-ligne">
-          <Signalement type="guilde" id={g.id} utilisateur={utilisateur} onConnexion={onConnexion} />
-        </div>
-      )}
     </article>
   )
 }

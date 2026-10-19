@@ -1,12 +1,12 @@
 /* Babillard Forever — interface sobre: gris froid, un seul accent or, couleurs de faction seulement là où elles informent. */
 
 :root {
-  --bg: #f4f5f7;
+  --bg: #eef0f4;
   --surface: #ffffff;
-  --field: #f2f4f7;
-  --ink: #141922;
-  --muted: #586272;
-  --line: #dde2ea;
+  --field: #f1f3f7;
+  --ink: #121926;
+  --muted: #566074;
+  --line: #dbe0e9;
   --gold: #e9ab1e;
   --gold-light: #f3c14e;
   --gold-ink: #1d1505;
@@ -20,14 +20,20 @@
   --dps: #b3261e;
   --focus: #1f6fd1;
   --danger: #b3261e;
-  --shadow: 0 1px 2px rgb(20 25 34 / 0.06);
+  --shadow: 0 1px 2px rgb(16 24 40 / 0.05), 0 6px 18px rgb(16 24 40 / 0.06);
   --radius: 12px;
   --r-bouton: 8px;
   --r-champ: 8px;
-  --haut-fond: var(--surface);
-  --haut-ink: var(--ink);
-  --haut-doux: var(--muted);
-  --haut-bord: var(--line);
+  --haut-fond:
+    radial-gradient(620px 320px at 86% 8%, rgb(233 171 30 / 0.2), transparent 70%),
+    radial-gradient(560px 300px at 0% 100%, rgb(70 104 180 / 0.3), transparent 70%),
+    linear-gradient(180deg, #090e19, #121b2e);
+  --haut-fond-bord: #090e19;
+  --haut-ink: #ffffff;
+  --haut-doux: rgb(255 255 255 / 0.76);
+  --haut-bord: rgb(255 255 255 / 0.3);
+  --haut-trait: #e9ab1e;
+  --haut-lueur: rgb(233 171 30 / 0.55);
   --motif: none;
   --titre: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
   --fantasy: 'Cinzel', Georgia, 'Times New Roman', serif;
@@ -55,7 +61,7 @@
     --dps: #ff8f80;
     --focus: #9cc4ff;
     --danger: #f08882;
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.35);
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 22px rgb(0 0 0 / 0.28);
     color-scheme: dark;
   }
 }
@@ -95,13 +101,14 @@ h2 {
   white-space: nowrap;
 }
 
-/* ---------- Barre du haut ---------- */
+/* ---------- En-tête ---------- */
 
 .haut {
   position: relative;
+  isolation: isolate;
+  overflow: hidden;
   color: var(--haut-ink);
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--haut-bord);
+  padding: 20px 0 54px;
   background: var(--haut-fond);
 }
 
@@ -109,67 +116,104 @@ h2 {
   content: '';
   position: absolute;
   inset: 0;
+  z-index: -1;
   opacity: 0.07;
   background-image: var(--motif);
   pointer-events: none;
 }
 
+.haut::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--haut-trait) 30%, var(--haut-trait) 70%, transparent);
+  opacity: 0.8;
+}
+
+.haut-infini {
+  position: absolute;
+  z-index: -1;
+  right: -84px;
+  top: 14px;
+  width: 340px;
+  height: auto;
+  fill: none;
+  stroke: var(--haut-trait);
+  pointer-events: none;
+}
+
+.haut-infini .trait {
+  stroke-width: 1.6;
+  opacity: 0.4;
+}
+
+@media (min-width: 760px) {
+  .haut-infini .trait {
+    opacity: 0.85;
+  }
+}
+
+.haut-infini .eco {
+  stroke-width: 10;
+  opacity: 0.1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .haut-infini path {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: tracer 2.2s cubic-bezier(0.5, 0, 0.2, 1) 0.15s forwards;
+  }
+}
+
+@keyframes tracer {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 .haut-contenu {
   position: relative;
-  max-width: 880px;
+  max-width: 920px;
   margin: 0 auto;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 16px;
+  padding: 0 16px;
 }
 
 .titre-bloc {
-  flex: 1 1 0;
   min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.marque {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 2px solid var(--gold);
-  color: var(--gold);
-  font-family: Georgia, serif;
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1;
 }
 
 .haut h1 {
+  margin: 0;
+  max-width: calc(100% - 96px);
   font-family: var(--fantasy);
-  font-size: clamp(0.85rem, 4vw, 1.2rem);
-  white-space: nowrap;
+  font-size: clamp(1.65rem, 8.2vw, 3.4rem);
   font-weight: 700;
-  letter-spacing: 0.06em;
+  line-height: 1.04;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--haut-ink);
+  text-shadow: 0 2px 24px rgb(0 0 0 / 0.45);
+}
+
+.haut h1 span {
+  display: block;
 }
 
 .sous-titre {
-  margin: 2px 0 0;
-  font-size: 0.9rem;
-  line-height: 1.35;
-  color: var(--haut-doux);
+  margin: 12px 0 0;
   max-width: 44ch;
+  font-size: 0.97rem;
+  line-height: 1.45;
+  color: var(--haut-doux);
 }
 
 .actions {
-  flex: 1 1 100%;
   display: flex;
   align-items: center;
   gap: 10px;
+  margin-top: 18px;
 }
 
 .actions .bouton {
@@ -178,30 +222,89 @@ h2 {
 }
 
 .actions .bouton.principal {
-  flex: 1.6;
+  flex: 1.5;
 }
 
 .actions .session {
   flex: 1;
 }
 
+.vivant {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0 0;
+  font-size: 0.92rem;
+  color: var(--haut-doux);
+}
+
+.point {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #4ade80;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .point {
+    animation: pouls 2.4s ease-out 5;
+  }
+}
+
+@keyframes pouls {
+  0% {
+    box-shadow: 0 0 0 0 rgb(74 222 128 / 0.55);
+  }
+
+  70%,
+  100% {
+    box-shadow: 0 0 0 10px rgb(74 222 128 / 0);
+  }
+}
+
 @media (min-width: 760px) {
-  .haut-contenu {
-    flex-wrap: nowrap;
-    gap: 24px;
+  .haut {
+    padding: 22px 0 64px;
+  }
+
+  .haut-infini {
+    right: -20px;
+    top: 50%;
+    width: 580px;
+    transform: translateY(-46%);
+  }
+
+  .titre-bloc {
+    padding-top: 36px;
+  }
+
+  .haut h1 {
+    max-width: none;
+    font-size: 3.4rem;
+  }
+
+  .haut h1 span {
+    display: inline;
+  }
+
+  .sous-titre {
+    margin-top: 16px;
+    font-size: 1.12rem;
   }
 
   .actions {
-    flex: none;
+    margin-top: 26px;
   }
 
   .actions .bouton,
+  .actions .bouton.principal,
   .actions .session {
     flex: none;
   }
 
-  .haut h1 {
-    white-space: nowrap;
+  .vivant {
+    display: flex;
   }
 }
 
@@ -222,21 +325,44 @@ h2 {
 .haut .bouton {
   color: var(--haut-ink);
   border-color: var(--haut-bord);
+  background: rgb(255 255 255 / 0.07);
+}
+
+.haut .bouton:hover {
+  background: rgb(255 255 255 / 0.14);
 }
 
 .haut .bouton.principal {
+  min-height: 48px;
   color: var(--gold-ink);
   border-color: var(--gold);
+  background: var(--gold);
+  box-shadow: 0 10px 26px -8px var(--haut-lueur);
+}
+
+.haut .bouton.principal:hover {
+  background: color-mix(in srgb, var(--gold) 86%, white);
+}
+
+@media (min-width: 760px) {
+  .haut .bouton {
+    min-height: 48px;
+    padding: 0 24px;
+  }
 }
 
 .haut .lien {
   color: var(--haut-ink);
 }
 
+.haut :focus-visible {
+  outline-color: #ffffff;
+}
+
 /* ---------- Page ---------- */
 
 .page {
-  max-width: 880px;
+  max-width: 920px;
   margin: 0 auto;
   padding: 0 16px 56px;
 }
@@ -301,23 +427,21 @@ h2 {
   cursor: pointer;
 }
 
-/* ---------- Choix du style du site (trois pastilles dans la barre du haut) ---------- */
+/* ---------- Choix du style du site (trois pastilles dans l'en-tête) ---------- */
 
 .styles {
+  position: absolute;
+  top: 0;
+  right: 16px;
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.styles-titre {
-  display: none;
-  font-size: 0.82rem;
-  color: var(--haut-doux);
-}
-
 @media (min-width: 760px) {
-  .styles-titre {
-    display: inline;
+  .styles {
+    top: 2px;
+    gap: 8px;
   }
 }
 
@@ -330,7 +454,7 @@ h2 {
   border: 2px solid transparent;
   background: var(--pt);
   cursor: pointer;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--haut-ink) 25%, transparent);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.3);
 }
 
 .styles button[data-style='alliance'] {
@@ -342,32 +466,53 @@ h2 {
 }
 
 .styles button[aria-pressed='true'] {
-  border-color: var(--haut-fond-bord, var(--surface));
+  border-color: var(--haut-fond-bord);
   box-shadow: 0 0 0 2px var(--haut-ink);
 }
 
-/* ---------- Onglets Groupes / Guildes ---------- */
+/* ---------- Barre flottante: onglets Groupes / Guildes et factions ---------- */
+
+.barre {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 14px;
+  margin-top: -30px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 4px);
+  box-shadow: 0 14px 34px -12px rgb(6 10 20 / 0.55), var(--shadow);
+}
+
+.bandeau.demo + .barre {
+  margin-top: 0;
+}
 
 .onglets {
+  flex: 1 1 100%;
   display: flex;
-  gap: 26px;
-  margin: 18px 0 0;
-  border-bottom: 1px solid var(--line);
+  gap: 4px;
+  margin: 0;
+  border: 0;
 }
 
 .onglet {
+  flex: 1;
   font: inherit;
   font-family: var(--titre);
-  font-weight: 600;
-  font-size: 1.05rem;
-  min-height: 46px;
-  padding: 0 2px;
-  margin-bottom: -1px;
+  font-weight: 700;
+  font-size: 1.02rem;
+  min-height: 44px;
+  padding: 0 18px;
   border: 0;
-  border-bottom: 3px solid transparent;
+  border-radius: calc(var(--r-bouton) + 2px);
   background: none;
   color: var(--muted);
   cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
 }
 
 .onglet:hover {
@@ -376,7 +521,8 @@ h2 {
 
 .onglet[aria-pressed='true'] {
   color: var(--ink);
-  border-bottom-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 17%, var(--surface));
+  box-shadow: inset 0 -2px 0 var(--gold);
 }
 
 .onglet-nombre {
@@ -386,21 +532,22 @@ h2 {
   font-weight: 600;
   padding: 1px 8px;
   border-radius: 999px;
-  background: var(--field);
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
   color: var(--muted);
 }
 
-/* ---------- Faction (filtre, avec compteur) ---------- */
-
 .factions {
+  flex: 1 1 100%;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 16px 0 12px;
+  gap: 6px;
+  margin: 0;
+  padding-bottom: 2px;
 }
 
 .faction-bouton {
   --f: var(--ink);
+  flex: 1;
+  justify-content: center;
   font: inherit;
   font-weight: 600;
   display: inline-flex;
@@ -453,6 +600,26 @@ h2 {
   background: color-mix(in srgb, var(--f) 14%, var(--surface));
 }
 
+@media (min-width: 760px) {
+  .onglets,
+  .factions {
+    flex: none;
+  }
+
+  .onglet {
+    flex: none;
+  }
+
+  .faction-bouton {
+    flex: none;
+    justify-content: flex-start;
+  }
+
+  .factions {
+    padding: 0 4px 0 0;
+  }
+}
+
 /* ---------- Bandeaux ---------- */
 
 .bandeau {
@@ -480,6 +647,7 @@ h2 {
 /* ---------- Filtres ---------- */
 
 .filtres {
+  margin-top: 12px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -700,28 +868,27 @@ h2 {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .carte {
   --faction: var(--ink);
   position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 16px 18px 14px 22px;
-  display: grid;
-  gap: 12px;
   box-shadow: var(--shadow);
-  transition: border-color 0.15s;
 }
 
 .carte::before {
   content: '';
   position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
+  inset: 0 0 auto;
+  z-index: 1;
+  height: 3px;
   background: var(--faction);
 }
 
@@ -733,40 +900,128 @@ h2 {
   --faction: var(--horde);
 }
 
-.carte:hover {
-  border-color: color-mix(in srgb, var(--faction) 45%, var(--line));
+/* Plaque: le type d'activité et les niveaux, ce qu'on lit en premier.
+   Sur mobile c'est une bande en haut de la carte; sur grand écran, une colonne à gauche. */
+.carte-plaque {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 13px 16px 9px;
+  color: var(--faction);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--faction) 20%, var(--surface)),
+    color-mix(in srgb, var(--faction) 6%, var(--surface))
+  );
+  border-bottom: 1px solid color-mix(in srgb, var(--faction) 24%, var(--line));
+}
+
+.plaque-niveau {
+  font-family: var(--titre);
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.plaque-unite {
+  font-size: 0.85rem;
+  line-height: 1.15;
+  color: var(--muted);
+}
+
+.carte-corps {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 14px 16px 8px;
+}
+
+@media (min-width: 640px) {
+  .carte {
+    grid-template-columns: 108px minmax(0, 1fr);
+  }
+
+  .carte-plaque {
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    padding: 18px 6px 14px;
+    text-align: center;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--faction) 22%, var(--surface)),
+      color-mix(in srgb, var(--faction) 7%, var(--surface))
+    );
+    border-bottom: 0;
+    border-right: 1px solid color-mix(in srgb, var(--faction) 26%, var(--line));
+  }
+
+  .plaque-niveau {
+    margin-top: 2px;
+    font-size: 1.85rem;
+  }
+
+  .plaque-unite {
+    font-size: 0.8rem;
+  }
+
+  .carte-corps {
+    gap: 13px;
+    padding: 20px 24px 10px;
+  }
 }
 
 .carte-haut {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.carte-icone {
-  flex: none;
   display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  color: var(--faction);
-  background: color-mix(in srgb, var(--faction) 12%, var(--surface));
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 12px;
+  row-gap: 1px;
+  align-items: baseline;
 }
 
 .carte-titre {
-  flex: 1;
-  min-width: 0;
-  display: grid;
+  display: contents;
 }
 
 .carte h2 {
-  font-size: 1.15rem;
-  font-weight: 800;
+  grid-row: 1;
+  grid-column: 1 / -1;
 }
 
 .faction {
-  font-weight: 600;
+  grid-row: 2;
+  grid-column: 1;
+}
+
+.depuis {
+  grid-row: 2;
+  grid-column: 2;
+}
+
+@media (min-width: 640px) {
+  .carte h2 {
+    grid-column: 1;
+  }
+
+  .depuis {
+    grid-row: 1;
+    grid-column: 2;
+  }
+}
+
+.carte h2 {
+  font-size: 1.22rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.faction {
+  font-weight: 700;
   font-size: 0.88rem;
 }
 
@@ -779,7 +1034,6 @@ h2 {
 }
 
 .depuis {
-  align-self: flex-start;
   font-size: 0.85rem;
   color: var(--muted);
   white-space: nowrap;
@@ -822,7 +1076,7 @@ h2 {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 6px 7px;
   font-size: 0.95rem;
   color: var(--muted);
 }
@@ -833,11 +1087,11 @@ h2 {
   align-items: center;
   gap: 6px;
   color: var(--ink);
-  font-weight: 600;
-  border: 1px solid color-mix(in srgb, var(--r) 45%, var(--line));
-  background: color-mix(in srgb, var(--r) 11%, transparent);
+  font-weight: 700;
+  border: 1px solid color-mix(in srgb, var(--r) 55%, var(--line));
+  background: color-mix(in srgb, var(--r) 16%, var(--surface));
   border-radius: 999px;
-  padding: 1px 12px 1px 9px;
+  padding: 2px 13px 2px 10px;
 }
 
 .role svg {
@@ -871,20 +1125,64 @@ h2 {
 .carte-bas {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding-top: 12px;
+  gap: 12px;
+  padding-top: 13px;
   border-top: 1px solid var(--line);
 }
 
 .auteur {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.avatar {
+  --anneau: color-mix(in srgb, var(--faction) 45%, transparent);
+  flex: none;
   display: grid;
-  font-size: 0.9rem;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  font-family: var(--titre);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--faction);
+  background: color-mix(in srgb, var(--faction) 14%, var(--surface));
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--anneau);
+}
+
+.auteur-texte {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  font-size: 0.88rem;
   color: var(--muted);
 }
 
-.auteur strong {
+.auteur-texte strong {
   color: var(--ink);
   font-size: 1rem;
+  line-height: 1.25;
+}
+
+.duree {
+  display: block;
+  width: 132px;
+  max-width: 100%;
+  height: 3px;
+  margin-top: 5px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--ink) 11%, transparent);
+  overflow: hidden;
+}
+
+.duree span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--faction);
 }
 
 .contact {
@@ -912,19 +1210,6 @@ h2 {
   }
 }
 
-.duree {
-  position: absolute;
-  inset: auto 0 0 4px;
-  height: 3px;
-  background: var(--field);
-}
-
-.duree span {
-  display: block;
-  height: 100%;
-  background: color-mix(in srgb, var(--faction) 70%, transparent);
-}
-
 .gestion {
   display: flex;
   flex-wrap: wrap;
@@ -937,15 +1222,15 @@ h2 {
 .signaler-ligne {
   display: flex;
   justify-content: flex-end;
-  margin: -6px 0 2px;
+  margin: -6px 0 0;
 }
 
 .signaler {
   display: inline-flex;
   align-items: center;
-  min-height: 36px;
-  padding: 0 4px;
-  font-size: 0.85rem;
+  min-height: 30px;
+  padding: 0 2px;
+  font-size: 0.82rem;
   color: var(--muted);
 }
 
@@ -1292,13 +1577,15 @@ h2 {
   --r-bouton: 13px;
   --r-champ: 11px;
   --haut-fond:
-    radial-gradient(560px 280px at 6% -10%, rgb(80 140 255 / 0.5), transparent 70%),
-    radial-gradient(520px 260px at 94% -10%, rgb(70 120 230 / 0.35), transparent 70%),
+    radial-gradient(640px 340px at 88% 6%, rgb(224 166 59 / 0.24), transparent 70%),
+    radial-gradient(620px 340px at 4% 100%, rgb(60 120 255 / 0.5), transparent 70%),
     linear-gradient(180deg, #071229, #10285a);
+  --haut-fond-bord: #071229;
   --haut-ink: #ffffff;
-  --haut-doux: rgb(255 255 255 / 0.78);
-  --haut-bord: rgb(255 255 255 / 0.4);
-  --haut-fond-bord: #10285a;
+  --haut-doux: rgb(255 255 255 / 0.8);
+  --haut-bord: rgb(255 255 255 / 0.38);
+  --haut-trait: #e8b447;
+  --haut-lueur: rgb(224 166 59 / 0.55);
   --motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M22 0L44 22L22 44L0 22Z' fill='none' stroke='white' stroke-width='1'/%3E%3C/svg%3E");
 }
 
@@ -1330,20 +1617,16 @@ h2 {
   --r-bouton: 5px;
   --r-champ: 5px;
   --haut-fond:
-    radial-gradient(520px 260px at 6% -10%, rgb(215 30 25 / 0.5), transparent 70%),
-    radial-gradient(520px 260px at 94% -10%, rgb(140 10 10 / 0.55), transparent 70%),
-    linear-gradient(180deg, #0b0404, #360909);
+    radial-gradient(640px 340px at 88% 6%, rgb(235 60 40 / 0.34), transparent 70%),
+    radial-gradient(620px 340px at 4% 100%, rgb(160 14 14 / 0.55), transparent 70%),
+    linear-gradient(180deg, #0b0404, #330808);
+  --haut-fond-bord: #0b0404;
   --haut-ink: #fff1e6;
-  --haut-doux: rgb(255 241 230 / 0.78);
-  --haut-bord: rgb(255 241 230 / 0.4);
-  --haut-fond-bord: #360909;
+  --haut-doux: rgb(255 241 230 / 0.8);
+  --haut-bord: rgb(255 241 230 / 0.38);
+  --haut-trait: #ff6b5e;
+  --haut-lueur: rgb(200 34 28 / 0.65);
   --motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M0 36L22 8L44 36' fill='none' stroke='white' stroke-width='1.2'/%3E%3C/svg%3E");
-}
-
-:root[data-style='alliance'] .marque,
-:root[data-style='horde'] .marque {
-  color: var(--haut-ink);
-  border-color: var(--haut-ink);
 }
 
 :root[data-style='horde'] .bouton.principal {
