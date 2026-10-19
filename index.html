@@ -4,12 +4,13 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0A0F1B" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" data-defaut="#ffffff" />
+    <meta name="theme-color" content="#151b24" media="(prefers-color-scheme: dark)" data-defaut="#151b24" />
     <meta name="description" content="Trouve du monde pour tes donjons et ton PvP dans WoW Forever. Annonce ton groupe ou rejoins-en un." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Cinzel:wght@600;700;800&family=Instrument+Sans:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Cinzel:wght@700&family=Instrument+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <title>Babillard Forever</title>
@@ -19,7 +20,8 @@
         var s = localStorage.getItem('forever-style')
         if (s === 'alliance' || s === 'horde') {
           document.documentElement.dataset.style = s
-          document.querySelector('meta[name="theme-color"]').setAttribute('content', s === 'horde' ? '#0b0404' : '#071229')
+          var couleur = s === 'horde' ? '#0b0404' : '#071229'
+          document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) { m.setAttribute('content', couleur) })
         }
       } catch (e) {}
     </script>

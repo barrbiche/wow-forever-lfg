@@ -88,7 +88,7 @@ const STYLES_SITE = [
   ['alliance', 'Alliance'],
   ['horde', 'Horde'],
 ]
-const COULEURS_BARRE = { '': '#0a0f1b', alliance: '#071229', horde: '#0b0404' }
+const COULEURS_BARRE = { alliance: '#071229', horde: '#0b0404' }
 
 function styleEnregistre() {
   const v = document.documentElement.dataset.style
@@ -98,7 +98,7 @@ function styleEnregistre() {
 function appliquerStyle(style) {
   if (style) document.documentElement.dataset.style = style
   else delete document.documentElement.dataset.style
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', COULEURS_BARRE[style])
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', style ? COULEURS_BARRE[style] : m.dataset.defaut))
   try {
     if (style) localStorage.setItem('forever-style', style)
     else localStorage.removeItem('forever-style')
@@ -181,6 +181,12 @@ export default function App() {
     [guildesSansFaction, filtres.faction],
   )
   const comptes = vue === 'guildes' ? guildesSansFaction : sansFaction
+  // Nombre d'annonces par type, avec tous les autres filtres appliqués.
+  const sansActivite = useMemo(
+    () => annonces.filter((a) => correspond(a, { ...filtres, activite: 'tout' })),
+    [annonces, filtres],
+  )
+  const nombreActivite = (id) => (id === 'tout' ? sansActivite.length : sansActivite.filter((a) => a.activite === id).length)
   const nbPlanifies = useMemo(() => annonces.filter((a) => a.debut).length, [annonces])
 
   const filtresActifs = JSON.stringify(filtres) !== JSON.stringify(FILTRES_VIDES)
@@ -204,21 +210,21 @@ export default function App() {
                 Trouve ton groupe pour les donjons{raids ? ', les raids' : ''} et le PvP. Pour le Québec et la
                 francophonie.
               </p>
-              <div className="styles" role="group" aria-label="Style du site">
-                <span className="styles-titre">Style</span>
-                {STYLES_SITE.map(([id, nom]) => (
-                  <button
-                    key={id || 'neutre'}
-                    type="button"
-                    data-style={id || 'neutre'}
-                    aria-pressed={styleSite === id}
-                    onClick={() => choisirStyle(id)}
-                  >
-                    {nom}
-                  </button>
-                ))}
-              </div>
             </div>
+          </div>
+          <div className="styles" role="group" aria-label="Apparence du site">
+            <span className="styles-titre">Apparence</span>
+            {STYLES_SITE.map(([id, nom]) => (
+              <button
+                key={id || 'neutre'}
+                type="button"
+                data-style={id || 'neutre'}
+                aria-pressed={styleSite === id}
+                aria-label={nom}
+                title={nom}
+                onClick={() => choisirStyle(id)}
+              />
+            ))}
           </div>
           <div className="actions">
             {utilisateur ? (
@@ -239,6 +245,21 @@ export default function App() {
       </header>
 
       <main className="page">
+        {modeDemo && (
+          <p className="bandeau demo" role="note">
+            Mode démo: les annonces restent dans ton navigateur et personne d'autre ne les voit.
+          </p>
+        )}
+
+        <div className="onglets" role="group" aria-label="Section du site">
+          <button type="button" className="onglet" aria-pressed={vue === 'groupes'} onClick={() => setVue('groupes')}>
+            Groupes <span className="onglet-nombre">{annonces.length}</span>
+          </button>
+          <button type="button" className="onglet" aria-pressed={vue === 'guildes'} onClick={() => setVue('guildes')}>
+            Guildes <span className="onglet-nombre">{guildes ? guildes.length : 0}</span>
+          </button>
+        </div>
+
         <div className="factions" role="group" aria-label="Filtrer par faction">
           {FACTIONS.map((f) => (
             <button
@@ -252,21 +273,6 @@ export default function App() {
               <span className="faction-nom">{f.nom}</span>
             </button>
           ))}
-        </div>
-
-        {modeDemo && (
-          <p className="bandeau" role="note">
-            Mode démo: les annonces restent dans ton navigateur et personne d'autre ne les voit.
-          </p>
-        )}
-
-        <div className="onglets" role="group" aria-label="Section du site">
-          <button type="button" className="onglet" aria-pressed={vue === 'groupes'} onClick={() => setVue('groupes')}>
-            Groupes <span className="onglet-nombre">{annonces.length}</span>
-          </button>
-          <button type="button" className="onglet" aria-pressed={vue === 'guildes'} onClick={() => setVue('guildes')}>
-            Guildes <span className="onglet-nombre">{guildes ? guildes.length : 0}</span>
-          </button>
         </div>
 
         {vue === 'guildes' ? (
@@ -301,6 +307,7 @@ export default function App() {
                       onClick={() => setFiltres((f) => ({ ...f, activite: id }))}
                     >
                       {nom}
+                      <span className="segment-nombre">{nombreActivite(id)}</span>
                     </button>
                   ))}
                 </div>
@@ -431,6 +438,10 @@ export default function App() {
               </a>
             </p>
           )}
+          <p className="avis">
+            Babillard Forever est un site de fans, sans lien avec Blizzard Entertainment. World of Warcraft est une
+            marque de Blizzard Entertainment, Inc.
+          </p>
         </footer>
       </main>
 
@@ -869,7 +880,7 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
             </label>
           ) : (
             <>
-              <div className="deux">
+              <div className="deux court">
                 <label className="champ">
                   <span>Niveau minimum</span>
                   <input type="number" inputMode="numeric" min="1" max="60" value={champs.niveau_min} onChange={(e) => maj('niveau_min', e.target.value)} aria-invalid={!!erreurs.niveau_min} />
@@ -887,7 +898,7 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
             </>
           )}
 
-          <div className="deux">
+          <div className="deux court">
             <label className="champ">
               <span>Faction</span>
               <select value={champs.faction} onChange={(e) => maj('faction', e.target.value)}>
@@ -898,21 +909,6 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
               <span>Région</span>
               <select value={champs.region} onChange={(e) => maj('region', e.target.value)}>
                 {REGIONS.map((r) => <option key={r.id} value={r.id}>{r.nom}</option>)}
-              </select>
-            </label>
-          </div>
-
-          <div className="deux">
-            <label className="champ">
-              <span>Style de jeu</span>
-              <select value={champs.style} onChange={(e) => maj('style', e.target.value)}>
-                {STYLES.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
-              </select>
-            </label>
-            <label className="champ">
-              <span>{joueur ? 'Ta langue' : 'Langue du groupe'}</span>
-              <select value={champs.langue} onChange={(e) => maj('langue', e.target.value)}>
-                {LANGUES.map((l) => <option key={l.id} value={l.id}>{l.nom}</option>)}
               </select>
             </label>
           </div>
@@ -940,20 +936,12 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
               {erreur('perso')}
             </label>
             <label className="champ">
-              <span>Ta classe (facultatif)</span>
-              <select value={champs.classe} onChange={(e) => maj('classe', e.target.value)}>
-                <option value="">—</option>
-                {CLASSES.map((c) => <option key={c.id} value={c.id}>{c.nom}</option>)}
-              </select>
+              <span>Contact (Discord ou BattleTag)</span>
+              <input type="text" maxLength={48} autoComplete="off" value={champs.contact} onChange={(e) => maj('contact', e.target.value)} aria-invalid={!!erreurs.contact} />
+              {erreur('contact')}
             </label>
           </div>
-
-          <label className="champ">
-            <span>Contact (Discord ou BattleTag)</span>
-            <input type="text" maxLength={48} autoComplete="off" value={champs.contact} onChange={(e) => maj('contact', e.target.value)} aria-invalid={!!erreurs.contact} />
-            {erreur('contact')}
-            <small className="aide">Visible seulement pour les gens connectés. Ton personnage, ta classe et ton contact sont gardés pour la prochaine annonce.</small>
-          </label>
+          <p className="aide">Ton contact n'est visible que pour les gens connectés. Il est gardé pour ta prochaine annonce.</p>
 
           <label className="champ">
             <span>Message (facultatif)</span>
@@ -982,7 +970,7 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
             </div>
           </fieldset>
 
-          {champs.quand === 'plus_tard' ? (
+          {champs.quand === 'plus_tard' && (
             <label className="champ">
               <span>Départ (dans les 3 prochains jours)</span>
               <input
@@ -997,14 +985,40 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
               {erreur('debut')}
               <small className="aide">L'annonce reste affichée jusqu'à 1 heure après le départ.</small>
             </label>
-          ) : (
-            <label className="champ">
-              <span>L'annonce reste affichée</span>
-              <select value={champs.heures} onChange={(e) => maj('heures', e.target.value)}>
-                {DUREES.map((d) => <option key={d.heures} value={d.heures}>{d.nom}</option>)}
-              </select>
-            </label>
           )}
+
+          <details className="plus">
+            <summary>Plus d'options</summary>
+            <div className="deux court">
+              <label className="champ">
+                <span>Style de jeu</span>
+                <select value={champs.style} onChange={(e) => maj('style', e.target.value)}>
+                  {STYLES.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
+                </select>
+              </label>
+              <label className="champ">
+                <span>{joueur ? 'Ta langue' : 'Langue du groupe'}</span>
+                <select value={champs.langue} onChange={(e) => maj('langue', e.target.value)}>
+                  {LANGUES.map((l) => <option key={l.id} value={l.id}>{l.nom}</option>)}
+                </select>
+              </label>
+              <label className="champ">
+                <span>Ta classe</span>
+                <select value={champs.classe} onChange={(e) => maj('classe', e.target.value)}>
+                  <option value="">Non précisée</option>
+                  {CLASSES.map((c) => <option key={c.id} value={c.id}>{c.nom}</option>)}
+                </select>
+              </label>
+              {champs.quand === 'maintenant' && (
+                <label className="champ">
+                  <span>L'annonce reste affichée</span>
+                  <select value={champs.heures} onChange={(e) => maj('heures', e.target.value)}>
+                    {DUREES.map((d) => <option key={d.heures} value={d.heures}>{d.nom}</option>)}
+                  </select>
+                </label>
+              )}
+            </div>
+          </details>
 
           {modeDemo && (
             <p className="bandeau" role="note">
