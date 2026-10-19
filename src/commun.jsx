@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { LANCEMENT_LE, MOTIFS_JOUEUR, MOTIFS_SIGNALEMENT, RAIDS_OUVERTS_LE } from './data.js'
 import { signaler } from './store.js'
+import { LIEN_DISCORD } from './config.js'
 
 // ---------- Petites icônes (dessinées à la main, héritent la couleur du texte) ----------
 
@@ -14,6 +15,7 @@ export const CHEMINS = {
   horloge: 'M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18z',
   joueur: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0',
   guilde: 'M5 3h14v10c0 4-3 6-7 8-4-2-7-4-7-8V3zM9 8h6M9 12h6',
+  discussion: 'M5 4h14a2 2 0 012 2v9a2 2 0 01-2 2h-7l-5 4v-4H5a2 2 0 01-2-2V6a2 2 0 012-2zM8 10h.01M12 10h.01M16 10h.01',
   pouce: 'M3 11h4v10H3zM7 12l4-8c1.7 0 2.7 1.1 2.7 2.6V10h5.2c1.4 0 2.4 1.3 2.1 2.6l-1.4 6.2c-.2 1.2-1.2 2-2.4 2H7',
 }
 export const NOMS_ACTIVITE = { donjon: 'Donjon', raid: 'Raid', pvp: 'PvP' }
@@ -157,6 +159,23 @@ export function Contact({ contact, onConnexion }) {
         {copie ? 'Copié' : 'Copier le contact'}
       </button>
     </div>
+  )
+}
+
+// Bouton « Rejoindre le Discord » (couleur de Discord, icône de discussion dessinée pour le site).
+// Il n'apparaît que si l'adresse d'invitation est configurée (VITE_DISCORD_INVITE dans Netlify).
+export function BoutonDiscord({ petit = false }) {
+  if (!LIEN_DISCORD) return null
+  return (
+    <a
+      className={`discord-bouton${petit ? ' petit' : ''}`}
+      href={LIEN_DISCORD}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <Icone nom="discussion" taille={petit ? 17 : 20} />
+      Rejoindre le Discord
+    </a>
   )
 }
 

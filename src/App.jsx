@@ -40,6 +40,7 @@ import {
   raidsOuverts,
 } from './data.js'
 import {
+  BoutonDiscord,
   Contact,
   Icone,
   LienDirect,
@@ -380,6 +381,7 @@ export default function App() {
               <button type="button" className="lien aide-lien" onClick={() => setAideOuverte(true)}>
                 Comment ça marche?
               </button>
+              <BoutonDiscord petit />
             </div>
           </div>
           <div className="styles" role="group" aria-label="Apparence du site">
@@ -617,11 +619,14 @@ export default function App() {
             </button>
           </p>
           {LIEN_DISCORD && (
-            <p>
-              <a className="invitation" href={LIEN_DISCORD} target="_blank" rel="noopener noreferrer">
-                Rejoindre le Discord de la communauté
-              </a>
-            </p>
+            <div className="discord-carte">
+              <span className="discord-carte-icone" aria-hidden="true"><Icone nom="discussion" taille={26} /></span>
+              <div className="discord-carte-texte">
+                <strong>Rejoins la communauté sur Discord</strong>
+                <span>Pose tes questions, trouve du monde et dis-nous ce qui manque au site.</span>
+              </div>
+              <BoutonDiscord />
+            </div>
           )}
           <p className="avis">
             Babillard Forever est un site de fans, sans lien avec Blizzard Entertainment. World of Warcraft est une
