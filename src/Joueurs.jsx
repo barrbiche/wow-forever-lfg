@@ -225,7 +225,7 @@ function CarteJoueur({ joueur: j, enLigne, utilisateur, aProfil, ouvrirProfil, a
     setChoix((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]))
 
   return (
-    <article className={`carte joueur ${j.faction}`} id={`joueur-${j.user_id}`}>
+    <article className={`carte joueur ${j.faction}`} id={`joueur-${j.user_id}`} tabIndex={-1}>
       <div className="carte-plaque">
         <Icone nom="joueur" taille={26} />
         <strong className="plaque-niveau" aria-hidden="true">{j.niveau ?? '?'}</strong>
@@ -279,10 +279,11 @@ function CarteJoueur({ joueur: j, enLigne, utilisateur, aProfil, ouvrirProfil, a
         {j.en_revision ? (
           <p className="reputation revision">
             <Icone nom="pouce" taille={16} />
-            Réputation en vérification
+            Respect: réputation en vérification
           </p>
         ) : (
           <div className="reputation">
+            <span className="respect-titre">Respect</span>
             <span className="pouces" aria-label={`${j.pouces} ${j.pouces > 1 ? 'pouces' : 'pouce'}`}>
               <Icone nom="pouce" taille={16} />
               <strong>{j.pouces}</strong>

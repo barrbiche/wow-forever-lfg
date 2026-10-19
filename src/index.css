@@ -175,6 +175,8 @@ h2 {
 
 .haut-contenu {
   position: relative;
+  display: flex;
+  flex-direction: column;
   max-width: 920px;
   margin: 0 auto;
   padding: 0 16px;
@@ -186,7 +188,6 @@ h2 {
 
 .haut h1 {
   margin: 0;
-  max-width: calc(100% - 96px);
   font-family: var(--fantasy);
   font-size: clamp(1.65rem, 8.2vw, 3.4rem);
   font-weight: 700;
@@ -467,27 +468,26 @@ h2 {
 /* ---------- Choix du style du site (trois pastilles dans l'en-tête) ---------- */
 
 .styles {
-  position: absolute;
-  top: 0;
-  right: 16px;
+  position: static;
+  order: -1;
   display: flex;
   align-items: center;
   gap: 6px;
+  margin-bottom: 14px;
 }
 
-@media (min-width: 760px) {
-  .styles {
-    top: 2px;
-    gap: 8px;
-  }
-}
-
+/* Trois pastilles qui portent leur nom: jaune pour Neutre, bleu pour Alliance, rouge pour Horde. */
 .styles button {
   --pt: #e9ab1e;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border-radius: 50%;
+  --pt-ink: #1d1505;
+  min-height: 32px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--pt-ink);
+  border-radius: 999px;
   border: 2px solid transparent;
   background: var(--pt);
   cursor: pointer;
@@ -495,16 +495,41 @@ h2 {
 }
 
 .styles button[data-style='alliance'] {
-  --pt: #3f74d8;
+  --pt: #3468d0;
+  --pt-ink: #ffffff;
 }
 
 .styles button[data-style='horde'] {
   --pt: #c8221c;
+  --pt-ink: #ffffff;
 }
 
 .styles button[aria-pressed='true'] {
   border-color: var(--haut-fond-bord);
   box-shadow: 0 0 0 2px var(--haut-ink);
+}
+
+.styles button:hover {
+  filter: brightness(1.1);
+}
+
+@media (min-width: 760px) {
+  .haut-contenu {
+    display: block;
+  }
+
+  .styles {
+    position: absolute;
+    top: 2px;
+    right: 16px;
+    margin-bottom: 0;
+    gap: 8px;
+  }
+
+  /* Garde le titre à gauche des pastilles de style. */
+  .haut h1 {
+    max-width: calc(100% - 290px);
+  }
 }
 
 /* ---------- Barre flottante: onglets Groupes / Guildes et factions ---------- */
@@ -1204,6 +1229,33 @@ h2 {
   line-height: 1.25;
 }
 
+.auteur-nom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  min-width: 0;
+}
+
+/* Petit compteur de respect à côté du nom de l'auteur d'une annonce. */
+.respect-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  padding: 1px 8px 1px 6px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, var(--line));
+  background: color-mix(in srgb, var(--gold) 10%, var(--field));
+}
+
+.respect-mini svg {
+  color: var(--gold-line);
+}
+
 .duree {
   display: block;
   width: 132px;
@@ -1823,6 +1875,12 @@ h2 {
 
 .reputation .aide {
   justify-self: auto;
+}
+
+.respect-titre {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
 }
 
 .pouces {

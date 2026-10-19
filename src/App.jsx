@@ -313,6 +313,13 @@ export default function App() {
   const basculerFaction = (id) => setFiltres((f) => ({ ...f, faction: f.faction === id ? '' : id }))
   const basculer = (cle, valeur) => setFiltres((f) => ({ ...f, [cle]: f[cle] === valeur ? FILTRES_VIDES[cle] : valeur }))
   const ouvrirConnexion = () => setFormulaireOuvert(true)
+  const joueursParId = useMemo(() => new Map((joueurs ?? []).map((j) => [j.user_id, j])), [joueurs])
+  // Depuis une annonce: aller au profil de son auteur, dans l'onglet Joueurs.
+  const voirProfil = (id) => {
+    setVue('joueurs')
+    setFiltres(FILTRES_VIDES)
+    setCiblee({ type: 'joueur', id })
+  }
   // Depuis la carte d'un joueur: aller à son annonce, dans l'onglet Groupes.
   const voirAnnonce = (id) => {
     setVue('groupes')
@@ -391,10 +398,11 @@ export default function App() {
                 type="button"
                 data-style={id || 'neutre'}
                 aria-pressed={styleSite === id}
-                aria-label={nom}
-                title={nom}
+                title={`Style ${nom}`}
                 onClick={() => choisirStyle(id)}
-              />
+              >
+                {nom}
+              </button>
             ))}
           </div>
         </div>
@@ -595,6 +603,8 @@ export default function App() {
                     <li>
                       <Carte
                         annonce={a}
+                        profil={joueursParId.get(a.user_id)}
+                        voirProfil={voirProfil}
                         proprietaire={!!utilisateur && a.user_id === utilisateur.id}
                         utilisateur={utilisateur}
                         onConnexion={ouvrirConnexion}
@@ -671,7 +681,7 @@ export default function App() {
 
 // ---------- Carte d'annonce ----------
 
-function Carte({ annonce: a, proprietaire, utilisateur, onConnexion, apres }) {
+function Carte({ annonce: a, profil, voirProfil, proprietaire, utilisateur, onConnexion, apres }) {
   const [probleme, setProbleme] = useState('')
   const joueur = a.genre === 'joueur'
   const classe = CLASSES.find((c) => c.id === a.classe)
@@ -783,7 +793,16 @@ function Carte({ annonce: a, proprietaire, utilisateur, onConnexion, apres }) {
               {(a.perso || '?').trim().charAt(0).toUpperCase()}
             </span>
             <div className="auteur-texte">
-              <strong>{a.perso}</strong>
+              <span className="auteur-nom">
+                <strong>{a.perso}</strong>
+                {profil && !profil.en_revision && profil.pouces > 0 && (
+                  <span className="respect-mini" title={`Respect: ${profil.pouces} ${profil.pouces > 1 ? 'pouces' : 'pouce'}`}>
+                    <Icone nom="pouce" taille={13} />
+                    {profil.pouces}
+                    <span className="sr"> {profil.pouces > 1 ? 'pouces' : 'pouce'} de respect</span>
+                  </span>
+                )}
+              </span>
               <span>{a.debut ? avantDepart(a.debut) : `Expire dans ${reste(a.expires_at)}`}</span>
               <span className="duree" aria-hidden="true">
                 <span style={{ width: `${Math.round(partRestante(a) * 100)}%` }} />
@@ -814,6 +833,11 @@ function Carte({ annonce: a, proprietaire, utilisateur, onConnexion, apres }) {
           </div>
         ) : (
           <div className="signaler-ligne">
+            {profil && (
+              <button type="button" className="lien signaler" onClick={() => voirProfil(profil.user_id)}>
+                Voir le profil
+              </button>
+            )}
             <LienDirect type="annonce" id={a.id} />
             <Signalement type="annonce" id={a.id} utilisateur={utilisateur} onConnexion={onConnexion} />
           </div>

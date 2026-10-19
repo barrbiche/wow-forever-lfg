@@ -37,7 +37,7 @@ function annoncesDemo() {
   return [
     {
       id: 'demo-1', created_at: minutes(6), expires_at: dansHeures(2.5),
-      user_id: 'demo-autre', activite: 'donjon', cible: 'Scarlet Monastery: Library', faction: 'alliance',
+      user_id: 'demo-j-thalyn', activite: 'donjon', cible: 'Scarlet Monastery: Library', faction: 'alliance',
       ruleset: 'normal', style: 'relax', langue: 'fr', debut: null, region: 'US', niveau_min: 33, niveau_max: 41,
       genre: 'groupe', classe: 'mage',
       roles: ['tank', 'heal'], perso: 'Thalyn', contact: 'thalyn#2481',
@@ -45,7 +45,7 @@ function annoncesDemo() {
     },
     {
       id: 'demo-2', created_at: minutes(18), expires_at: dansHeures(1.6),
-      user_id: 'demo-autre', activite: 'pvp', cible: 'Warsong Gulch', faction: 'horde',
+      user_id: 'demo-j-grumash', activite: 'pvp', cible: 'Warsong Gulch', faction: 'horde',
       ruleset: 'normal', style: 'competitif', langue: 'fr', debut: null, region: 'US', niveau_min: 10, niveau_max: 19,
       genre: 'groupe', classe: 'chasseur',
       roles: [], perso: 'Grumash', contact: 'Grumash#1190',
@@ -53,7 +53,7 @@ function annoncesDemo() {
     },
     {
       id: 'demo-3', created_at: minutes(41), expires_at: dansHeures(4), debut: dansHeures(3),
-      user_id: 'demo-autre', activite: 'donjon', cible: 'The Deadmines', faction: 'alliance',
+      user_id: 'demo-j-mirabelle', activite: 'donjon', cible: 'The Deadmines', faction: 'alliance',
       ruleset: 'normal', style: 'apprentissage', langue: 'fr', region: 'EU', niveau_min: 18, niveau_max: 23,
       genre: 'groupe', classe: 'druide',
       roles: ['dps', 'dps'], perso: 'Mirabelle', contact: 'mirabelle_wow',
@@ -61,7 +61,7 @@ function annoncesDemo() {
     },
     {
       id: 'demo-4', created_at: minutes(9), expires_at: dansHeures(2), debut: null,
-      user_id: 'demo-autre', activite: 'donjon', cible: 'Un donjon, peu importe', faction: 'horde',
+      user_id: 'demo-j-brokk', activite: 'donjon', cible: 'Un donjon, peu importe', faction: 'horde',
       ruleset: 'normal', style: 'relax', langue: 'fr', region: 'US', niveau_min: 25, niveau_max: 25,
       genre: 'joueur', classe: 'guerrier',
       roles: ['tank'], perso: 'Brokk', contact: 'brokk_tank',
