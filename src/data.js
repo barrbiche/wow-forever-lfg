@@ -99,6 +99,9 @@ export const RAIDS = [
 export const RAIDS_OUVERTS_LE = new Date(2026, 11, 9)
 export const raidsOuverts = () => Date.now() >= RAIDS_OUVERTS_LE.getTime()
 
+// Sortie du jeu: le 4 novembre 2026 (sert au compte à rebours de l'en-tête).
+export const LANCEMENT_LE = new Date(2026, 10, 4)
+
 // Valeur par défaut du formulaire PvP: pas besoin de choisir un champ de bataille précis.
 export const PVP_PEU_IMPORTE = 'Groupe PvP'
 

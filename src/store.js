@@ -83,8 +83,9 @@ function lireDemo() {
 
 // Les visiteurs non connectés ne reçoivent pas la colonne « contact » (le serveur la leur refuse).
 // Si la base n'est pas encore à jour, on retombe sur des listes de colonnes plus anciennes.
-const COLONNES_ANNONCES =
+const COLONNES_ANNONCES_SANS_COMPOSITION =
   'id,user_id,created_at,expires_at,activite,cible,faction,ruleset,region,niveau_min,niveau_max,roles,perso,note,style,langue,debut,genre,classe'
+const COLONNES_ANNONCES = `${COLONNES_ANNONCES_SANS_COMPOSITION},roles_nb`
 const COLONNES_ANNONCES_ANCIENNES =
   'id,user_id,created_at,expires_at,activite,cible,faction,ruleset,region,niveau_min,niveau_max,roles,perso,note,style,langue,debut'
 const COLONNES_GUILDES =
@@ -105,7 +106,9 @@ export async function lireAnnonces() {
       .map((a) => (connecte ? a : { ...a, contact: null }))
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   }
-  const essais = connecte ? ['*'] : [COLONNES_ANNONCES, COLONNES_ANNONCES_ANCIENNES, '*']
+  const essais = connecte
+    ? ['*']
+    : [COLONNES_ANNONCES, COLONNES_ANNONCES_SANS_COMPOSITION, COLONNES_ANNONCES_ANCIENNES, '*']
   let derniereErreur = null
   for (const colonnes of essais) {
     const { data, error } = await supabase
@@ -229,14 +232,41 @@ export async function retirerAnnonce(id) {
   if (error) throw error
 }
 
-// Un rôle est trouvé: on l'enlève de la liste des rôles recherchés.
+// Un joueur est trouvé pour ce rôle. Pour un raid qui cherche plusieurs joueurs d'un rôle, on en enlève un seul;
+// quand il n'en reste plus, le rôle disparaît de l'annonce.
 export async function retirerRole(annonce, role) {
-  const roles = annonce.roles.filter((r) => r !== role)
+  const reste = (annonce.roles_nb?.[role] ?? 1) - 1
+  const roles = reste > 0 ? annonce.roles : annonce.roles.filter((r) => r !== role)
+  const miseAJour = { roles }
+  if (annonce.roles_nb) {
+    const nb = { ...annonce.roles_nb }
+    if (reste > 0) nb[role] = reste
+    else delete nb[role]
+    miseAJour.roles_nb = nb
+  }
   if (modeDemo) {
-    ecrireDemo(lireDemo().map((a) => (a.id === annonce.id ? { ...a, roles } : a)))
+    ecrireDemo(lireDemo().map((a) => (a.id === annonce.id ? { ...a, ...miseAJour } : a)))
     return
   }
-  const { error } = await supabase.from('annonces').update({ roles }).eq('id', annonce.id)
+  const { error } = await supabase.from('annonces').update(miseAJour).eq('id', annonce.id)
+  if (error) throw error
+}
+
+// Relance une annonce: même durée qu'au départ, et elle remonte en haut de la liste.
+// Le serveur refuse s'il reste plus de la moitié du temps, ou si l'annonce est planifiée.
+export async function renouvelerAnnonce(annonce) {
+  if (modeDemo) {
+    const duree = Math.min(new Date(annonce.expires_at) - new Date(annonce.created_at), 6 * 3600000)
+    ecrireDemo(
+      lireDemo().map((a) =>
+        a.id === annonce.id
+          ? { ...a, created_at: new Date().toISOString(), expires_at: new Date(Date.now() + duree).toISOString() }
+          : a,
+      ),
+    )
+    return
+  }
+  const { error } = await supabase.rpc('renouveler_annonce', { p_id: annonce.id })
   if (error) throw error
 }
 

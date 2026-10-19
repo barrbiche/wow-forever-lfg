@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MOTIFS_SIGNALEMENT } from './data.js'
+import { LANCEMENT_LE, MOTIFS_SIGNALEMENT, RAIDS_OUVERTS_LE } from './data.js'
 import { signaler } from './store.js'
 
 // ---------- Petites icônes (dessinées à la main, héritent la couleur du texte) ----------
@@ -50,6 +50,24 @@ export function reste(iso) {
   const h = Math.floor(min / 60)
   const m = min % 60
   return m ? `${h} h ${m} min` : `${h} h`
+}
+
+// Nombre de jours (calendrier local) d'ici une date: 0 aujourd'hui, 1 demain, négatif si c'est passé.
+export function joursAvant(date) {
+  return Math.round((new Date(date).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000)
+}
+
+// Compte à rebours de l'en-tête: la sortie du jeu, puis l'ouverture des raids. Rien ensuite.
+// Retourne { texte, date } ou null.
+export function compteARebours() {
+  const quand = (j) => (j === 1 ? 'demain' : `dans ${j} jours`)
+  const jeu = joursAvant(LANCEMENT_LE)
+  if (jeu === 0) return { texte: "Le jeu sort aujourd'hui!", date: '' }
+  if (jeu > 0) return { texte: `Le jeu sort ${quand(jeu)}`, date: '4 novembre' }
+  const raids = joursAvant(RAIDS_OUVERTS_LE)
+  if (raids === 0) return { texte: "Les raids ouvrent aujourd'hui!", date: '' }
+  if (raids > 0) return { texte: `Les raids ouvrent ${quand(raids)}`, date: '9 décembre' }
+  return null
 }
 
 // « aujourd'hui 20 h », « demain 19 h 30 », « samedi 20 h »
@@ -138,6 +156,29 @@ export function Contact({ contact, onConnexion }) {
         {copie ? 'Copié' : 'Copier le contact'}
       </button>
     </div>
+  )
+}
+
+// Copie l'adresse directe d'une annonce ou d'une guilde (type: 'annonce' ou 'guilde').
+export function LienDirect({ type, id }) {
+  const [copie, setCopie] = useState(false)
+
+  const copier = async () => {
+    const adresse = `${window.location.origin}/?${type}=${encodeURIComponent(id)}`
+    try {
+      await navigator.clipboard.writeText(adresse)
+      setCopie(true)
+      setTimeout(() => setCopie(false), 2000)
+    } catch {
+      // presse-papiers bloqué: on affiche l'adresse pour qu'elle puisse être copiée à la main
+      window.prompt('Copie ce lien:', adresse)
+    }
+  }
+
+  return (
+    <button type="button" className="lien signaler" onClick={copier}>
+      {copie ? 'Lien copié' : 'Copier le lien'}
+    </button>
   )
 }
 

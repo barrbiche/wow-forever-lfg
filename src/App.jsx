@@ -11,6 +11,7 @@ import {
   lireProfil,
   modeDemo,
   retirerAnnonce,
+  renouvelerAnnonce,
   retirerRole,
   suivreUtilisateur,
 } from './store.js'
@@ -37,9 +38,11 @@ import {
 import {
   Contact,
   Icone,
+  LienDirect,
   NOMS_ACTIVITE,
   Signalement,
   avantDepart,
+  compteARebours,
   depuis,
   departParDefaut,
   departTexte,
@@ -48,6 +51,7 @@ import {
   reste,
   versChampDate,
 } from './commun.jsx'
+import Aide from './Aide.jsx'
 import SectionGuildes from './Guildes.jsx'
 import { LIEN_DISCORD } from './config.js'
 
@@ -107,6 +111,14 @@ function appliquerStyle(style) {
   }
 }
 
+// Adresse directe vers une annonce ou une guilde: ?annonce=ID ou ?guilde=ID.
+function lireLienDirect() {
+  const p = new URLSearchParams(window.location.search)
+  if (p.get('annonce')) return { type: 'annonce', id: p.get('annonce') }
+  if (p.get('guilde')) return { type: 'guilde', id: p.get('guilde') }
+  return null
+}
+
 // ---------- Page ----------
 
 export default function App() {
@@ -126,6 +138,10 @@ export default function App() {
 
   const [guildes, setGuildes] = useState(null) // null: pas encore disponibles (ex.: base pas à jour)
   const [vue, setVue] = useState('groupes')
+  const [aideOuverte, setAideOuverte] = useState(false)
+  const [lien] = useState(lireLienDirect)
+  const [lienTraite, setLienTraite] = useState(false)
+  const [ciblee, setCiblee] = useState('')
 
   const charger = useCallback(async () => {
     try {
@@ -149,6 +165,37 @@ export default function App() {
   }, [charger])
 
   useEffect(() => suivreUtilisateur(setUtilisateur), [])
+
+  // Adresse directe (?annonce=... ou ?guilde=...): une fois la liste chargée, on montre la bonne section,
+  // on enlève les filtres, puis on défile jusqu'à la carte et on la met en évidence un instant.
+  useEffect(() => {
+    if (!lien || lienTraite || chargement) return
+    const liste = lien.type === 'guilde' ? guildes : annonces
+    if (liste === null) return
+    setLienTraite(true)
+    if (!liste.some((x) => x.id === lien.id)) {
+      setMessage(`${lien.type === 'guilde' ? 'Cette guilde' : 'Cette annonce'} n'est plus affichée: elle a expiré ou a été retirée.`)
+      return
+    }
+    setVue(lien.type === 'guilde' ? 'guildes' : 'groupes')
+    setFiltres(FILTRES_VIDES)
+    setCiblee(lien.id)
+  }, [lien, lienTraite, chargement, annonces, guildes])
+
+  useEffect(() => {
+    if (!ciblee) return
+    const carte = document.getElementById(`${lien.type}-${ciblee}`)
+    if (!carte) return
+    const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    carte.scrollIntoView({ block: 'center', behavior: reduit ? 'auto' : 'smooth' })
+    carte.focus({ preventScroll: true })
+    carte.classList.add('ciblee')
+    const minuterie = setTimeout(() => carte.classList.remove('ciblee'), 3500)
+    return () => {
+      clearTimeout(minuterie)
+      carte.classList.remove('ciblee')
+    }
+  }, [ciblee, lien])
 
   // Connexion ou déconnexion: on recharge, car les contacts ne sont envoyés qu'aux gens connectés.
   useEffect(() => {
@@ -192,6 +239,7 @@ export default function App() {
   const filtresActifs = JSON.stringify(filtres) !== JSON.stringify(FILTRES_VIDES)
   const nbAutres = [filtres.region, filtres.role, filtres.style].filter(Boolean).length
   const raids = raidsOuverts()
+  const compte = compteARebours()
 
   const changer = (cle) => (e) => setFiltres((f) => ({ ...f, [cle]: e.target.value }))
   const basculerFaction = (id) => setFiltres((f) => ({ ...f, faction: f.faction === id ? '' : id }))
@@ -237,14 +285,28 @@ export default function App() {
                 Publier une annonce
               </button>
             </div>
-            {!chargement && (
-              <p className="vivant">
-                <span className="point" aria-hidden="true" />
-                {annonces.length === 0
-                  ? "Aucune annonce pour l'instant. Sois le premier."
-                  : `${annonces.length} ${annonces.length > 1 ? 'annonces actives' : 'annonce active'} en ce moment`}
-              </p>
-            )}
+            <div className="statut">
+              {!chargement && (
+                <p className="vivant">
+                  <span className="point" aria-hidden="true" />
+                  {annonces.length === 0
+                    ? "Aucune annonce pour l'instant. Sois le premier."
+                    : `${annonces.length} ${annonces.length > 1 ? 'annonces actives' : 'annonce active'} en ce moment`}
+                </p>
+              )}
+              {compte && (
+                <p className="compte">
+                  <Icone nom="horloge" taille={16} />
+                  <span>
+                    {compte.texte}
+                    {compte.date && <span className="compte-date"> ({compte.date})</span>}
+                  </span>
+                </p>
+              )}
+              <button type="button" className="lien aide-lien" onClick={() => setAideOuverte(true)}>
+                Comment ça marche?
+              </button>
+            </div>
           </div>
           <div className="styles" role="group" aria-label="Apparence du site">
             {STYLES_SITE.map(([id, nom]) => (
@@ -451,6 +513,11 @@ export default function App() {
             Les annonces disparaissent toutes seules quand leur durée est écoulée. Dans Forever, les groupes
             Alliance et Horde ne se mélangent pas.
           </p>
+          <p>
+            <button type="button" className="lien" onClick={() => setAideOuverte(true)}>
+              Comment ça marche, règles et données personnelles
+            </button>
+          </p>
           {LIEN_DISCORD && (
             <p>
               <a className="invitation" href={LIEN_DISCORD} target="_blank" rel="noopener noreferrer">
@@ -464,6 +531,8 @@ export default function App() {
           </p>
         </footer>
       </main>
+
+      <Aide ouvert={aideOuverte} fermer={() => setAideOuverte(false)} />
 
       <Formulaire
         factionParDefaut={styleSite === 'horde' ? 'horde' : 'alliance'}
@@ -489,6 +558,13 @@ function Carte({ annonce: a, proprietaire, utilisateur, onConnexion, apres }) {
   const [probleme, setProbleme] = useState('')
   const joueur = a.genre === 'joueur'
   const classe = CLASSES.find((c) => c.id === a.classe)
+  // Raid qui cherche un nombre précis de joueurs par rôle (ex.: 2 tanks, 5 heals, 12 DPS).
+  const composition = a.activite === 'raid' && a.roles_nb ? a.roles_nb : null
+  const tailleRaid = a.activite === 'raid' ? RAIDS.find((r) => r.nom === a.cible)?.taille : undefined
+  const manque = composition ? ROLES.reduce((n, r) => n + (composition[r.id] || 0), 0) : 0
+  const effectif = tailleRaid ? Math.max(0, tailleRaid - manque) : 0
+  const dureeTotale = new Date(a.expires_at) - new Date(a.created_at)
+  const peutRenouveler = !a.debut && partRestante(a) < 0.5
 
   const gerer = async (action) => {
     setProbleme('')
@@ -501,7 +577,7 @@ function Carte({ annonce: a, proprietaire, utilisateur, onConnexion, apres }) {
   }
 
   return (
-    <article className={`carte ${a.faction}`}>
+    <article className={`carte ${a.faction}`} id={`annonce-${a.id}`} tabIndex={-1}>
       <div className="carte-plaque">
         <Icone nom={joueur ? 'joueur' : a.activite} taille={26} />
         <strong className="plaque-niveau" aria-hidden="true">
@@ -557,9 +633,21 @@ function Carte({ annonce: a, proprietaire, utilisateur, onConnexion, apres }) {
               <span key={r.id} className={`role ${r.id}`}>
                 <Icone nom={r.id} taille={15} />
                 {r.nom}
+                {composition?.[r.id] > 0 && <span className="role-nombre">×{composition[r.id]}</span>}
               </span>
             ))}
           </p>
+        )}
+
+        {composition && tailleRaid > 0 && manque > 0 && (
+          <div
+            className="effectif"
+            role="img"
+            aria-label={`Le groupe compte ${effectif} joueurs sur ${tailleRaid}. Il en manque ${manque}.`}
+          >
+            <span className="effectif-barre"><span style={{ width: `${Math.round((effectif / tailleRaid) * 100)}%` }} /></span>
+            <span className="effectif-texte">{effectif} / {tailleRaid} joueurs</span>
+          </div>
         )}
 
         {!joueur && a.activite !== 'pvp' && a.roles.length === 0 && (
@@ -596,13 +684,20 @@ function Carte({ annonce: a, proprietaire, utilisateur, onConnexion, apres }) {
                   {r.nom} trouvé
                 </button>
               ))}
+            {peutRenouveler && (
+              <button type="button" className="bouton petit" onClick={() => gerer(() => renouvelerAnnonce(a))}>
+                Renouveler pour {Math.max(1, Math.round(Math.min(dureeTotale, 6 * 3600000) / 3600000))} h
+              </button>
+            )}
             <button type="button" className="bouton petit danger" onClick={() => gerer(() => retirerAnnonce(a.id))}>
               {joueur ? "J'ai trouvé un groupe" : "Retirer l'annonce"}
             </button>
+            <LienDirect type="annonce" id={a.id} />
             {probleme && <p className="msg-erreur" role="alert">{probleme}</p>}
           </div>
         ) : (
           <div className="signaler-ligne">
+            <LienDirect type="annonce" id={a.id} />
             <Signalement type="annonce" id={a.id} utilisateur={utilisateur} onConnexion={onConnexion} />
           </div>
         )}
@@ -625,6 +720,7 @@ const FORMULAIRE_VIDE = {
   niveau_min: '',
   niveau_max: '',
   roles: [],
+  roles_nb: { tank: 0, heal: 0, dps: 0 }, // raids seulement: combien de joueurs par rôle
   perso: '',
   contact: '',
   note: '',
@@ -632,6 +728,8 @@ const FORMULAIRE_VIDE = {
   debut: '',
   heures: 3,
 }
+
+const totalNombres = (nb) => ROLES.reduce((n, r) => n + (nb?.[r.id] ?? 0), 0)
 
 // Ce qui est gardé dans le navigateur d'une annonce à l'autre.
 const CHAMPS_DU_PROFIL = ['perso', 'classe', 'contact', 'faction', 'region', 'langue']
@@ -696,6 +794,8 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
     setChamps((c) => ({
       ...c,
       genre,
+      // Dans un raid, les rôles sont choisis autrement (nombres ou cases): on repart de zéro.
+      ...(c.activite === 'raid' ? { roles: [], roles_nb: { ...FORMULAIRE_VIDE.roles_nb } } : {}),
       cible: c.activite === 'donjon' ? cibleParDefaut(genre, 'donjon') : c.cible,
       niveau_max: genre === 'joueur' ? c.niveau_min : c.niveau_max,
     }))
@@ -710,6 +810,7 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
       activite,
       cible: cibleParDefaut(c.genre, activite),
       roles: [],
+      roles_nb: { ...FORMULAIRE_VIDE.roles_nb },
       niveau_min: activite === 'raid' ? '60' : c.activite === 'raid' ? '' : c.niveau_min,
       niveau_max: activite === 'raid' ? '60' : c.activite === 'raid' ? '' : c.niveau_max,
     }))
@@ -719,9 +820,14 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
   // Pour un groupe, choisir un donjon remplit les niveaux suggérés (modifiables ensuite).
   const choisirCible = (cible) => {
     const plage = NIVEAUX_DONJONS[cible]
+    const tailleRaid = RAIDS.find((r) => r.nom === cible)?.taille
     setChamps((c) => ({
       ...c,
       cible,
+      // Un raid plus petit: si le nombre de joueurs recherchés ne tient plus, on repart de zéro.
+      ...(c.activite === 'raid' && tailleRaid && totalNombres(c.roles_nb) > tailleRaid - 1
+        ? { roles: [], roles_nb: { ...FORMULAIRE_VIDE.roles_nb } }
+        : {}),
       ...(c.activite === 'donjon' && c.genre === 'groupe' && plage
         ? { niveau_min: String(plage[0]), niveau_max: String(plage[1]) }
         : {}),
@@ -747,6 +853,18 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
     setErreurs((e) => (e.roles ? { ...e, roles: undefined } : e))
   }
 
+  // Raid: ajouter ou enlever un joueur recherché pour un rôle. Le groupe compte déjà son auteur,
+  // donc on ne peut pas chercher plus que (taille du raid - 1) joueurs.
+  const changerNombre = (id, delta) => {
+    setChamps((c) => {
+      const taille = RAIDS.find((r) => r.nom === c.cible)?.taille ?? 40
+      if (delta > 0 && totalNombres(c.roles_nb) >= taille - 1) return c
+      const nb = { ...c.roles_nb, [id]: Math.max(0, c.roles_nb[id] + delta) }
+      return { ...c, roles_nb: nb, roles: ROLES.filter((r) => nb[r.id] > 0).map((r) => r.id) }
+    })
+    setErreurs((e) => (e.roles ? { ...e, roles: undefined } : e))
+  }
+
   const valider = () => {
     const e = {}
     const joueur = champs.genre === 'joueur'
@@ -762,7 +880,11 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
     if (!champs.perso.trim()) e.perso = 'Écris le nom de ton personnage.'
     if (!champs.contact.trim()) e.contact = 'Écris ton Discord ou ton BattleTag pour que les gens te trouvent.'
     if (champs.activite !== 'pvp' && champs.roles.length === 0) {
-      e.roles = joueur ? 'Choisis au moins un rôle que tu joues.' : 'Choisis au moins un rôle recherché.'
+      e.roles = joueur
+        ? 'Choisis au moins un rôle que tu joues.'
+        : champs.activite === 'raid'
+          ? 'Indique combien de joueurs tu cherches pour au moins un rôle.'
+          : 'Choisis au moins un rôle recherché.'
     }
     if (champs.quand === 'plus_tard') {
       const t = new Date(champs.debut).getTime()
@@ -795,6 +917,10 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
           niveau_min: Number(champs.niveau_min),
           niveau_max: joueur ? Number(champs.niveau_min) : Number(champs.niveau_max),
           roles: champs.activite === 'pvp' ? [] : champs.roles,
+          // Seuls les raids envoient les nombres: un donjon continue de fonctionner même si la base n'est pas à jour.
+          ...(champs.activite === 'raid' && !joueur
+            ? { roles_nb: Object.fromEntries(ROLES.filter((r) => champs.roles_nb[r.id] > 0).map((r) => [r.id, champs.roles_nb[r.id]])) }
+            : {}),
           perso: champs.perso.trim(),
           contact: champs.contact.trim(),
           note: champs.note.trim(),
@@ -946,7 +1072,51 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
             </label>
           </div>
 
-          {!pvp && (
+          {!pvp && raid && !joueur && (
+            <fieldset className="groupe">
+              <legend>Joueurs recherchés</legend>
+              <div className="nombres">
+                {ROLES.map((r) => (
+                  <div key={r.id} className="nombre">
+                    <span className="nombre-nom">
+                      <Icone nom={r.id} taille={16} />
+                      {r.nom}
+                    </span>
+                    <button
+                      type="button"
+                      className="bouton petit"
+                      aria-label={`Un ${r.nom} de moins`}
+                      disabled={champs.roles_nb[r.id] === 0}
+                      onClick={() => changerNombre(r.id, -1)}
+                    >
+                      −
+                    </button>
+                    <output className="nombre-valeur" aria-label={`${r.nom} recherchés`}>{champs.roles_nb[r.id]}</output>
+                    <button
+                      type="button"
+                      className="bouton petit"
+                      aria-label={`Un ${r.nom} de plus`}
+                      onClick={() => changerNombre(r.id, 1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <p className="aide">
+                {(() => {
+                  const taille = RAIDS.find((r) => r.nom === champs.cible)?.taille
+                  const total = totalNombres(champs.roles_nb)
+                  return taille
+                    ? `${total} joueur${total > 1 ? 's' : ''} recherché${total > 1 ? 's' : ''}. Le groupe compte déjà ${taille - total} joueur${taille - total > 1 ? 's' : ''} sur ${taille}, toi compris.`
+                    : 'Choisis un raid pour voir combien de joueurs il te manque.'
+                })()}
+              </p>
+              {erreur('roles')}
+            </fieldset>
+          )}
+
+          {!pvp && !(raid && !joueur) && (
             <fieldset className="groupe">
               <legend>{joueur ? 'Rôle(s) que tu joues' : 'Rôles recherchés'}</legend>
               <div className="cases">
@@ -974,7 +1144,11 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
               {erreur('contact')}
             </label>
           </div>
-          <p className="aide">Ton contact n'est visible que pour les gens connectés. Il est gardé pour ta prochaine annonce.</p>
+          <p className="aide">
+            {LIEN_DISCORD
+              ? "Ton contact est visible pour les gens connectés et dans le Discord de la communauté. Il est gardé pour ta prochaine annonce."
+              : "Ton contact n'est visible que pour les gens connectés. Il est gardé pour ta prochaine annonce."}
+          </p>
 
           <label className="champ">
             <span>Message (facultatif)</span>

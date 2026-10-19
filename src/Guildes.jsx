@@ -11,7 +11,7 @@ import {
   STYLES,
   nomDe,
 } from './data.js'
-import { Contact, Icone, Signalement, depuis } from './commun.jsx'
+import { Contact, Icone, LienDirect, Signalement, depuis } from './commun.jsx'
 
 // ---------- Onglet « Guildes qui recrutent » ----------
 
@@ -116,7 +116,7 @@ function CarteGuilde({ guilde: g, proprietaire, utilisateur, onConnexion, apres 
   const jours = Math.max(0, Math.ceil((new Date(g.expires_at).getTime() - Date.now()) / 86400000))
 
   return (
-    <article className={`carte guilde ${g.faction}`}>
+    <article className={`carte guilde ${g.faction}`} id={`guilde-${g.id}`} tabIndex={-1}>
       <div className="carte-plaque">
         <Icone nom="guilde" taille={30} />
         <span className="plaque-unite">Guilde</span>
@@ -172,10 +172,12 @@ function CarteGuilde({ guilde: g, proprietaire, utilisateur, onConnexion, apres 
             <button type="button" className="bouton petit danger" onClick={retirer}>
               Retirer la guilde
             </button>
+            <LienDirect type="guilde" id={g.id} />
             {probleme && <p className="msg-erreur" role="alert">{probleme}</p>}
           </div>
         ) : (
           <div className="signaler-ligne">
+            <LienDirect type="guilde" id={g.id} />
             <Signalement type="guilde" id={g.id} utilisateur={utilisateur} onConnexion={onConnexion} />
           </div>
         )}
