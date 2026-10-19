@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LANCEMENT_LE, MOTIFS_SIGNALEMENT, RAIDS_OUVERTS_LE } from './data.js'
+import { LANCEMENT_LE, MOTIFS_JOUEUR, MOTIFS_SIGNALEMENT, RAIDS_OUVERTS_LE } from './data.js'
 import { signaler } from './store.js'
 
 // ---------- Petites icônes (dessinées à la main, héritent la couleur du texte) ----------
@@ -14,6 +14,7 @@ export const CHEMINS = {
   horloge: 'M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18z',
   joueur: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0',
   guilde: 'M5 3h14v10c0 4-3 6-7 8-4-2-7-4-7-8V3zM9 8h6M9 12h6',
+  pouce: 'M3 11h4v10H3zM7 12l4-8c1.7 0 2.7 1.1 2.7 2.6V10h5.2c1.4 0 2.4 1.3 2.1 2.6l-1.4 6.2c-.2 1.2-1.2 2-2.4 2H7',
 }
 export const NOMS_ACTIVITE = { donjon: 'Donjon', raid: 'Raid', pvp: 'PvP' }
 
@@ -182,10 +183,12 @@ export function LienDirect({ type, id }) {
   )
 }
 
-// Bouton « Signaler » avec un petit formulaire en ligne. Trois personnes différentes retirent l'annonce.
+// Bouton « Signaler » avec un petit formulaire en ligne. Trois personnes différentes retirent l'annonce
+// (ou, pour un joueur, mettent sa réputation en vérification).
 export function Signalement({ type, id, utilisateur, onConnexion }) {
+  const motifs = type === 'joueur' ? MOTIFS_JOUEUR : MOTIFS_SIGNALEMENT
   const [ouvert, setOuvert] = useState(false)
-  const [motif, setMotif] = useState('spam')
+  const [motif, setMotif] = useState(motifs[0].id)
   const [etat, setEtat] = useState('')
 
   if (etat === 'fait') return <p className="aide signale">Merci, ton signalement est envoyé.</p>
@@ -208,8 +211,8 @@ export function Signalement({ type, id, utilisateur, onConnexion }) {
     try {
       await signaler(type, id, motif)
       setEtat('fait')
-    } catch {
-      setEtat('erreur')
+    } catch (e) {
+      setEtat(e?.code === '54000' ? 'limite' : 'erreur')
     }
   }
 
@@ -218,7 +221,7 @@ export function Signalement({ type, id, utilisateur, onConnexion }) {
       <label className="champ">
         <span>Pourquoi signaler?</span>
         <select value={motif} onChange={(e) => setMotif(e.target.value)}>
-          {MOTIFS_SIGNALEMENT.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
+          {motifs.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
         </select>
       </label>
       <div className="signalement-actions">
@@ -226,6 +229,9 @@ export function Signalement({ type, id, utilisateur, onConnexion }) {
         <button type="button" className="bouton petit" onClick={() => setOuvert(false)}>Annuler</button>
       </div>
       {etat === 'erreur' && <p className="msg-erreur" role="alert">Le signalement n'a pas été envoyé. Réessaie.</p>}
+      {etat === 'limite' && (
+        <p className="msg-erreur" role="alert">Tu as déjà fait beaucoup de signalements aujourd'hui. Réessaie demain.</p>
+      )}
     </form>
   )
 }

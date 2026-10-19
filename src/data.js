@@ -155,6 +155,22 @@ export const MOTIFS_SIGNALEMENT = [
   { id: 'autre', nom: 'Autre' },
 ]
 
+// Étiquettes qu'on peut ajouter à un pouce de réputation.
+export const ETIQUETTES = [
+  { id: 'ponctuel', nom: 'Ponctuel' },
+  { id: 'sympa', nom: 'Sympa' },
+  { id: 'competent', nom: 'Compétent' },
+  { id: 'patient', nom: 'Patient' },
+  { id: 'bon_chef', nom: 'Bon chef de groupe' },
+]
+
+export const MOTIFS_JOUEUR = [
+  { id: 'comportement', nom: 'Comportement toxique ou harcèlement' },
+  { id: 'faux_profil', nom: 'Faux profil ou faux nom' },
+  { id: 'arnaque', nom: 'Arnaque ou vente' },
+  { id: 'autre', nom: 'Autre' },
+]
+
 export const FOCUS_GUILDE = [
   { id: 'donjon', nom: 'Donjons' },
   { id: 'raid', nom: 'Raids' },

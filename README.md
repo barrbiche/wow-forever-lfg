@@ -26,6 +26,8 @@ Sans configuration, le site tourne en **mode démo**: les annonces restent dans 
 7. SQL Editor > New query: colle aussi `supabase/ameliorations2.sql`, puis Run (joueurs seuls, classe, contacts cachés aux visiteurs, guildes, signalements, alertes Discord par type). Il faut le rouler **après** `ameliorations.sql`, et **juste après** le déploiement du site qui s'en sert: les visiteurs non connectés ne peuvent plus lire la colonne `contact`, et l'ancienne version du site (qui demandait toutes les colonnes) ne marcherait plus. On peut le relancer sans problème.
 8. SQL Editor > New query: colle aussi `supabase/ameliorations3.sql`, puis Run (composition de raid avec le nombre de joueurs par rôle, bouton « Renouveler », message Discord avec les nombres). Il se roule **après** `ameliorations2.sql`, avant ou après le déploiement du site qui s'en sert (les deux ordres fonctionnent: le site retombe sur l'ancien comportement tant que la base n'est pas à jour). On peut le relancer sans problème.
 
+9. SQL Editor > New query: colle aussi `supabase/ameliorations4.sql`, puis Run (page « Joueurs »: profils, pouces de réputation, signalements de joueurs). Il se roule **après** `ameliorations3.sql`, avant ou après le déploiement du site qui s'en sert: tant que la base n'est pas à jour, l'onglet Joueurs affiche « pas encore disponible » et le reste du site marche normalement. On peut le relancer sans problème.
+
 ## Connexion par courriel
 
 Elle marche dès que le projet Supabase existe (le fournisseur « Email » est activé par défaut).
@@ -65,7 +67,7 @@ Pour que le monde voie le lien du Discord au bas du site, ajoute la variable Net
 ## Contacts, signalements et modération
 
 - Les contacts (Discord, BattleTag) ne sont visibles que pour les gens connectés: la base refuse de les donner aux visiteurs anonymes. Ça freine le moissonnage en masse, mais tout compte inscrit peut les lire. Le canal Discord, lui, montre le contact: garde-le réservé aux membres.
-- Chaque personne connectée peut signaler une annonce ou une guilde (une fois chacune). Après 3 signalements de comptes différents, elle est masquée automatiquement. Des faux comptes pourraient abuser de ça: surveille le canal de modération.
+- Chaque personne connectée peut signaler une annonce, une guilde ou un joueur (une fois chacun). Après 3 signalements de comptes différents, elle est masquée automatiquement. Des faux comptes pourraient abuser de ça: surveille le canal de modération.
 - Les guildes restent affichées 7, 14 ou 30 jours; 2 inscriptions actives par joueur.
 
 ## Partage de liens
@@ -83,6 +85,15 @@ Pour que le monde voie le lien du Discord au bas du site, ajoute la variable Net
 
 - Une annonce de raid (groupe) indique combien de joueurs il faut par rôle (ex.: 2 Tank, 5 Heal, 12 DPS). La carte montre « Tank ×2 » et « 6 / 20 joueurs »; « Heal trouvé » en enlève un à la fois. Les nombres sont dans la colonne `roles_nb` (créée par `ameliorations3.sql`); les donjons n'en envoient pas.
 - « Renouveler » relance une annonce (même durée qu'au départ) quand il lui reste moins de la moitié de son temps. Une annonce planifiée ne se renouvelle pas, et rien n'est reposté sur Discord. C'est la fonction SQL `renouveler_annonce` qui décide.
+
+## Page Joueurs, réputation et présence
+
+- L'onglet « Joueurs » liste les profils: personnage, classe, niveau, rôles, faction, région, langue, style, guilde, petit mot, réputation et « en ligne » / « vu il y a ». **Seules les personnes connectées la voient**; elle ne contient jamais de contact ni de courriel.
+- Le profil se crée tout seul avec la première annonce (nom, classe, faction, région, langue et style de l'annonce; niveau et rôles seulement pour une annonce de « joueur seul »), ou à la main dans « Mon profil ». Il est visible par défaut; chacun peut se cacher ou supprimer son profil (`profils.visible`). Le formulaire d'annonce et la page d'aide le disent. Ça choisit **l'inscription automatique avec retrait facile**: à revoir si on préfère une inscription volontaire (Loi 25).
+- Les données passent par `lister_joueurs()` (fonction SQL réservée aux connectés). Les tables `recommandations` et `signalements_joueurs` ne sont lisibles que par toi, dans Supabase > Table Editor: personne d'autre ne voit qui a donné un pouce ou un signalement.
+- Réputation: un pouce par joueur (avec des étiquettes facultatives: Ponctuel, Sympa, Compétent, Patient, Bon chef de groupe), 10 nouveaux pouces et 5 signalements par 24 h par personne, un profil requis pour recommander. On ne peut pas vérifier que deux joueurs ont vraiment joué ensemble, et des faux comptes pourraient se recommander entre eux: surveille les profils neufs avec beaucoup de pouces.
+- 3 signalements de personnes différentes mettent la réputation « en vérification » (les pouces et étiquettes ne sont plus donnés par la base). Pour la rétablir, supprime les lignes de `signalements_joueurs` concernées. Si `discord_webhook_moderation` est rangée dans `reglages`, chaque signalement de joueur y est envoyé (nom du personnage seulement).
+- « En ligne »: présence en temps réel de Supabase (canal `joueurs-en-ligne`), seulement pour les gens connectés dont le profil est visible. Si Realtime est coupé dans le projet, le point vert n'apparaît pas mais le reste marche. Le canal est public: quelqu'un qui a la clé `anon` peut y voir les identifiants (UUID) des joueurs en ligne, sans nom; comme `annonces.user_id` est lisible par tous, il pourrait deviner qu'un auteur d'annonce est en ligne. Pour l'éviter plus tard: canaux privés de Realtime avec une règle sur `realtime.messages`. L'heure de dernière visite (`vu_le`) est mise à jour toutes les 10 minutes et arrondie par la base.
 
 ## Limites de la version 1
 

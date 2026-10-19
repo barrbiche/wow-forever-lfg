@@ -60,8 +60,13 @@ export default function Aide({ ouvert, fermer }) {
             <li>Pas de vente d'or, de comptes ou de services payants.</li>
             <li>Dans Forever, l'Alliance et la Horde ne se mélangent pas: une annonce est pour un seul camp.</li>
             <li>
+              Les pouces sont pour les gens avec qui tu as vraiment joué. Pas de pouces échangés entre amis pour gonfler
+              une réputation, ni avec de faux comptes.
+            </li>
+            <li>
               Tu vois un problème? Utilise « Signaler » sur l'annonce. Trois signalements de personnes différentes la
-              retirent automatiquement.
+              retirent automatiquement. Pour un joueur, trois signalements mettent sa réputation « en vérification »:
+              ses pouces ne sont plus affichés.
             </li>
           </ul>
         </section>
@@ -83,6 +88,23 @@ export default function Aide({ ouvert, fermer }) {
               Une annonce n'est plus affichée une fois son temps écoulé.
             </li>
             <li>
+              <strong>Ton profil de joueur.</strong> Il est créé quand tu publies ta première annonce, ou quand tu le
+              remplis toi-même dans « Mon profil ». Il contient ton personnage (nom, faction, région, langue, style et, si
+              tu les donnes, classe, niveau, rôles, guilde et petit mot), jamais ton contact. Seules les personnes
+              connectées voient la liste des joueurs. Dans « Mon profil », tu peux tout modifier, te cacher de la liste ou
+              supprimer ton profil.
+            </li>
+            <li>
+              <strong>En ligne et dernière visite.</strong> Le point vert « en ligne » s'affiche tant que le site est ouvert
+              dans ton navigateur et que ton profil est visible. Le site garde aussi l'heure approximative de ta dernière
+              visite pour afficher « Vu il y a 3 h ». Si tu te caches, tu n'apparais plus du tout.
+            </li>
+            <li>
+              <strong>Les pouces.</strong> Un pouce est lié à ton compte, mais les autres joueurs ne voient jamais qui l'a
+              donné: seulement le nombre et les étiquettes. Les personnes qui gèrent le site peuvent le voir dans la base
+              de données. Tes signalements restent eux aussi privés.
+            </li>
+            <li>
               <strong>Dans ton navigateur.</strong> Le site garde chez toi le style que tu as choisi, ton personnage et
               ton contact (pour préremplir tes prochaines annonces) et ta connexion. Il n'y a ni publicité, ni témoin de
               suivi, ni outil de statistiques.
@@ -93,7 +115,8 @@ export default function Aide({ ouvert, fermer }) {
               chargent).
             </li>
             <li>
-              <strong>Effacer tes données.</strong> Pour faire retirer ton compte et tes annonces,{' '}
+              <strong>Effacer tes données.</strong> Tu peux supprimer ton profil toi-même dans « Mon profil »: les pouces que
+              tu as reçus partent avec lui. Pour faire retirer ton compte et tes annonces,{' '}
               {LIEN_DISCORD ? (
                 <>
                   écris-nous sur{' '}

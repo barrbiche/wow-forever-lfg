@@ -1689,6 +1689,182 @@ h2 {
   margin: 0;
 }
 
+/* ---------- Joueurs: présence, réputation, actions ---------- */
+
+.champ.recherche {
+  flex: 1 1 140px;
+  max-width: 520px;
+}
+
+.filtres-ligne .bouton {
+  white-space: nowrap;
+}
+
+.resume-detail {
+  font-family: var(--texte);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.depuis.en-ligne {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 700;
+  color: var(--heal);
+}
+
+.depuis.en-ligne .point {
+  width: 8px;
+  height: 8px;
+  animation: none;
+}
+
+.reputation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: var(--r-bouton);
+  border: 1px solid color-mix(in srgb, var(--gold) 30%, var(--line));
+  background: color-mix(in srgb, var(--gold) 9%, var(--field));
+}
+
+.reputation .aide {
+  justify-self: auto;
+}
+
+.pouces {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 4px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.pouces svg {
+  color: var(--gold-line);
+}
+
+.pouces strong {
+  font-family: var(--titre);
+  font-size: 1.12rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.etiquette {
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.etiquette-n {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.reputation.revision {
+  gap: 8px;
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+  border: 1px dashed var(--muted);
+}
+
+.joueur-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.joueur-actions .bouton,
+.gestion .bouton:has(svg) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.joueur-signaler {
+  margin-left: auto;
+}
+
+.joueur-signaler .signalement {
+  margin-left: 0;
+}
+
+.recommandation {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--field);
+}
+
+.recommandation .case {
+  min-height: 40px;
+  padding: 0 12px;
+  background: var(--surface);
+}
+
+.moi {
+  margin-right: 4px;
+  font-weight: 700;
+}
+
+.dialogue form .case.visibilite {
+  justify-self: start;
+}
+
+.suppression {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+
+.suppression .aide {
+  justify-self: start;
+}
+
+/* Connecté sur mobile: la ligne « Connecté / Mon profil / Se déconnecter » prend toute la largeur,
+   le bouton Publier passe dessous. */
+@media (max-width: 559px) {
+  .actions:has(.session) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .actions:has(.session) .session {
+    flex: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .onglet {
+    padding: 0 8px;
+    font-size: 0.96rem;
+  }
+
+  .onglet-nombre {
+    margin-left: 4px;
+    padding: 1px 6px;
+  }
+}
+
 /* ---------- Message de confirmation ---------- */
 
 .toast {

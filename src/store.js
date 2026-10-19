@@ -372,8 +372,9 @@ export async function retirerGuilde(id) {
 
 // ---------- Signalements ----------
 
-// type: 'annonce' ou 'guilde'. Signaler deux fois la même chose n'est pas une erreur.
+// type: 'annonce', 'guilde' ou 'joueur'. Signaler deux fois la même chose n'est pas une erreur.
 export async function signaler(type, id, motif) {
+  if (type === 'joueur') return signalerJoueur(id, motif)
   if (modeDemo) return
   const ligne = { motif, [type === 'guilde' ? 'guilde_id' : 'annonce_id']: id }
   const { error } = await supabase.from('signalements').insert(ligne)
@@ -395,5 +396,260 @@ export function ecrireProfil(profil) {
     localStorage.setItem(CLE_PROFIL, JSON.stringify(profil))
   } catch {
     // navigation privée: le profil n'est pas gardé pour la prochaine visite
+  }
+}
+
+// ---------- Joueurs: profils, présence en ligne et réputation ----------
+// La liste n'est donnée qu'aux gens connectés. Un profil ne contient jamais de contact.
+
+const CLE_JOUEURS_DEMO = 'forever-demo-joueurs'
+const EN_LIGNE_DEMO = ['demo-j-thalyn', 'demo-j-mirabelle']
+const JOUEUR_VIDE = {
+  guilde: '',
+  bio: '',
+  visible: true,
+  pouces: 0,
+  etiquettes: {},
+  en_revision: false,
+  moi: false,
+  ma_reco: false,
+  mes_etiquettes: [],
+  mon_signalement: false,
+}
+
+function joueursDemo() {
+  const j = (champs) => ({ ...JOUEUR_VIDE, ...champs })
+  return [
+    j({
+      user_id: 'demo-j-thalyn', perso: 'Thalyn', classe: 'mage', niveau: 38, roles: ['dps'], faction: 'alliance',
+      region: 'US', langue: 'fr', style: 'relax', guilde: 'Les Braves du Nord',
+      bio: 'Mage de Québec, je joue surtout en soirée.', vu_le: minutes(4),
+      pouces: 12, etiquettes: { sympa: 9, ponctuel: 7, competent: 4 },
+    }),
+    j({
+      user_id: 'demo-j-mirabelle', perso: 'Mirabelle', classe: 'druide', niveau: 22, roles: ['heal', 'tank'],
+      faction: 'alliance', region: 'EU', langue: 'fr', style: 'apprentissage',
+      bio: 'Je cherche un groupe régulier pour apprendre les donjons.', vu_le: minutes(11),
+      pouces: 5, etiquettes: { patient: 4, sympa: 3 },
+    }),
+    j({
+      user_id: 'demo-j-grumash', perso: 'Grumash', classe: 'chasseur', niveau: 55, roles: ['dps'], faction: 'horde',
+      region: 'US', langue: 'fr', style: 'competitif', guilde: 'Sang et Fer', vu_le: minutes(95),
+      pouces: 8, etiquettes: { competent: 6, bon_chef: 3 },
+    }),
+    j({
+      user_id: 'demo-j-lyra', perso: 'Lyra', classe: 'pretre', niveau: 47, roles: ['heal'], faction: 'alliance',
+      region: 'US', langue: 'en', style: 'carry', bio: 'English-speaking healer, happy to help.',
+      vu_le: minutes(300), pouces: 3, etiquettes: { sympa: 3 },
+    }),
+    j({
+      user_id: 'demo-j-brokk', perso: 'Brokk', classe: 'guerrier', niveau: 25, roles: ['tank'], faction: 'horde',
+      region: 'US', langue: 'fr', style: 'relax', vu_le: minutes(26 * 60),
+    }),
+    j({
+      user_id: 'demo-j-zulgar', perso: 'Zulgar', classe: 'voleur', niveau: 30, roles: ['dps'], faction: 'horde',
+      region: 'EU', langue: 'fr', style: 'relax', vu_le: minutes(30 * 60),
+      en_revision: true, pouces: null, etiquettes: null,
+    }),
+  ]
+}
+
+function lireJoueursDemo() {
+  try {
+    const brut = localStorage.getItem(CLE_JOUEURS_DEMO)
+    const liste = brut ? JSON.parse(brut) : joueursDemo()
+    if (!brut) localStorage.setItem(CLE_JOUEURS_DEMO, JSON.stringify(liste))
+    return liste
+  } catch {
+    return joueursDemo()
+  }
+}
+
+function ecrireJoueursDemo(liste) {
+  try {
+    localStorage.setItem(CLE_JOUEURS_DEMO, JSON.stringify(liste))
+  } catch {
+    // navigation privée: le changement n'est pas gardé
+  }
+}
+
+// Ce que la base accepte d'un profil (les champs vides deviennent « rien »).
+function versLigneProfil(c) {
+  return {
+    perso: String(c.perso ?? '').trim(),
+    classe: c.classe || null,
+    niveau: c.niveau ? Number(c.niveau) : null,
+    roles: c.roles ?? [],
+    faction: c.faction,
+    region: c.region,
+    langue: c.langue || 'fr',
+    style: c.style || 'relax',
+    guilde: String(c.guilde ?? '').trim(),
+    bio: String(c.bio ?? '').trim(),
+    visible: c.visible !== false,
+  }
+}
+
+async function idConnecte() {
+  const { data } = await supabase.auth.getSession()
+  return data.session?.user.id ?? null
+}
+
+// Retourne [] pour un visiteur. Lance une erreur si la base n'est pas encore à jour (ameliorations4.sql).
+export async function lireJoueurs() {
+  if (!(await estConnecte())) return []
+  if (modeDemo) {
+    const maintenant = Date.now()
+    const actives = lireDemo().filter((a) => new Date(a.expires_at).getTime() > maintenant)
+    return lireJoueursDemo()
+      .filter((j) => j.visible || j.moi)
+      .map((j) => ({
+        ...j,
+        annonce_id: actives.find((a) => a.user_id === j.user_id || a.perso === j.perso)?.id ?? null,
+      }))
+  }
+  const { data, error } = await supabase.rpc('lister_joueurs')
+  if (error) throw error
+  return data
+}
+
+// Crée le profil à partir d'une première annonce, sans toucher à un profil qui existe déjà.
+// Retourne vrai si le profil vient d'être créé.
+export async function assurerProfil(champs) {
+  const ligne = versLigneProfil(champs)
+  if (modeDemo) {
+    const liste = lireJoueursDemo()
+    if (liste.some((j) => j.moi)) return false
+    ecrireJoueursDemo([
+      { ...JOUEUR_VIDE, ...ligne, user_id: UTILISATEUR_DEMO.id, moi: true, vu_le: new Date().toISOString() },
+      ...liste,
+    ])
+    return true
+  }
+  const uid = await idConnecte()
+  if (!uid) return false
+  const { data, error } = await supabase
+    .from('profils')
+    .upsert({ user_id: uid, ...ligne }, { onConflict: 'user_id', ignoreDuplicates: true })
+    .select('user_id')
+  if (error) throw error
+  return (data?.length ?? 0) > 0
+}
+
+export async function enregistrerProfil(champs) {
+  const ligne = versLigneProfil(champs)
+  if (modeDemo) {
+    const liste = lireJoueursDemo()
+    ecrireJoueursDemo(
+      liste.some((j) => j.moi)
+        ? liste.map((j) => (j.moi ? { ...j, ...ligne } : j))
+        : [{ ...JOUEUR_VIDE, ...ligne, user_id: UTILISATEUR_DEMO.id, moi: true, vu_le: new Date().toISOString() }, ...liste],
+    )
+    return
+  }
+  const uid = await idConnecte()
+  if (!uid) throw new Error('connexion requise')
+  const { error } = await supabase.from('profils').upsert({ user_id: uid, ...ligne }, { onConflict: 'user_id' })
+  if (error) throw error
+}
+
+export async function supprimerProfil() {
+  if (modeDemo) {
+    ecrireJoueursDemo(lireJoueursDemo().filter((j) => !j.moi))
+    return
+  }
+  const uid = await idConnecte()
+  if (!uid) throw new Error('connexion requise')
+  const { error } = await supabase.from('profils').delete().eq('user_id', uid)
+  if (error) throw error
+}
+
+// Met à jour « vu pour la dernière fois ». Jamais bloquant: une erreur est ignorée.
+export async function toucherProfil() {
+  if (modeDemo) return
+  try {
+    const uid = await idConnecte()
+    if (uid) await supabase.from('profils').update({ vu_le: new Date().toISOString() }).eq('user_id', uid)
+  } catch {
+    // pas grave: la prochaine mise à jour passera
+  }
+}
+
+// Donne (ou change) un pouce avec des étiquettes. Un seul pouce par joueur.
+export async function recommander(id, etiquettes) {
+  if (modeDemo) {
+    ecrireJoueursDemo(
+      lireJoueursDemo().map((j) => {
+        if (j.user_id !== id) return j
+        const compte = { ...(j.etiquettes ?? {}) }
+        for (const e of j.mes_etiquettes ?? []) compte[e] = Math.max(0, (compte[e] ?? 0) - 1)
+        for (const e of etiquettes) compte[e] = (compte[e] ?? 0) + 1
+        for (const e of Object.keys(compte)) if (!compte[e]) delete compte[e]
+        return {
+          ...j,
+          ma_reco: true,
+          mes_etiquettes: etiquettes,
+          pouces: (j.pouces ?? 0) + (j.ma_reco ? 0 : 1),
+          etiquettes: compte,
+        }
+      }),
+    )
+    return
+  }
+  const { error } = await supabase.rpc('recommander', { p_pour: id, p_etiquettes: etiquettes })
+  if (error) throw error
+}
+
+export async function retirerReco(id) {
+  if (modeDemo) {
+    ecrireJoueursDemo(
+      lireJoueursDemo().map((j) => {
+        if (j.user_id !== id || !j.ma_reco) return j
+        const compte = { ...(j.etiquettes ?? {}) }
+        for (const e of j.mes_etiquettes ?? []) compte[e] = Math.max(0, (compte[e] ?? 0) - 1)
+        for (const e of Object.keys(compte)) if (!compte[e]) delete compte[e]
+        return { ...j, ma_reco: false, mes_etiquettes: [], pouces: Math.max(0, (j.pouces ?? 1) - 1), etiquettes: compte }
+      }),
+    )
+    return
+  }
+  const { error } = await supabase.rpc('retirer_reco', { p_pour: id })
+  if (error) throw error
+}
+
+export async function signalerJoueur(id, motif) {
+  if (modeDemo) {
+    ecrireJoueursDemo(lireJoueursDemo().map((j) => (j.user_id === id ? { ...j, mon_signalement: true } : j)))
+    return
+  }
+  const { error } = await supabase.rpc('signaler_joueur', { p_pour: id, p_motif: motif })
+  if (error) throw error
+}
+
+// Qui est sur le site en ce moment. Appelle `rappel` avec l'ensemble des identifiants présents.
+// `partager`: vrai si ce joueur accepte d'être vu en ligne (profil visible). Retourne une fonction d'arrêt.
+// Si la connexion en temps réel ne marche pas, la liste reste vide: la page fonctionne quand même.
+export function suivrePresence(uid, partager, rappel) {
+  if (!uid) {
+    rappel(new Set())
+    return () => {}
+  }
+  if (modeDemo) {
+    rappel(new Set([...EN_LIGNE_DEMO, ...(partager ? [uid] : [])]))
+    return () => {}
+  }
+  let canal
+  try {
+    canal = supabase.channel('joueurs-en-ligne', { config: { presence: { key: uid } } })
+    canal.on('presence', { event: 'sync' }, () => rappel(new Set(Object.keys(canal.presenceState()))))
+    canal.subscribe((statut) => {
+      if (statut === 'SUBSCRIBED' && partager) canal.track({ en_ligne: true }).catch(() => {})
+    })
+  } catch {
+    rappel(new Set())
+    return () => {}
+  }
+  return () => {
+    supabase.removeChannel(canal)
   }
 }

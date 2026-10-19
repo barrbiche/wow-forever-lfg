@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  assurerProfil,
   connecter,
   creerAnnonce,
   deconnecter,
@@ -8,12 +9,15 @@ import {
   ecrireProfil,
   lireAnnonces,
   lireGuildes,
+  lireJoueurs,
   lireProfil,
   modeDemo,
   retirerAnnonce,
   renouvelerAnnonce,
   retirerRole,
+  suivrePresence,
   suivreUtilisateur,
+  toucherProfil,
 } from './store.js'
 import {
   AUTRE_DONJON,
@@ -53,6 +57,7 @@ import {
 } from './commun.jsx'
 import Aide from './Aide.jsx'
 import SectionGuildes from './Guildes.jsx'
+import SectionJoueurs, { ProfilJoueur } from './Joueurs.jsx'
 import { LIEN_DISCORD } from './config.js'
 
 const FILTRES_VIDES = {
@@ -65,6 +70,25 @@ const FILTRES_VIDES = {
   langue: '',
   genre: '',
   planifies: false,
+  // Onglet Joueurs
+  classe: '',
+  recherche: '',
+  enLigne: false,
+}
+
+// Les filtres qui comptent dans chaque onglet (faction, langue, région et rôle sont partagés).
+const CLES_GROUPES = ['activite', 'faction', 'region', 'role', 'niveau', 'style', 'langue', 'genre', 'planifies']
+const CLES_JOUEURS = ['faction', 'langue', 'region', 'role', 'classe', 'recherche', 'enLigne']
+
+function correspondJoueur(j, f, enLigne) {
+  if (f.langue && j.langue !== f.langue) return false
+  if (f.region && j.region !== f.region) return false
+  if (f.role && !j.roles.includes(f.role)) return false
+  if (f.classe && j.classe !== f.classe) return false
+  if (f.enLigne && !enLigne.has(j.user_id)) return false
+  const q = f.recherche.trim().toLowerCase()
+  if (q && !j.perso.toLowerCase().includes(q)) return false
+  return true
 }
 
 function correspond(a, f) {
@@ -141,7 +165,10 @@ export default function App() {
   const [aideOuverte, setAideOuverte] = useState(false)
   const [lien] = useState(lireLienDirect)
   const [lienTraite, setLienTraite] = useState(false)
-  const [ciblee, setCiblee] = useState('')
+  const [ciblee, setCiblee] = useState(null) // { type: 'annonce' | 'guilde', id }
+  const [joueurs, setJoueurs] = useState([]) // null: pas encore disponibles (ex.: base pas à jour)
+  const [enLigne, setEnLigne] = useState(() => new Set())
+  const [profilOuvert, setProfilOuvert] = useState(false)
 
   const charger = useCallback(async () => {
     try {
@@ -156,6 +183,11 @@ export default function App() {
       setGuildes(await lireGuildes())
     } catch {
       setGuildes(null)
+    }
+    try {
+      setJoueurs(await lireJoueurs())
+    } catch {
+      setJoueurs(null)
     }
   }, [])
 
@@ -179,12 +211,12 @@ export default function App() {
     }
     setVue(lien.type === 'guilde' ? 'guildes' : 'groupes')
     setFiltres(FILTRES_VIDES)
-    setCiblee(lien.id)
+    setCiblee({ type: lien.type, id: lien.id })
   }, [lien, lienTraite, chargement, annonces, guildes])
 
   useEffect(() => {
     if (!ciblee) return
-    const carte = document.getElementById(`${lien.type}-${ciblee}`)
+    const carte = document.getElementById(`${ciblee.type}-${ciblee.id}`)
     if (!carte) return
     const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     carte.scrollIntoView({ block: 'center', behavior: reduit ? 'auto' : 'smooth' })
@@ -195,7 +227,27 @@ export default function App() {
       clearTimeout(minuterie)
       carte.classList.remove('ciblee')
     }
-  }, [ciblee, lien])
+  }, [ciblee])
+
+  // Ton profil de joueur (la liste te renvoie toujours le tien, même caché) et la présence « en ligne ».
+  const monProfil = useMemo(() => (joueurs ?? []).find((j) => j.moi) ?? null, [joueurs])
+  const partagerPresence = !!monProfil && monProfil.visible
+  useEffect(() => {
+    if (!utilisateur) {
+      setEnLigne(new Set())
+      return undefined
+    }
+    return suivrePresence(utilisateur.id, partagerPresence, setEnLigne)
+  }, [utilisateur?.id, partagerPresence]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // « Vu pour la dernière fois »: à l'arrivée, puis toutes les 10 minutes tant que le site est ouvert.
+  const aProfil = !!monProfil
+  useEffect(() => {
+    if (!utilisateur || !aProfil) return undefined
+    toucherProfil()
+    const minuterie = setInterval(toucherProfil, 600000)
+    return () => clearInterval(minuterie)
+  }, [utilisateur?.id, aProfil]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Connexion ou déconnexion: on recharge, car les contacts ne sont envoyés qu'aux gens connectés.
   useEffect(() => {
@@ -204,7 +256,7 @@ export default function App() {
 
   useEffect(() => {
     if (!message) return
-    const minuterie = setTimeout(() => setMessage(''), 3500)
+    const minuterie = setTimeout(() => setMessage(''), Math.max(3500, message.length * 70))
     return () => clearTimeout(minuterie)
   }, [message])
 
@@ -227,7 +279,21 @@ export default function App() {
     () => (filtres.faction ? guildesSansFaction.filter((g) => g.faction === filtres.faction) : guildesSansFaction),
     [guildesSansFaction, filtres.faction],
   )
-  const comptes = vue === 'guildes' ? guildesSansFaction : sansFaction
+  const joueursSansFaction = useMemo(
+    () => (joueurs ?? []).filter((j) => correspondJoueur(j, filtres, enLigne)),
+    [joueurs, filtres, enLigne],
+  )
+  // En ligne d'abord, puis les plus récemment vus, puis les mieux recommandés.
+  const joueursVisibles = useMemo(() => {
+    const liste = filtres.faction ? joueursSansFaction.filter((j) => j.faction === filtres.faction) : joueursSansFaction
+    return [...liste].sort(
+      (a, b) =>
+        Number(enLigne.has(b.user_id)) - Number(enLigne.has(a.user_id)) ||
+        new Date(b.vu_le) - new Date(a.vu_le) ||
+        (b.pouces ?? -1) - (a.pouces ?? -1),
+    )
+  }, [joueursSansFaction, filtres.faction, enLigne])
+  const comptes = vue === 'guildes' ? guildesSansFaction : vue === 'joueurs' ? joueursSansFaction : sansFaction
   // Nombre d'annonces par type, avec tous les autres filtres appliqués.
   const sansActivite = useMemo(
     () => annonces.filter((a) => correspond(a, { ...filtres, activite: 'tout' })),
@@ -236,7 +302,8 @@ export default function App() {
   const nombreActivite = (id) => (id === 'tout' ? sansActivite.length : sansActivite.filter((a) => a.activite === id).length)
   const nbPlanifies = useMemo(() => annonces.filter((a) => a.debut).length, [annonces])
 
-  const filtresActifs = JSON.stringify(filtres) !== JSON.stringify(FILTRES_VIDES)
+  const filtresActifs = CLES_GROUPES.some((k) => filtres[k] !== FILTRES_VIDES[k])
+  const filtresJoueursActifs = CLES_JOUEURS.some((k) => filtres[k] !== FILTRES_VIDES[k])
   const nbAutres = [filtres.region, filtres.role, filtres.style].filter(Boolean).length
   const raids = raidsOuverts()
   const compte = compteARebours()
@@ -245,6 +312,12 @@ export default function App() {
   const basculerFaction = (id) => setFiltres((f) => ({ ...f, faction: f.faction === id ? '' : id }))
   const basculer = (cle, valeur) => setFiltres((f) => ({ ...f, [cle]: f[cle] === valeur ? FILTRES_VIDES[cle] : valeur }))
   const ouvrirConnexion = () => setFormulaireOuvert(true)
+  // Depuis la carte d'un joueur: aller à son annonce, dans l'onglet Groupes.
+  const voirAnnonce = (id) => {
+    setVue('groupes')
+    setFiltres(FILTRES_VIDES)
+    setCiblee({ type: 'annonce', id })
+  }
 
   return (
     <>
@@ -274,6 +347,7 @@ export default function App() {
               {utilisateur ? (
                 <p className="session">
                   <span>Connecté: <strong>{utilisateur.nom}</strong></span>
+                  <button type="button" className="lien" onClick={() => setProfilOuvert(true)}>Mon profil</button>
                   <button type="button" className="lien" onClick={deconnecter}>Se déconnecter</button>
                 </p>
               ) : (
@@ -339,6 +413,10 @@ export default function App() {
             <button type="button" className="onglet" aria-pressed={vue === 'guildes'} onClick={() => setVue('guildes')}>
               Guildes <span className="onglet-nombre">{guildes ? guildes.length : 0}</span>
             </button>
+            <button type="button" className="onglet" aria-pressed={vue === 'joueurs'} onClick={() => setVue('joueurs')}>
+              Joueurs
+              {utilisateur && joueurs && <span className="onglet-nombre">{joueurs.length}</span>}
+            </button>
           </div>
 
           <div className="factions" role="group" aria-label="Filtrer par faction">
@@ -357,7 +435,27 @@ export default function App() {
           </div>
         </div>
 
-        {vue === 'guildes' ? (
+        {vue === 'joueurs' ? (
+          <SectionJoueurs
+            joueurs={joueurs}
+            visibles={joueursVisibles}
+            enLigne={enLigne}
+            utilisateur={utilisateur}
+            monProfil={monProfil}
+            onConnexion={ouvrirConnexion}
+            ouvrirProfil={() => setProfilOuvert(true)}
+            apres={charger}
+            annoncer={setMessage}
+            voirAnnonce={voirAnnonce}
+            filtres={filtres}
+            changer={changer}
+            basculer={basculer}
+            filtresActifs={filtresJoueursActifs}
+            effacerFiltres={() =>
+              setFiltres((f) => ({ ...f, ...Object.fromEntries(CLES_JOUEURS.map((k) => [k, FILTRES_VIDES[k]])) }))
+            }
+          />
+        ) : vue === 'guildes' ? (
           <SectionGuildes
             guildes={guildesVisibles}
             disponible={guildes !== null}
@@ -534,14 +632,28 @@ export default function App() {
 
       <Aide ouvert={aideOuverte} fermer={() => setAideOuverte(false)} />
 
+      <ProfilJoueur
+        ouvert={profilOuvert && !!utilisateur}
+        fermer={() => setProfilOuvert(false)}
+        profil={monProfil}
+        factionParDefaut={styleSite === 'horde' ? 'horde' : 'alliance'}
+        apres={charger}
+        annoncer={setMessage}
+      />
+
       <Formulaire
         factionParDefaut={styleSite === 'horde' ? 'horde' : 'alliance'}
         utilisateur={utilisateur}
         ouvert={formulaireOuvert}
         fermer={() => setFormulaireOuvert(false)}
-        apresPublication={async () => {
+        profilExiste={!!monProfil}
+        apresPublication={async ({ profilCree } = {}) => {
           setFormulaireOuvert(false)
-          setMessage('Annonce publiée.')
+          setMessage(
+            profilCree
+              ? 'Annonce publiée. Ton personnage est aussi dans la liste des joueurs: « Mon profil » pour le modifier ou le cacher.'
+              : 'Annonce publiée.',
+          )
           setVue('groupes')
           await charger()
         }}
@@ -746,7 +858,7 @@ const CHOIX_ACTIVITE = [
   ['pvp', 'Du PvP', 'Champ de bataille ou monde ouvert.'],
 ]
 
-function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublication }) {
+function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublication, profilExiste }) {
   const dialogue = useRef(null)
   const [champs, setChamps] = useState(() => {
     const profil = lireProfil()
@@ -929,9 +1041,27 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
         Number(champs.heures),
       )
       ecrireProfil(versProfil(champs))
+      // Premier passage: le personnage entre aussi dans la liste des joueurs. Si ça échoue (base pas à jour,
+      // par exemple), l'annonce est quand même publiée.
+      let profilCree = false
+      try {
+        profilCree = await assurerProfil({
+          perso: champs.perso,
+          classe: champs.classe,
+          faction: champs.faction,
+          region: champs.region,
+          langue: champs.langue,
+          style: champs.style,
+          // Le niveau et les rôles sont ceux du joueur seulement dans une annonce de « joueur seul ».
+          niveau: joueur ? champs.niveau_min : '',
+          roles: joueur && champs.activite !== 'pvp' ? champs.roles : [],
+        })
+      } catch {
+        profilCree = false
+      }
       setChamps((c) => ({ ...FORMULAIRE_VIDE, ...versProfil(c) }))
       setErreurs({})
-      await apresPublication()
+      await apresPublication({ profilCree })
     } catch {
       setErreurServeur("L'annonce n'a pas été publiée. Réessaie dans un instant.")
     } finally {
@@ -1148,6 +1278,7 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
             {LIEN_DISCORD
               ? "Ton contact est visible pour les gens connectés et dans le Discord de la communauté. Il est gardé pour ta prochaine annonce."
               : "Ton contact n'est visible que pour les gens connectés. Il est gardé pour ta prochaine annonce."}
+            {!profilExiste && ' Ton personnage est aussi ajouté à la liste des joueurs (sans ton contact): tu peux te cacher dans « Mon profil ».'}
           </p>
 
           <label className="champ">
