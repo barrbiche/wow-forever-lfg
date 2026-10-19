@@ -1925,6 +1925,90 @@ h2 {
   border: 1px dashed var(--muted);
 }
 
+.puces code {
+  font-family: var(--texte);
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--field);
+  overflow-wrap: anywhere;
+}
+
+/* Choix de la commande d'invitation (à droite du nombre de joueurs). */
+.commande {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-family: var(--texte);
+}
+
+.commande-titre {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.pastille.petite {
+  min-height: 30px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+}
+
+/* Commande d'invitation et BattleTag d'un joueur, avec un bouton Copier. */
+.inviter {
+  display: grid;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-bouton);
+  border: 1px solid var(--line);
+  background: var(--field);
+}
+
+.ligne-copie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.ligne-copie-titre {
+  flex: 0 0 100%;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.ligne-copie code {
+  font-family: var(--texte);
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.ligne-copie-conseil {
+  flex: 0 0 100%;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+@media (min-width: 640px) {
+  .ligne-copie-titre {
+    flex-basis: 150px;
+  }
+
+  .ligne-copie-conseil {
+    flex: 1 1 100%;
+    padding-left: 160px;
+  }
+}
+
 .joueur-actions {
   display: flex;
   flex-wrap: wrap;

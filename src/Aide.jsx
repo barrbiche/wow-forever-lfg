@@ -52,6 +52,26 @@ export default function Aide({ ouvert, fermer }) {
         </section>
 
         <section>
+          <h3>Inviter quelqu'un dans le jeu</h3>
+          <ul className="puces">
+            <li>
+              Sur la carte d'un joueur, « Copier » met la commande dans ton presse-papiers, par exemple{' '}
+              <code>/invite Brokk</code>. Dans le jeu, ouvre le chat (Entrée), colle, puis Entrée: le joueur reçoit ton
+              invitation de groupe.
+            </li>
+            <li>
+              <code>/invite</code> marche dans le jeu en français et en anglais. <code>/inviter</code> marche seulement en
+              français. Choisis celle que tu veux au-dessus de la liste. Si le joueur est sur un autre royaume, il faut
+              parfois écrire <code>/invite Nom-Royaume</code>.
+            </li>
+            <li>
+              Le BattleTag (<code>Nom#1234</code>), quand le joueur l'a écrit dans son profil, sert à l'ajouter comme ami
+              Battle.net. Il ne sert pas à l'inviter dans un groupe: pour ça, c'est le nom du personnage.
+            </li>
+          </ul>
+        </section>
+
+        <section>
           <h3>Les règles</h3>
           <ul className="puces">
             <li>Sois respectueux. Pas d'insultes ni de harcèlement.</li>
@@ -90,8 +110,9 @@ export default function Aide({ ouvert, fermer }) {
             <li>
               <strong>Ton profil de joueur.</strong> Il est créé quand tu publies ta première annonce, ou quand tu le
               remplis toi-même dans « Mon profil ». Il contient ton personnage (nom, faction, région, langue, style et, si
-              tu les donnes, classe, niveau, rôles, guilde et petit mot), jamais ton contact. Seules les personnes
-              connectées voient la liste des joueurs. Dans « Mon profil », tu peux tout modifier, te cacher de la liste ou
+              tu les donnes, classe, niveau, rôles, guilde et petit mot) et, seulement si tu l'écris, ton BattleTag. Le
+              contact de tes annonces n'y est jamais. Seules les personnes connectées voient la liste des joueurs et les
+              BattleTag. Dans « Mon profil », tu peux tout modifier, te cacher de la liste ou
               supprimer ton profil.
             </li>
             <li>

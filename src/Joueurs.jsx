@@ -1,7 +1,29 @@
 import { useEffect, useRef, useState } from 'react'
-import { ecrireProfil, enregistrerProfil, lireProfil, modeDemo, recommander, retirerReco, supprimerProfil } from './store.js'
-import { CLASSES, ETIQUETTES, FACTIONS, LANGUES, REGIONS, ROLES, STYLES, nomDe } from './data.js'
-import { Icone, Signalement } from './commun.jsx'
+import {
+  ecrireCommande,
+  ecrireProfil,
+  enregistrerProfil,
+  lireCommande,
+  lireProfil,
+  modeDemo,
+  recommander,
+  retirerReco,
+  supprimerProfil,
+} from './store.js'
+import {
+  BATTLETAG_FORMAT,
+  CLASSES,
+  COMMANDES_INVITER,
+  ETIQUETTES,
+  FACTIONS,
+  LANGUES,
+  REGIONS,
+  ROLES,
+  STYLES,
+  nomDe,
+  normaliserBattleTag,
+} from './data.js'
+import { Icone, LigneCopie, Signalement } from './commun.jsx'
 
 // ---------- Onglet « Joueurs »: les profils, qui est en ligne, la réputation ----------
 
@@ -32,6 +54,12 @@ export default function SectionJoueurs({
   filtresActifs,
   effacerFiltres,
 }) {
+  const [commande, setCommande] = useState(lireCommande)
+  const choisirCommande = (id) => {
+    setCommande(id)
+    ecrireCommande(id)
+  }
+
   if (!utilisateur) {
     return (
       <div className="vide">
@@ -134,6 +162,21 @@ export default function SectionJoueurs({
             Effacer les filtres
           </button>
         )}
+        <div className="commande" role="group" aria-label="Commande copiée pour inviter un joueur">
+          <span className="commande-titre">Inviter avec</span>
+          {COMMANDES_INVITER.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className="pastille petite"
+              aria-pressed={commande === c.id}
+              title={c.aide}
+              onClick={() => choisirCommande(c.id)}
+            >
+              {c.texte}
+            </button>
+          ))}
+        </div>
       </div>
 
       {visibles.length === 0 ? (
@@ -154,6 +197,7 @@ export default function SectionJoueurs({
             <li key={j.user_id}>
               <CarteJoueur
                 joueur={j}
+                commande={COMMANDES_INVITER.find((c) => c.id === commande).texte}
                 enLigne={enLigne.has(j.user_id)}
                 utilisateur={utilisateur}
                 aProfil={!!monProfil}
@@ -173,7 +217,7 @@ export default function SectionJoueurs({
 
 // ---------- Carte d'un joueur ----------
 
-function CarteJoueur({ joueur: j, enLigne, utilisateur, aProfil, ouvrirProfil, apres, annoncer, voirAnnonce, onConnexion }) {
+function CarteJoueur({ joueur: j, commande, enLigne, utilisateur, aProfil, ouvrirProfil, apres, annoncer, voirAnnonce, onConnexion }) {
   const classe = CLASSES.find((c) => c.id === j.classe)
   const [choisir, setChoisir] = useState(false)
   const [choix, setChoix] = useState([])
@@ -296,6 +340,25 @@ function CarteJoueur({ joueur: j, enLigne, utilisateur, aProfil, ouvrirProfil, a
           </div>
         )}
 
+        {(!j.moi || j.battletag) && (
+          <div className="inviter">
+            {!j.moi && (
+              <LigneCopie
+                titre="Inviter dans le jeu"
+                valeur={`${commande} ${j.perso}`}
+                conseil="Dans le jeu: ouvre le chat (Entrée), colle, puis Entrée."
+              />
+            )}
+            {j.battletag && (
+              <LigneCopie
+                titre="BattleTag"
+                valeur={j.battletag}
+                conseil="Colle-le dans Battle.net pour l'ajouter comme ami."
+              />
+            )}
+          </div>
+        )}
+
         {j.moi ? (
           <div className="gestion">
             <span className="moi">C'est ton profil{j.visible ? '' : ' (caché de la liste)'}</span>
@@ -388,6 +451,7 @@ const PROFIL_VIDE = {
   style: 'relax',
   guilde: '',
   bio: '',
+  battletag: '',
   visible: true,
 }
 
@@ -406,6 +470,7 @@ function champsInitiaux(profil, factionParDefaut) {
       style: profil.style,
       guilde: profil.guilde ?? '',
       bio: profil.bio ?? '',
+      battletag: profil.battletag ?? '',
       visible: profil.visible !== false,
     }
   }
@@ -458,6 +523,9 @@ export function ProfilJoueur({ ouvert, fermer, profil, factionParDefaut, apres, 
     if (!champs.perso.trim()) e.perso = 'Écris le nom de ton personnage.'
     if (champs.niveau !== '' && !(Number(champs.niveau) >= 1 && Number(champs.niveau) <= 60)) {
       e.niveau = 'Entre 1 et 60, ou laisse vide.'
+    }
+    if (champs.battletag.trim() && !BATTLETAG_FORMAT.test(normaliserBattleTag(champs.battletag))) {
+      e.battletag = "Écris-le comme Nom#1234: un nom de 3 à 12 caractères, un dièse, puis 4 à 8 chiffres."
     }
     setErreurs(e)
     return Object.keys(e).length === 0
@@ -592,13 +660,34 @@ export function ProfilJoueur({ ouvert, fermer, profil, factionParDefaut, apres, 
           <small>{champs.bio.length} / 160</small>
         </label>
 
+        <label className="champ">
+          <span>BattleTag (facultatif)</span>
+          <input
+            type="text"
+            maxLength={24}
+            autoComplete="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            placeholder="Nom#1234"
+            value={champs.battletag}
+            onChange={(e) => maj('battletag', e.target.value)}
+            aria-invalid={!!erreurs.battletag}
+            aria-describedby="aide-battletag"
+          />
+          {erreur('battletag')}
+        </label>
+        <p className="aide" id="aide-battletag">
+          Pour que les autres joueurs puissent t'ajouter comme ami. Toutes les personnes connectées au site le voient sur
+          ton profil, avec un bouton pour le copier. Laisse vide pour ne pas le montrer.
+        </p>
+
         <label className="case visibilite">
           <input type="checkbox" checked={champs.visible} onChange={(e) => maj('visible', e.target.checked)} />
           <span>Apparaître dans la liste des joueurs</span>
         </label>
         <p className="aide">
-          Seules les personnes connectées voient la liste, et tu y es « en ligne » quand le site est ouvert. Ton contact
-          (Discord, BattleTag) n'y est jamais. Décoche la case pour te cacher en tout temps.
+          Seules les personnes connectées voient la liste, et tu y es « en ligne » quand le site est ouvert. Le contact de
+          tes annonces n'y est jamais. Décoche la case pour te cacher en tout temps (ton BattleTag aussi).
         </p>
 
         {modeDemo && (

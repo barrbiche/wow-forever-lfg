@@ -179,6 +179,36 @@ export function BoutonDiscord({ petit = false }) {
   )
 }
 
+// Une ligne « titre, texte, bouton Copier » (commande d'invitation, BattleTag). Le bouton garde « Copié » à l'écran
+// quelques secondes, avec un petit conseil facultatif. Si le presse-papiers est bloqué, le texte s'affiche pour
+// être copié à la main.
+export function LigneCopie({ titre, valeur, conseil }) {
+  const [copie, setCopie] = useState(false)
+
+  const copier = async () => {
+    try {
+      await navigator.clipboard.writeText(valeur)
+    } catch {
+      window.prompt('Copie ceci:', valeur)
+      return
+    }
+    setCopie(true)
+    setTimeout(() => setCopie(false), 3500)
+  }
+
+  return (
+    <div className="ligne-copie">
+      <span className="ligne-copie-titre">{titre}</span>
+      <code>{valeur}</code>
+      <button type="button" className="bouton petit" onClick={copier} aria-label={`Copier ${titre}: ${valeur}`}>
+        {copie ? 'Copié' : 'Copier'}
+      </button>
+      <span className="sr" role="status">{copie ? 'Copié' : ''}</span>
+      {copie && conseil && <span className="ligne-copie-conseil">{conseil}</span>}
+    </div>
+  )
+}
+
 // Copie l'adresse directe d'une annonce ou d'une guilde (type: 'annonce' ou 'guilde').
 export function LienDirect({ type, id }) {
   const [copie, setCopie] = useState(false)

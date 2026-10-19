@@ -2,6 +2,7 @@
 //  - Supabase, si VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY sont définies (vrai site)
 //  - Démo, sinon: les annonces restent dans le navigateur (pour essayer le site sans rien configurer)
 import { createClient } from '@supabase/supabase-js'
+import { COMMANDES_INVITER, normaliserBattleTag } from './data.js'
 
 const url = import.meta.env.VITE_SUPABASE_URL
 const cle = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -16,6 +17,7 @@ const CLE_CONNEXION_DEMO = 'forever-demo-connecte'
 const EVENEMENT_DEMO = 'forever-demo-connexion'
 const CLE_GUILDES_DEMO = 'forever-demo-guildes'
 const CLE_PROFIL = 'forever-profil'
+const CLE_COMMANDE = 'forever-commande'
 const UTILISATEUR_DEMO = { id: 'demo', nom: 'Joueur démo', contact: 'ton_discord' }
 
 function connexionDemo() {
@@ -391,6 +393,24 @@ export function lireProfil() {
   }
 }
 
+// Commande d'invitation que les boutons « Copier » donnent (« invite » ou « inviter »).
+export function lireCommande() {
+  try {
+    const id = localStorage.getItem(CLE_COMMANDE)
+    return COMMANDES_INVITER.some((c) => c.id === id) ? id : COMMANDES_INVITER[0].id
+  } catch {
+    return COMMANDES_INVITER[0].id
+  }
+}
+
+export function ecrireCommande(id) {
+  try {
+    localStorage.setItem(CLE_COMMANDE, id)
+  } catch {
+    // navigation privée: le choix n'est pas gardé pour la prochaine visite
+  }
+}
+
 export function ecrireProfil(profil) {
   try {
     localStorage.setItem(CLE_PROFIL, JSON.stringify(profil))
@@ -407,6 +427,7 @@ const EN_LIGNE_DEMO = ['demo-j-thalyn', 'demo-j-mirabelle']
 const JOUEUR_VIDE = {
   guilde: '',
   bio: '',
+  battletag: '',
   visible: true,
   pouces: 0,
   etiquettes: {},
@@ -423,7 +444,7 @@ function joueursDemo() {
     j({
       user_id: 'demo-j-thalyn', perso: 'Thalyn', classe: 'mage', niveau: 38, roles: ['dps'], faction: 'alliance',
       region: 'US', langue: 'fr', style: 'relax', guilde: 'Les Braves du Nord',
-      bio: 'Mage de Québec, je joue surtout en soirée.', vu_le: minutes(4),
+      bio: 'Mage de Québec, je joue surtout en soirée.', battletag: 'Thalyn#1234', vu_le: minutes(4),
       pouces: 12, etiquettes: { sympa: 9, ponctuel: 7, competent: 4 },
     }),
     j({
@@ -434,7 +455,7 @@ function joueursDemo() {
     }),
     j({
       user_id: 'demo-j-grumash', perso: 'Grumash', classe: 'chasseur', niveau: 55, roles: ['dps'], faction: 'horde',
-      region: 'US', langue: 'fr', style: 'competitif', guilde: 'Sang et Fer', vu_le: minutes(95),
+      region: 'US', langue: 'fr', style: 'competitif', guilde: 'Sang et Fer', battletag: 'Grumash#5678', vu_le: minutes(95),
       pouces: 8, etiquettes: { competent: 6, bon_chef: 3 },
     }),
     j({
@@ -537,7 +558,8 @@ export async function assurerProfil(champs) {
 }
 
 export async function enregistrerProfil(champs) {
-  const ligne = versLigneProfil(champs)
+  // Le BattleTag n'est écrit que par ce formulaire (jamais par le profil créé avec une annonce).
+  const ligne = { ...versLigneProfil(champs), battletag: normaliserBattleTag(champs.battletag) }
   if (modeDemo) {
     const liste = lireJoueursDemo()
     ecrireJoueursDemo(
@@ -549,7 +571,13 @@ export async function enregistrerProfil(champs) {
   }
   const uid = await idConnecte()
   if (!uid) throw new Error('connexion requise')
-  const { error } = await supabase.from('profils').upsert({ user_id: uid, ...ligne }, { onConflict: 'user_id' })
+  let { error } = await supabase.from('profils').upsert({ user_id: uid, ...ligne }, { onConflict: 'user_id' })
+  if (error?.code === 'PGRST204' && !ligne.battletag) {
+    // La base n'a pas encore la colonne « battletag » (ameliorations4.sql pas encore roulé de nouveau): on enregistre le reste.
+    const sansBattleTag = { ...ligne }
+    delete sansBattleTag.battletag
+    ;({ error } = await supabase.from('profils').upsert({ user_id: uid, ...sansBattleTag }, { onConflict: 'user_id' }))
+  }
   if (error) throw error
 }
 

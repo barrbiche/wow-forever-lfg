@@ -6,8 +6,9 @@
 --
 -- Ce qui est visible, et par qui:
 --   - La liste des joueurs n'est visible que pour les gens connectés (jamais pour les visiteurs).
---   - Un profil contient seulement le personnage (nom, classe, niveau, rôles, faction, région, langue, style,
---     guilde, petit mot). Aucun contact, aucun courriel.
+--   - Un profil contient le personnage (nom, classe, niveau, rôles, faction, région, langue, style, guilde,
+--     petit mot) et, seulement si le joueur l'écrit lui-même, son BattleTag (colonne « battletag »). Pas de
+--     courriel, pas d'autre contact. Le BattleTag n'est visible que pour les gens connectés.
 --   - Un joueur peut se cacher de la liste en tout temps (colonne « visible »).
 --   - Qui a donné un pouce ou un signalement n'est jamais montré aux autres joueurs.
 --   - Trois signalements de trois personnes différentes mettent la réputation du joueur « en vérification »:
@@ -35,6 +36,12 @@ create table if not exists public.profils (
   vu_le      timestamptz not null default now()
 );
 
+-- BattleTag facultatif (Nom#1234), écrit par le joueur. Vide = rien n'est montré aux autres.
+-- Format: un nom de 3 à 12 caractères sans espace, un dièse, puis 4 à 8 chiffres.
+alter table public.profils
+  add column if not exists battletag text not null default ''
+  check (battletag = '' or battletag ~ '^[^[:space:]#]{3,12}#[0-9]{4,8}$');
+
 alter table public.profils enable row level security;
 
 -- Chacun ne voit directement que son propre profil; la liste des autres passe par lister_joueurs().
@@ -56,11 +63,11 @@ create policy "suppression de son profil" on public.profils
 
 revoke all on public.profils from anon, authenticated;
 grant select, delete on public.profils to authenticated;
-grant insert (user_id, perso, classe, niveau, roles, faction, region, langue, style, guilde, bio, visible)
+grant insert (user_id, perso, classe, niveau, roles, faction, region, langue, style, guilde, bio, battletag, visible)
   on public.profils to authenticated;
 -- user_id figure dans la liste parce que le site enregistre son profil en « upsert » (qui réécrit toutes les
 -- colonnes envoyées). La règle de sécurité exige de toute façon user_id = auth.uid() avant et après.
-grant update (user_id, perso, classe, niveau, roles, faction, region, langue, style, guilde, bio, visible, vu_le)
+grant update (user_id, perso, classe, niveau, roles, faction, region, langue, style, guilde, bio, battletag, visible, vu_le)
   on public.profils to authenticated;
 
 -- ============================================================
@@ -107,7 +114,10 @@ revoke all on public.signalements_joueurs from anon, authenticated;
 -- Retourne les profils visibles (et le tien, même caché) avec la réputation calculée.
 -- Quand un joueur a trois signalements de personnes différentes, ses pouces et étiquettes sont retirés
 -- et « en_revision » vaut vrai. Les visiteurs non connectés reçoivent une liste vide.
-create or replace function public.lister_joueurs()
+-- (drop: la liste des colonnes retournées a changé, ce qu'un simple « create or replace » refuse.)
+drop function if exists public.lister_joueurs();
+
+create function public.lister_joueurs()
 returns table (
   user_id         uuid,
   perso           text,
@@ -120,6 +130,7 @@ returns table (
   style           text,
   guilde          text,
   bio             text,
+  battletag       text,
   visible         boolean,
   vu_le           timestamptz,
   pouces          int,
@@ -137,6 +148,7 @@ set search_path = public
 as $$
   select
     p.user_id, p.perso, p.classe, p.niveau, p.roles, p.faction, p.region, p.langue, p.style, p.guilde, p.bio,
+    p.battletag,
     p.visible,
     date_bin('10 minutes', p.vu_le, timestamptz '2000-01-01'),
     case when coalesce(s.nb, 0) >= 3 then null else coalesce(r.nb, 0) end,
