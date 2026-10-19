@@ -1,16 +1,19 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   assurerProfil,
   connecter,
+  compteSuspendu,
   creerAnnonce,
   deconnecter,
   discordActif,
   envoyerLienCourriel,
   ecrireProfil,
+  estModerateur,
   lireAnnonces,
   lireGuildes,
   lireJoueurs,
   lireProfil,
+  MESSAGE_COMPTE_SUSPENDU,
   modeDemo,
   retirerAnnonce,
   renouvelerAnnonce,
@@ -41,6 +44,7 @@ import {
 } from './data.js'
 import {
   BoutonDiscord,
+  CommandeAnnonce,
   Contact,
   Icone,
   LienDirect,
@@ -56,10 +60,30 @@ import {
   reste,
   versChampDate,
 } from './commun.jsx'
+import { telechargerIcs } from './calendrier.js'
+import {
+  Alerte,
+  demanderNotifications,
+  ecrireAlerte,
+  etatNotifications,
+  filtresDeAlerte,
+  lireAlerte,
+  notifierAnnonce,
+  texteNouvelleAnnonce,
+} from './alertes.jsx'
 import Aide from './Aide.jsx'
 import SectionGuildes from './Guildes.jsx'
 import SectionJoueurs, { ProfilJoueur } from './Joueurs.jsx'
 import { LIEN_DISCORD } from './config.js'
+
+// La page de modération ne sert qu'aux modérateurs: elle n'est chargée que quand on l'ouvre.
+const Moderation = lazy(() => import('./Moderation.jsx').then((m) => ({ default: m.Moderation })))
+// Les guides de donjons (beaucoup de texte) ne sont chargés que quand on ouvre l'onglet.
+const Guides = lazy(() => import('./Guides.jsx'))
+// Tous les donjons de ces listes ont un guide (voir guides-data.js).
+const AVEC_GUIDE = new Set([...DONJONS_NOUVEAUX, ...DONJONS_CLASSIQUES])
+
+const TITRE_PAGE = 'Babillard Forever'
 
 const FILTRES_VIDES = {
   activite: 'tout',
@@ -136,9 +160,10 @@ function appliquerStyle(style) {
   }
 }
 
-// Adresse directe vers une annonce ou une guilde: ?annonce=ID ou ?guilde=ID.
+// Adresse directe vers une annonce, une guilde ou un guide: ?annonce=ID, ?guilde=ID ou ?guide=ID.
 function lireLienDirect() {
   const p = new URLSearchParams(window.location.search)
+  if (p.get('guide')) return { type: 'guide', id: p.get('guide') }
   if (p.get('annonce')) return { type: 'annonce', id: p.get('annonce') }
   if (p.get('guilde')) return { type: 'guilde', id: p.get('guilde') }
   return null
@@ -167,13 +192,67 @@ export default function App() {
   const [lien] = useState(lireLienDirect)
   const [lienTraite, setLienTraite] = useState(false)
   const [ciblee, setCiblee] = useState(null) // { type: 'annonce' | 'guilde', id }
+  const [guideCible, setGuideCible] = useState(null) // { valeur: id ou nom du donjon, n }
   const [joueurs, setJoueurs] = useState([]) // null: pas encore disponibles (ex.: base pas à jour)
   const [enLigne, setEnLigne] = useState(() => new Set())
   const [profilOuvert, setProfilOuvert] = useState(false)
+  const [moderateur, setModerateur] = useState(false)
+  const [moderationOuverte, setModerationOuverte] = useState(false)
+
+  // Alertes de nouvelles annonces: voir alertes.jsx. `vues` retient les annonces déjà connues (la première lecture
+  // n'est jamais « nouvelle »); les refs permettent à `charger` de rester stable.
+  const [alerte, setAlerte] = useState(lireAlerte)
+  const [etatNotif, setEtatNotif] = useState(etatNotifications)
+  const [nouvelles, setNouvelles] = useState(() => new Set())
+  const [avis, setAvis] = useState(null) // { texte, ids }
+  const vuesRef = useRef(null)
+  const alerteRef = useRef(alerte)
+  const utilisateurRef = useRef(null)
+  const voirAvisRef = useRef(null)
+  const nonLusRef = useRef(0)
+  useEffect(() => {
+    alerteRef.current = alerte
+  }, [alerte])
+  useEffect(() => {
+    utilisateurRef.current = utilisateur
+  }, [utilisateur])
+
+  const detecterNouvelles = useCallback((liste) => {
+    if (vuesRef.current === null) {
+      vuesRef.current = new Set(liste.map((a) => a.id))
+      return
+    }
+    const vues = vuesRef.current
+    const neuves = liste.filter((a) => !vues.has(a.id))
+    neuves.forEach((a) => vues.add(a.id))
+    const miennes = utilisateurRef.current?.id
+    const autres = neuves.filter((a) => !miennes || a.user_id !== miennes)
+    if (autres.length === 0) return
+    setNouvelles((avant) => new Set([...avant, ...autres.map((a) => a.id)]))
+    const regle = alerteRef.current
+    if (!regle) return
+    const concernees = autres.filter((a) => correspond(a, { ...FILTRES_VIDES, ...regle.filtres }))
+    if (concernees.length === 0) return
+    const ids = concernees.map((a) => a.id)
+    setAvis({
+      ids,
+      texte:
+        concernees.length === 1
+          ? texteNouvelleAnnonce(concernees[0]).corps
+          : `${concernees.length} nouvelles annonces qui t'intéressent`,
+    })
+    if (document.hidden) {
+      nonLusRef.current += concernees.length
+      document.title = `(${nonLusRef.current}) ${TITRE_PAGE}`
+      concernees.slice(0, 3).forEach((a) => notifierAnnonce(a, () => voirAvisRef.current?.({ ids: [a.id] })))
+    }
+  }, [])
 
   const charger = useCallback(async () => {
     try {
-      setAnnonces(await lireAnnonces())
+      const liste = await lireAnnonces()
+      setAnnonces(liste)
+      detecterNouvelles(liste)
       setErreur('')
     } catch {
       setErreur('Impossible de charger les annonces. Vérifie ta connexion, puis réessaie.')
@@ -190,7 +269,7 @@ export default function App() {
     } catch {
       setJoueurs(null)
     }
-  }, [])
+  }, [detecterNouvelles])
 
   useEffect(() => {
     const minuterie = setInterval(charger, 30000)
@@ -202,7 +281,15 @@ export default function App() {
   // Adresse directe (?annonce=... ou ?guilde=...): une fois la liste chargée, on montre la bonne section,
   // on enlève les filtres, puis on défile jusqu'à la carte et on la met en évidence un instant.
   useEffect(() => {
-    if (!lien || lienTraite || chargement) return
+    if (!lien || lienTraite) return
+    if (lien.type === 'guide') {
+      // Un guide ne dépend pas des annonces: on y va tout de suite.
+      setLienTraite(true)
+      setVue('guides')
+      setGuideCible({ valeur: lien.id, n: 1 })
+      return
+    }
+    if (chargement) return
     const liste = lien.type === 'guilde' ? guildes : annonces
     if (liste === null) return
     setLienTraite(true)
@@ -250,6 +337,21 @@ export default function App() {
     return () => clearInterval(minuterie)
   }, [utilisateur?.id, aProfil]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Le lien « Modération » n'apparaît que pour un modérateur (le serveur revérifie chaque action).
+  useEffect(() => {
+    let actif = true
+    setModerateur(false)
+    setModerationOuverte(false)
+    if (utilisateur) {
+      estModerateur().then((oui) => {
+        if (actif) setModerateur(oui)
+      })
+    }
+    return () => {
+      actif = false
+    }
+  }, [utilisateur?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Connexion ou déconnexion: on recharge, car les contacts ne sont envoyés qu'aux gens connectés.
   useEffect(() => {
     charger()
@@ -260,6 +362,24 @@ export default function App() {
     const minuterie = setTimeout(() => setMessage(''), Math.max(3500, message.length * 70))
     return () => clearTimeout(minuterie)
   }, [message])
+
+  useEffect(() => {
+    if (!avis) return undefined
+    const minuterie = setTimeout(() => setAvis(null), 15000)
+    return () => clearTimeout(minuterie)
+  }, [avis])
+
+  // De retour sur l'onglet: on enlève le compteur du titre et on relit la permission des notifications.
+  useEffect(() => {
+    const auRetour = () => {
+      if (document.hidden) return
+      nonLusRef.current = 0
+      document.title = TITRE_PAGE
+      setEtatNotif(etatNotifications())
+    }
+    document.addEventListener('visibilitychange', auRetour)
+    return () => document.removeEventListener('visibilitychange', auRetour)
+  }, [])
 
   // Les compteurs Alliance / Horde tiennent compte de tous les filtres sauf la faction elle-même.
   const sansFaction = useMemo(
@@ -327,6 +447,46 @@ export default function App() {
     setCiblee({ type: 'annonce', id })
   }
 
+  // Depuis une annonce de donjon: ouvrir le guide de ce donjon.
+  const voirGuide = (donjon) => {
+    setVue('guides')
+    setGuideCible({ valeur: donjon, n: Date.now() })
+  }
+
+  // Depuis une alerte: une seule annonce -> on va à sa carte; plusieurs -> on montre la liste avec les filtres de l'alerte.
+  const voirAvis = (a) => {
+    setAvis(null)
+    setVue('groupes')
+    setFiltres(a.ids.length > 1 && alerte ? { ...FILTRES_VIDES, ...alerte.filtres } : FILTRES_VIDES)
+    setCiblee({ type: 'annonce', id: a.ids[0] })
+  }
+  voirAvisRef.current = voirAvis
+
+  const activerAlerte = async () => {
+    const regle = { filtres: filtresDeAlerte(filtres) }
+    ecrireAlerte(regle)
+    setAlerte(regle)
+    const etat = await demanderNotifications()
+    setEtatNotif(etat)
+    setMessage(
+      etat === 'autorisees'
+        ? 'Alerte activée. Une notification du navigateur t\'avertira quand le site est dans un autre onglet.'
+        : 'Alerte activée. Tu seras averti dans la page.',
+    )
+  }
+  const remplacerAlerte = () => {
+    const regle = { filtres: filtresDeAlerte(filtres) }
+    ecrireAlerte(regle)
+    setAlerte(regle)
+    setMessage('Alerte mise à jour avec tes filtres.')
+  }
+  const arreterAlerte = () => {
+    ecrireAlerte(null)
+    setAlerte(null)
+    setMessage('Alerte arrêtée.')
+  }
+  const autoriserNotifications = async () => setEtatNotif(await demanderNotifications())
+
   return (
     <>
       <header className="haut">
@@ -356,6 +516,9 @@ export default function App() {
                 <p className="session">
                   <span>Connecté: <strong>{utilisateur.nom}</strong></span>
                   <button type="button" className="lien" onClick={() => setProfilOuvert(true)}>Mon profil</button>
+                  {moderateur && (
+                    <button type="button" className="lien" onClick={() => setModerationOuverte(true)}>Modération</button>
+                  )}
                   <button type="button" className="lien" onClick={deconnecter}>Se déconnecter</button>
                 </p>
               ) : (
@@ -427,25 +590,34 @@ export default function App() {
               Joueurs
               {utilisateur && joueurs && <span className="onglet-nombre">{joueurs.length}</span>}
             </button>
+            <button type="button" className="onglet" aria-pressed={vue === 'guides'} onClick={() => setVue('guides')}>
+              Guides
+            </button>
           </div>
 
-          <div className="factions" role="group" aria-label="Filtrer par faction">
-            {FACTIONS.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                className={`faction-bouton ${f.id}`}
-                aria-pressed={filtres.faction === f.id}
-                onClick={() => basculerFaction(f.id)}
-              >
-                <span className="faction-nombre">{comptes.filter((a) => a.faction === f.id).length}</span>
-                <span className="faction-nom">{f.nom}</span>
-              </button>
-            ))}
-          </div>
+          {vue !== 'guides' && (
+            <div className="factions" role="group" aria-label="Filtrer par faction">
+              {FACTIONS.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  className={`faction-bouton ${f.id}`}
+                  aria-pressed={filtres.faction === f.id}
+                  onClick={() => basculerFaction(f.id)}
+                >
+                  <span className="faction-nombre">{comptes.filter((a) => a.faction === f.id).length}</span>
+                  <span className="faction-nom">{f.nom}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        {vue === 'joueurs' ? (
+        {vue === 'guides' ? (
+          <Suspense fallback={<p className="aide" role="status">Chargement des guides…</p>}>
+            <Guides cible={guideCible} />
+          </Suspense>
+        ) : vue === 'joueurs' ? (
           <SectionJoueurs
             joueurs={joueurs}
             visibles={joueursVisibles}
@@ -577,6 +749,16 @@ export default function App() {
               )}
             </div>
 
+            <Alerte
+              alerte={alerte}
+              filtres={filtres}
+              etat={etatNotif}
+              activer={activerAlerte}
+              remplacer={remplacerAlerte}
+              arreter={arreterAlerte}
+              autoriser={autoriserNotifications}
+            />
+
             {erreur && <p className="erreur" role="alert">{erreur}</p>}
 
             {chargement ? (
@@ -603,8 +785,10 @@ export default function App() {
                     <li>
                       <Carte
                         annonce={a}
+                        nouvelle={nouvelles.has(a.id)}
                         profil={joueursParId.get(a.user_id)}
                         voirProfil={voirProfil}
+                        voirGuide={voirGuide}
                         proprietaire={!!utilisateur && a.user_id === utilisateur.id}
                         utilisateur={utilisateur}
                         onConnexion={ouvrirConnexion}
@@ -647,6 +831,12 @@ export default function App() {
 
       <Aide ouvert={aideOuverte} fermer={() => setAideOuverte(false)} />
 
+      {moderateur && moderationOuverte && (
+        <Suspense fallback={null}>
+          <Moderation ouvert fermer={() => setModerationOuverte(false)} apres={charger} annoncer={setMessage} />
+        </Suspense>
+      )}
+
       <ProfilJoueur
         ouvert={profilOuvert && !!utilisateur}
         fermer={() => setProfilOuvert(false)}
@@ -674,6 +864,15 @@ export default function App() {
         }}
       />
 
+      {avis && (
+        <div className="toast alerte-toast" role="status">
+          <Icone nom="cloche" taille={16} />
+          <span>{avis.texte}</span>
+          <button type="button" className="lien" onClick={() => voirAvis(avis)}>Voir</button>
+          <button type="button" className="lien" onClick={() => setAvis(null)}>Fermer</button>
+        </div>
+      )}
+
       {message && <div className="toast" role="status">{message}</div>}
     </>
   )
@@ -681,7 +880,7 @@ export default function App() {
 
 // ---------- Carte d'annonce ----------
 
-function Carte({ annonce: a, profil, voirProfil, proprietaire, utilisateur, onConnexion, apres }) {
+function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietaire, utilisateur, onConnexion, apres }) {
   const [probleme, setProbleme] = useState('')
   const joueur = a.genre === 'joueur'
   const classe = CLASSES.find((c) => c.id === a.classe)
@@ -692,6 +891,7 @@ function Carte({ annonce: a, profil, voirProfil, proprietaire, utilisateur, onCo
   const effectif = tailleRaid ? Math.max(0, tailleRaid - manque) : 0
   const dureeTotale = new Date(a.expires_at) - new Date(a.created_at)
   const peutRenouveler = !a.debut && partRestante(a) < 0.5
+  const aGuide = a.activite === 'donjon' && AVEC_GUIDE.has(a.cible)
 
   const gerer = async (action) => {
     setProbleme('')
@@ -730,6 +930,7 @@ function Carte({ annonce: a, profil, voirProfil, proprietaire, utilisateur, onCo
         </div>
 
         <ul className="infos">
+          {nouvelle && <li className="chip nouveau">Nouveau</li>}
           {classe && (
             <li className="chip classe">
               <span className="classe-point" style={{ background: classe.couleur }} aria-hidden="true" />
@@ -812,6 +1013,8 @@ function Carte({ annonce: a, profil, voirProfil, proprietaire, utilisateur, onCo
           <Contact contact={a.contact} onConnexion={onConnexion} />
         </div>
 
+        {!proprietaire && <CommandeAnnonce annonce={a} />}
+
         {proprietaire ? (
           <div className="gestion">
             {!joueur &&
@@ -828,6 +1031,16 @@ function Carte({ annonce: a, profil, voirProfil, proprietaire, utilisateur, onCo
             <button type="button" className="bouton petit danger" onClick={() => gerer(() => retirerAnnonce(a.id))}>
               {joueur ? "J'ai trouvé un groupe" : "Retirer l'annonce"}
             </button>
+            {a.debut && (
+              <button type="button" className="lien signaler" onClick={() => telechargerIcs(a)}>
+                Ajouter à mon calendrier
+              </button>
+            )}
+            {aGuide && (
+              <button type="button" className="lien signaler" onClick={() => voirGuide(a.cible)}>
+                Voir le guide
+              </button>
+            )}
             <LienDirect type="annonce" id={a.id} />
             {probleme && <p className="msg-erreur" role="alert">{probleme}</p>}
           </div>
@@ -836,6 +1049,16 @@ function Carte({ annonce: a, profil, voirProfil, proprietaire, utilisateur, onCo
             {profil && (
               <button type="button" className="lien signaler" onClick={() => voirProfil(profil.user_id)}>
                 Voir le profil
+              </button>
+            )}
+            {a.debut && (
+              <button type="button" className="lien signaler" onClick={() => telechargerIcs(a)}>
+                Ajouter à mon calendrier
+              </button>
+            )}
+            {aGuide && (
+              <button type="button" className="lien signaler" onClick={() => voirGuide(a.cible)}>
+                Voir le guide
               </button>
             )}
             <LienDirect type="annonce" id={a.id} />
@@ -1091,8 +1314,8 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
       setChamps((c) => ({ ...FORMULAIRE_VIDE, ...versProfil(c) }))
       setErreurs({})
       await apresPublication({ profilCree })
-    } catch {
-      setErreurServeur("L'annonce n'a pas été publiée. Réessaie dans un instant.")
+    } catch (e) {
+      setErreurServeur(compteSuspendu(e) ? MESSAGE_COMPTE_SUSPENDU : "L'annonce n'a pas été publiée. Réessaie dans un instant.")
     } finally {
       setEnvoi(false)
     }

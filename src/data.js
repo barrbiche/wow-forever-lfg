@@ -214,10 +214,3 @@ export const BATTLETAG_FORMAT = /^[^\s#]{3,12}#[0-9]{4,8}$/u
 export function normaliserBattleTag(texte) {
   return String(texte ?? '').replace(/\s+/g, '')
 }
-
-// Commandes du jeu pour inviter quelqu'un dans son groupe. « /invite » est comprise par le jeu en français et
-// en anglais; « /inviter » seulement par le jeu en français.
-export const COMMANDES_INVITER = [
-  { id: 'invite', texte: '/invite', aide: 'Marche dans le jeu en français et en anglais.' },
-  { id: 'inviter', texte: '/inviter', aide: 'Marche seulement dans le jeu en français.' },
-]

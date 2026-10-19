@@ -1,6 +1,6 @@
 # Babillard Forever
 
-Petit site pour trouver du monde avec qui jouer dans WoW Forever: annonces de groupes (donjons, raids, PvP) ou de joueurs seuls, agenda des sorties planifiées, babillard de guildes qui recrutent, avec filtres (faction, règles de jeu, région, rôle, niveau, langue).
+Petit site pour trouver du monde avec qui jouer dans WoW Forever: annonces de groupes (donjons, raids, PvP) ou de joueurs seuls, agenda des sorties planifiées, babillard de guildes qui recrutent, avec filtres (faction, règles de jeu, région, rôle, niveau, langue), liste de joueurs, guides de donjons et une page de modération.
 
 Stack: Vite + React, base de données Supabase, hébergement Netlify (déploiement automatique à chaque push sur `main`).
 
@@ -27,6 +27,8 @@ Sans configuration, le site tourne en **mode démo**: les annonces restent dans 
 8. SQL Editor > New query: colle aussi `supabase/ameliorations3.sql`, puis Run (composition de raid avec le nombre de joueurs par rôle, bouton « Renouveler », message Discord avec les nombres). Il se roule **après** `ameliorations2.sql`, avant ou après le déploiement du site qui s'en sert (les deux ordres fonctionnent: le site retombe sur l'ancien comportement tant que la base n'est pas à jour). On peut le relancer sans problème.
 
 9. SQL Editor > New query: colle aussi `supabase/ameliorations4.sql`, puis Run (page « Joueurs »: profils, pouces de réputation, signalements de joueurs). Il se roule **après** `ameliorations3.sql`, avant ou après le déploiement du site qui s'en sert: tant que la base n'est pas à jour, l'onglet Joueurs affiche « pas encore disponible » et le reste du site marche normalement. On peut le relancer sans problème.
+
+10. SQL Editor > New query: colle aussi `supabase/ameliorations5.sql`, puis Run (page « Modération »: modérateurs, comptes suspendus, journal). Il se roule **après** `ameliorations4.sql`. Tant qu'il n'est pas roulé, personne n'est modérateur et le lien « Modération » n'apparaît pas; le reste du site marche. Pour te donner l'accès, suis les étapes en commentaire au début du fichier (tu écris ton propre identifiant dans la table `moderateurs`; ne le mets jamais dans GitHub). On peut le relancer sans problème.
 
 ## Connexion par courriel
 
@@ -89,17 +91,36 @@ Pour que le monde voie le lien du Discord au bas du site, ajoute la variable Net
 ## Page Joueurs, réputation et présence
 
 - L'onglet « Joueurs » liste les profils: personnage, classe, niveau, rôles, faction, région, langue, style, guilde, petit mot, réputation et « en ligne » / « vu il y a ». **Seules les personnes connectées la voient**; elle ne contient jamais le contact des annonces ni de courriel. Le **BattleTag** y figure seulement si le joueur l'écrit lui-même dans « Mon profil » (colonne `profils.battletag`, format `Nom#1234` vérifié par la base): toute personne connectée peut donc le lire et le moissonner, comme le contact des annonces. Un profil caché (`visible = false`) cache aussi son BattleTag.
-- Chaque carte de joueur a un bouton « Copier » pour la commande d'invitation du jeu (`/invite Nom`, ou `/inviter Nom` si on le choisit; `/invite` marche dans le client français et anglais, `/inviter` seulement en français; vérifié dans les chaînes du client) et un autre pour le BattleTag. Il n'y a pas de champ « royaume »: entre royaumes, le jeu peut demander `/invite Nom-Royaume`.
+- Chaque carte de joueur a un bouton « Copier » pour la commande d'invitation du jeu (selon le réglage « Mon jeu est en »: `/inviter Nom` si le jeu est en français, ce qui est le réglage de départ, ou `/invite Nom` si le jeu est en anglais; `/invite` marche dans le client français et anglais, `/inviter` seulement en français; vérifié dans les chaînes du client) et un autre pour le BattleTag. Il n'y a pas de champ « royaume »: entre royaumes, le jeu peut demander `/invite Nom-Royaume`.
 - Le profil se crée tout seul avec la première annonce (nom, classe, faction, région, langue et style de l'annonce; niveau et rôles seulement pour une annonce de « joueur seul »), ou à la main dans « Mon profil ». Il est visible par défaut; chacun peut se cacher ou supprimer son profil (`profils.visible`). Le formulaire d'annonce et la page d'aide le disent. Ça choisit **l'inscription automatique avec retrait facile**: à revoir si on préfère une inscription volontaire (Loi 25).
 - Les données passent par `lister_joueurs()` (fonction SQL réservée aux connectés). Les tables `recommandations` et `signalements_joueurs` ne sont lisibles que par toi, dans Supabase > Table Editor: personne d'autre ne voit qui a donné un pouce ou un signalement.
 - Réputation: un pouce par joueur (avec des étiquettes facultatives: Ponctuel, Sympa, Compétent, Patient, Bon chef de groupe), 10 nouveaux pouces et 5 signalements par 24 h par personne, un profil requis pour recommander. On ne peut pas vérifier que deux joueurs ont vraiment joué ensemble, et des faux comptes pourraient se recommander entre eux: surveille les profils neufs avec beaucoup de pouces.
 - 3 signalements de personnes différentes mettent la réputation « en vérification » (les pouces et étiquettes ne sont plus donnés par la base). Pour la rétablir, supprime les lignes de `signalements_joueurs` concernées. Si `discord_webhook_moderation` est rangée dans `reglages`, chaque signalement de joueur y est envoyé (nom du personnage seulement).
 - « En ligne »: présence en temps réel de Supabase (canal `joueurs-en-ligne`), seulement pour les gens connectés dont le profil est visible. Si Realtime est coupé dans le projet, le point vert n'apparaît pas mais le reste marche. Le canal est public: quelqu'un qui a la clé `anon` peut y voir les identifiants (UUID) des joueurs en ligne, sans nom; comme `annonces.user_id` est lisible par tous, il pourrait deviner qu'un auteur d'annonce est en ligne. Pour l'éviter plus tard: canaux privés de Realtime avec une règle sur `realtime.messages`. L'heure de dernière visite (`vu_le`) est mise à jour toutes les 10 minutes et arrondie par la base.
 
+## Alertes et calendrier
+
+- « M'alerter des nouvelles annonces » (sous le nombre d'annonces, onglet Groupes) garde les filtres du moment comme alerte (`src/alertes.jsx`). Tant que le site est ouvert dans un onglet, chaque nouvelle annonce qui correspond est signalée dans la page et, si la personne l'a permis, par une notification du navigateur. C'est le navigateur qui surveille: il n'y a ni serveur, ni courriel, ni notification quand le site est fermé. Le choix est gardé dans le navigateur (`forever-alerte`). Les notifications de certains navigateurs mobiles sont refusées: l'alerte reste alors dans la page.
+- « Ajouter à mon calendrier » (groupes planifiés) télécharge un fichier `.ics` fabriqué dans le navigateur (`src/calendrier.js`): jour, heure (réservée pour 2 h), personnage et lien de l'annonce, **sans le contact**.
+
+## Guides de donjons
+
+- L'onglet « Guides » (`src/Guides.jsx`) contient 35 donjons du niveau 13 au 60. Les données sont dans `src/guides/donjons-a.js`, `-b.js` et `-c.js`; `src/guides-data.js` fait la recherche, les noms et les sources. Une annonce de donjon qui a un guide montre « Voir le guide » (adresse directe: `/?guide=ID`).
+- **Règle de contenu: rien d'inventé.** Chaque guide liste ses sources (`src`, adresses dans `SOURCES`) et une section « Ce que les sources ne disent pas, ou se contredisent » (`manque`). Pour ajouter ou corriger un guide, relis les sources et mets ce qu'elles taisent dans `manque` plutôt que de deviner.
+- **Noms français:** seulement ceux confirmés dans les pages françaises de kami-labs (textes de la bêta de Forever), dans `src/guides/noms-boss.js` ou donnés à côté du nom dans le guide. Un nom non confirmé reste en anglais. Les données de serveurs privés (AzerothCore, Questie) ne sont pas utilisées.
+- **Langue du jeu** (« Mon jeu est en »: Français ou English, gardé dans `forever-langue-jeu`): en français, les boss portent leur nom français quand il est confirmé et les capacités sont expliquées en mots simples (le nom anglais reste en infobulle); en anglais, les noms de boss et de capacités restent ceux du jeu. Le même choix donne `/inviter` ou `/invite` aux boutons « Copier ». Le texte des guides utilise `[[Nom]]`, `[[Nom|FR]]`, `{{Capacité|description en français}}` et `{{Capacité}}`.
+- Les niveaux d'un guide (Icy Veins, Method) peuvent différer des niveaux suggérés par le formulaire (`NIVEAUX_DONJONS` dans `src/data.js`): les deux sont des estimations d'avant le lancement. Cinq donjons (Drowned City, Krol'dok Stronghold, Alcaz Island Prison, Blackmaw Hold, Shaper's Terrace) n'ont qu'une fiche courte, faute de contenu publié. Les versions à 10 joueurs ne sont pas couvertes. **Tout est à revérifier après le lancement.**
+
+## Modération
+
+- Le lien « Modération » (à côté de « Mon profil ») n'apparaît que pour les comptes de la table `moderateurs`. La page liste ce qui a été signalé avec le motif, le contact (que les visiteurs ne voient pas) et les actions: écarter, retirer, remettre en ligne, suspendre ou rétablir un compte. Un compte suspendu ne peut plus publier et son profil reste caché. Chaque action est revérifiée par la base et notée dans `moderation_journal` (à lire dans Table Editor).
+- Pour ajouter ou retirer un modérateur, voir les commentaires au début de `supabase/ameliorations5.sql`.
+
 ## Limites de la version 1
 
 - Connexion obligatoire pour publier, par courriel (Discord en option) (5 annonces actives par joueur au maximum). La connexion Battle.net avec import du personnage viendra après, une fois qu'on aura confirmé que l'API de Blizzard voit les personnages de Forever.
 - Les annonces expirent automatiquement (1 à 6 heures, ou 1 heure après le départ pour une annonce planifiée, dans les 3 prochains jours). Le joueur peut retirer son annonce ou marquer un rôle comme trouvé; le renouvellement est la seule autre modification.
 - Donjons et raids demandent les mêmes règles de jeu (Normal, PvP, Jeu de rôle); les champs de bataille peuvent les mélanger. Le style de jeu reprend les quatre choix de l'outil de groupe du jeu.
+- Pas de champ « royaume » pour l'instant: on l'ajoutera quand la liste des royaumes de Forever sera connue.
 - Le type « Raid » s'ouvre le 9 décembre 2026 (Barrow Deeps 10, Hyjal Summit 20, Onyxia's Lair 40). Les niveaux suggérés par donjon sont dans `src/data.js` (`NIVEAUX_DONJONS`).
 - Les noms de donjons et de champs de bataille viennent de guides publics écrits avant le lancement (4 novembre 2026): à revérifier après la sortie.

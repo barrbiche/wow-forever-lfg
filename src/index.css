@@ -1935,8 +1935,8 @@ h2 {
   overflow-wrap: anywhere;
 }
 
-/* Choix de la commande d'invitation (à droite du nombre de joueurs). */
-.commande {
+/* « Mon jeu est en: Français / English » (à droite du nombre de joueurs, dans les guides, sur les cartes). */
+.langue-jeu {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1945,7 +1945,7 @@ h2 {
   font-family: var(--texte);
 }
 
-.commande-titre {
+.langue-jeu-titre {
   font-size: 0.9rem;
   font-weight: 500;
   color: var(--muted);
@@ -2121,6 +2121,542 @@ h2 {
   from {
     opacity: 0;
     transform: translate(-50%, 8px);
+  }
+}
+
+/* ---------- Alertes de nouvelles annonces ---------- */
+
+.alerte {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: -4px 0 14px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.alerte .bouton svg {
+  flex: none;
+}
+
+.alerte.actif {
+  padding: 10px 12px;
+  border-radius: var(--r-bouton);
+  border: 1px solid color-mix(in srgb, var(--gold) 55%, var(--line));
+  background: color-mix(in srgb, var(--gold) 10%, var(--surface));
+}
+
+.alerte-etat {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+}
+
+.alerte-etat svg {
+  flex: none;
+  color: var(--gold-line);
+}
+
+.alerte-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-left: auto;
+}
+
+.alerte-actions .lien {
+  min-height: 30px;
+  font-size: 0.9rem;
+}
+
+.alerte-aide {
+  flex: 1 1 100%;
+  font-size: 0.82rem;
+}
+
+.alerte:not(.actif) .alerte-aide {
+  flex: 1 1 220px;
+}
+
+/* Petite pastille « Nouveau » sur les annonces arrivées pendant que le site était ouvert. */
+.chip.nouveau {
+  font-weight: 700;
+  color: var(--gold-ink);
+  background: var(--gold-light);
+}
+
+/* Avis d'une nouvelle annonce qui correspond à l'alerte (au-dessus du message habituel). */
+.alerte-toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  bottom: 76px;
+  width: max-content;
+  max-width: min(560px, calc(100vw - 32px));
+  border-radius: 16px;
+  font-weight: 500;
+}
+
+.alerte-toast .lien {
+  flex: none;
+  min-height: 32px;
+  color: inherit;
+  font-weight: 700;
+}
+
+.alerte-toast svg {
+  flex: none;
+}
+
+/* Commande à copier sur une annonce (« /w Nom », « /invite Nom »). */
+.dans-le-jeu {
+  margin-top: 2px;
+}
+
+/* ---------- Modération (réservée aux modérateurs) ---------- */
+
+.mod-dialogue {
+  width: min(680px, calc(100vw - 24px));
+}
+
+.mod-sous-titre {
+  margin: 0 0 10px;
+  font-family: var(--titre);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.mod-liste {
+  display: grid;
+  gap: 12px;
+}
+
+.mod-fiche {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--field);
+}
+
+.mod-fiche-haut {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.mod-titre {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mod-fiche .chip {
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.chip.mod-etat {
+  font-weight: 700;
+}
+
+.chip.mod-etat.danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 55%, var(--line));
+}
+
+.mod-meta,
+.mod-detail,
+.mod-contact {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.mod-meta {
+  color: var(--muted);
+}
+
+.mod-detail {
+  font-style: italic;
+}
+
+.mod-contact code {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.mod-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.mod-suspension {
+  display: grid;
+  gap: 8px;
+}
+
+.mod-suspension .aide {
+  margin: 0;
+}
+
+.mod-vide {
+  margin: 0;
+  padding: 16px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  color: var(--muted);
+}
+
+.mod-suspendus {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.mod-suspendus li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 0.94rem;
+}
+
+.mod-suspendus li span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 480px) {
+  .mod-suspendus li {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* ---------- Guides de donjons ---------- */
+
+.guides-langue {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: var(--r-champ);
+}
+
+.guides-langue .langue-jeu {
+  margin-left: 0;
+}
+
+.guides-liste {
+  align-items: start;
+}
+
+.guide {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 4px solid color-mix(in srgb, var(--ink) 22%, var(--line));
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.guide.nouveau {
+  border-left-color: var(--gold);
+}
+
+.guide:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.guide.ciblee {
+  box-shadow: 0 0 0 3px var(--gold), var(--shadow);
+}
+
+.guide.ciblee:focus-visible {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .guide.ciblee {
+    animation: cible 1.1s ease-out 2;
+  }
+}
+
+.guide-haut {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.guide-bouton {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-height: 44px;
+  padding: 14px 16px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.guide-bouton:hover {
+  background: color-mix(in srgb, var(--gold) 7%, var(--surface));
+}
+
+.guide-niveau {
+  display: grid;
+  justify-items: center;
+  min-width: 62px;
+  padding: 6px 8px;
+  border-radius: var(--r-champ);
+  background: var(--field);
+  border: 1px solid var(--line);
+}
+
+.guide-niveau-nb {
+  font-family: var(--titre);
+  font-size: 1.2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.guide-niveau-unite {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.guide-titres {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.guide-nom {
+  font-family: var(--titre);
+  font-size: 1.12rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.guide-autre {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.guide-puces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.guide-fleche {
+  width: 10px;
+  height: 10px;
+  margin: 0 4px 4px 0;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg);
+  transition: transform 0.15s;
+}
+
+.guide.ouvert .guide-fleche {
+  margin: 4px 4px 0 0;
+  transform: rotate(-135deg);
+}
+
+.guide-corps {
+  display: grid;
+  gap: 18px;
+  padding: 4px 16px 18px;
+  border-top: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.g-avis {
+  margin: 14px 0 0;
+  padding: 9px 12px;
+  font-size: 0.9rem;
+  border-radius: var(--r-champ);
+  background: color-mix(in srgb, var(--gold) 14%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, var(--line));
+}
+
+.g-avis + .g-avis {
+  margin-top: -8px;
+}
+
+.g-infos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px 18px;
+  margin: 0;
+}
+
+.g-infos > div {
+  min-width: 0;
+}
+
+.g-infos .large {
+  grid-column: 1 / -1;
+}
+
+.g-infos dt {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.g-infos dd {
+  margin: 2px 0 0;
+}
+
+.g-detail {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.g-titre {
+  margin: 0 0 8px;
+  font-family: var(--titre);
+  font-size: 1.02rem;
+  font-weight: 800;
+}
+
+.g-boss-liste {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.g-boss {
+  padding: 10px 12px 12px;
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: var(--r-champ);
+}
+
+.g-boss h4 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin: 0 0 6px;
+  font-family: var(--titre);
+  font-size: 1.02rem;
+  font-weight: 800;
+}
+
+.g-puce {
+  font-family: var(--texte);
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.g-notes {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 1.15em;
+}
+
+.g-nom {
+  font-weight: 700;
+}
+
+.g-cap {
+  font-style: italic;
+}
+
+.g-cap.fr {
+  font-style: normal;
+  text-decoration: underline dotted color-mix(in srgb, var(--muted) 70%, transparent);
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
+.g-manque {
+  padding: 10px 12px 12px;
+  background: var(--field);
+  border-left: 3px solid var(--muted);
+  border-radius: 0 var(--r-champ) var(--r-champ) 0;
+}
+
+.g-sources {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 1.15em;
+  font-size: 0.92rem;
+}
+
+.g-sources a {
+  color: inherit;
+  text-underline-offset: 2px;
+}
+
+.g-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.guides-pied {
+  margin: 22px 0 0;
+  max-width: 70ch;
+}
+
+@media (max-width: 480px) {
+  .guide-bouton {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .guide-niveau {
+    min-width: 52px;
+    padding: 5px 6px;
+  }
+
+  .guide-corps {
+    padding: 2px 12px 16px;
+  }
+
+  .onglet {
+    padding: 0 6px;
+    font-size: 0.95rem;
+  }
+
+  .onglet-nombre {
+    margin-left: 4px;
+    padding: 1px 6px;
   }
 }
 

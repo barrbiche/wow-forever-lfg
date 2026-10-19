@@ -2,7 +2,7 @@
 //  - Supabase, si VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY sont définies (vrai site)
 //  - Démo, sinon: les annonces restent dans le navigateur (pour essayer le site sans rien configurer)
 import { createClient } from '@supabase/supabase-js'
-import { COMMANDES_INVITER, normaliserBattleTag } from './data.js'
+import { normaliserBattleTag } from './data.js'
 
 const url = import.meta.env.VITE_SUPABASE_URL
 const cle = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -17,7 +17,6 @@ const CLE_CONNEXION_DEMO = 'forever-demo-connecte'
 const EVENEMENT_DEMO = 'forever-demo-connexion'
 const CLE_GUILDES_DEMO = 'forever-demo-guildes'
 const CLE_PROFIL = 'forever-profil'
-const CLE_COMMANDE = 'forever-commande'
 const UTILISATEUR_DEMO = { id: 'demo', nom: 'Joueur démo', contact: 'ton_discord' }
 
 function connexionDemo() {
@@ -393,24 +392,6 @@ export function lireProfil() {
   }
 }
 
-// Commande d'invitation que les boutons « Copier » donnent (« invite » ou « inviter »).
-export function lireCommande() {
-  try {
-    const id = localStorage.getItem(CLE_COMMANDE)
-    return COMMANDES_INVITER.some((c) => c.id === id) ? id : COMMANDES_INVITER[0].id
-  } catch {
-    return COMMANDES_INVITER[0].id
-  }
-}
-
-export function ecrireCommande(id) {
-  try {
-    localStorage.setItem(CLE_COMMANDE, id)
-  } catch {
-    // navigation privée: le choix n'est pas gardé pour la prochaine visite
-  }
-}
-
 export function ecrireProfil(profil) {
   try {
     localStorage.setItem(CLE_PROFIL, JSON.stringify(profil))
@@ -651,6 +632,116 @@ export async function signalerJoueur(id, motif) {
     return
   }
   const { error } = await supabase.rpc('signaler_joueur', { p_pour: id, p_motif: motif })
+  if (error) throw error
+}
+
+// ---------- Modération (ameliorations5.sql) ----------
+// Réservée aux modérateurs: chaque fonction du serveur revérifie le compte. Ici, on affiche seulement la page.
+
+const CLE_MODERATION_DEMO = 'forever-demo-moderation'
+
+export const MESSAGE_COMPTE_SUSPENDU =
+  "Ton compte est suspendu: tu ne peux plus publier. Si tu penses que c'est une erreur, écris à l'équipe du serveur Discord."
+
+// Vrai si l'erreur vient d'un compte suspendu par la modération.
+export const compteSuspendu = (e) => /compte suspendu/i.test(e?.message ?? '')
+
+function moderationDemoInitiale() {
+  const il_y_a = (m) => minutes(m)
+  return {
+    aTraiter: [
+      {
+        type: 'annonce', cible_id: 'mod-demo-1', nb: 2, motifs: ['faux_contact', 'spam'], dernier: il_y_a(12),
+        auteur: 'mod-demo-u1', perso: 'Pubspam', titre: 'donjon: The Deadmines', detail: 'Ouvre ta porte, vends or WoW pas cher, visite mon site',
+        contact: 'pubspam#0000', actif: true, suspendu: false,
+      },
+      {
+        type: 'guilde', cible_id: 'mod-demo-2', nb: 1, motifs: ['autre'], dernier: il_y_a(95),
+        auteur: 'mod-demo-u2', perso: 'Chefsuspect', titre: 'Les Faux Frères', detail: 'Guilde de 400 membres, ça rush tout',
+        contact: 'chef_suspect', actif: true, suspendu: false,
+      },
+      {
+        type: 'joueur', cible_id: 'mod-demo-u3', nb: 3, motifs: ['arnaque', 'comportement'], dernier: il_y_a(300),
+        auteur: 'mod-demo-u3', perso: 'Arnaqueur', titre: 'Arnaqueur', detail: 'Je groupe seulement si on me paie',
+        contact: 'Arnaqueur#4242', actif: true, suspendu: false,
+      },
+    ],
+    suspendus: [],
+  }
+}
+
+function lireModerationDemo() {
+  try {
+    const brut = localStorage.getItem(CLE_MODERATION_DEMO)
+    return brut ? JSON.parse(brut) : moderationDemoInitiale()
+  } catch {
+    return moderationDemoInitiale()
+  }
+}
+
+function ecrireModerationDemo(etat) {
+  try {
+    localStorage.setItem(CLE_MODERATION_DEMO, JSON.stringify(etat))
+  } catch {
+    // navigation privée: les changements durent jusqu'au prochain chargement
+  }
+}
+
+// Vrai seulement pour un modérateur. Toute erreur (base pas à jour, pas de réseau) veut dire « non »: le lien
+// « Modération » n'apparaît simplement pas.
+export async function estModerateur() {
+  if (!(await estConnecte())) return false
+  if (modeDemo) return true
+  try {
+    const { data, error } = await supabase.rpc('est_moderateur')
+    return !error && data === true
+  } catch {
+    return false
+  }
+}
+
+// { aTraiter: [{ type, cible_id, nb, motifs, dernier, auteur, perso, titre, detail, contact, actif, suspendu }], suspendus: [{ user_id, raison, depuis, perso }] }
+export async function lireModeration() {
+  if (modeDemo) {
+    const etat = lireModerationDemo()
+    // Même ordre que le serveur: le plus signalé d'abord, puis le plus récent.
+    return { ...etat, aTraiter: [...etat.aTraiter].sort((x, y) => y.nb - x.nb || new Date(y.dernier) - new Date(x.dernier)) }
+  }
+  const [file, suspendus] = await Promise.all([supabase.rpc('mod_a_traiter'), supabase.rpc('mod_suspendus')])
+  if (file.error) throw file.error
+  if (suspendus.error) throw suspendus.error
+  return { aTraiter: file.data ?? [], suspendus: suspendus.data ?? [] }
+}
+
+// action: 'ecarter' | 'retirer' | 'remettre' | 'suspendre' | 'retablir'
+// type: 'annonce' | 'guilde' | 'joueur' (pour 'suspendre' et 'retablir', `id` est l'identifiant du compte)
+export async function actionModeration(action, type, id, raison = '') {
+  if (modeDemo) {
+    const etat = lireModerationDemo()
+    const change = (f) => etat.aTraiter.map((x) => (x.cible_id === id && x.type === type ? f(x) : x))
+    if (action === 'ecarter') etat.aTraiter = etat.aTraiter.filter((x) => !(x.cible_id === id && x.type === type))
+    else if (action === 'retirer') etat.aTraiter = change((x) => ({ ...x, actif: false }))
+    else if (action === 'remettre') etat.aTraiter = etat.aTraiter.filter((x) => !(x.cible_id === id && x.type === type))
+    else if (action === 'suspendre') {
+      const cible = etat.aTraiter.find((x) => x.auteur === id)
+      etat.aTraiter = etat.aTraiter.map((x) => (x.auteur === id ? { ...x, actif: false, suspendu: true } : x))
+      etat.suspendus = [{ user_id: id, raison, depuis: new Date().toISOString(), perso: cible?.perso ?? null }, ...etat.suspendus.filter((s) => s.user_id !== id)]
+    } else if (action === 'retablir') {
+      etat.suspendus = etat.suspendus.filter((s) => s.user_id !== id)
+      etat.aTraiter = etat.aTraiter.map((x) => (x.auteur === id ? { ...x, suspendu: false } : x))
+    }
+    ecrireModerationDemo(etat)
+    return
+  }
+  const appels = {
+    ecarter: ['mod_ecarter', { p_type: type, p_id: id }],
+    retirer: ['mod_retirer', { p_type: type, p_id: id }],
+    remettre: ['mod_remettre', { p_type: type, p_id: id }],
+    suspendre: ['mod_suspendre', { p_user: id, p_raison: raison }],
+    retablir: ['mod_retablir', { p_user: id }],
+  }
+  const [fonction, params] = appels[action]
+  const { error } = await supabase.rpc(fonction, params)
   if (error) throw error
 }
 

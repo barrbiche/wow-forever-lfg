@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { LANCEMENT_LE, MOTIFS_JOUEUR, MOTIFS_SIGNALEMENT, RAIDS_OUVERTS_LE } from './data.js'
 import { signaler } from './store.js'
 import { LIEN_DISCORD } from './config.js'
+import { LangueJeu, commandeInviter, useLangueJeu } from './langue.jsx'
 
 // ---------- Petites icônes (dessinées à la main, héritent la couleur du texte) ----------
 
@@ -15,7 +16,9 @@ export const CHEMINS = {
   horloge: 'M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18z',
   joueur: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0',
   guilde: 'M5 3h14v10c0 4-3 6-7 8-4-2-7-4-7-8V3zM9 8h6M9 12h6',
+  cloche: 'M6 8a6 6 0 1112 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 003.4 0',
   discussion: 'M5 4h14a2 2 0 012 2v9a2 2 0 01-2 2h-7l-5 4v-4H5a2 2 0 01-2-2V6a2 2 0 012-2zM8 10h.01M12 10h.01M16 10h.01',
+  livre: 'M4 4h7a2 2 0 012 2v14a2 2 0 00-2-2H4V4zM20 4h-7a2 2 0 00-2 2v14a2 2 0 012-2h7V4z',
   pouce: 'M3 11h4v10H3zM7 12l4-8c1.7 0 2.7 1.1 2.7 2.6V10h5.2c1.4 0 2.4 1.3 2.1 2.6l-1.4 6.2c-.2 1.2-1.2 2-2.4 2H7',
 }
 export const NOMS_ACTIVITE = { donjon: 'Donjon', raid: 'Raid', pvp: 'PvP' }
@@ -205,6 +208,29 @@ export function LigneCopie({ titre, valeur, conseil }) {
       </button>
       <span className="sr" role="status">{copie ? 'Copié' : ''}</span>
       {copie && conseil && <span className="ligne-copie-conseil">{conseil}</span>}
+    </div>
+  )
+}
+
+// Commande du jeu à copier depuis une annonce: « /w Nom » pour écrire à l'auteur d'un groupe, « /invite Nom » (ou
+// « /inviter Nom » dans le jeu en français) pour inviter un joueur seul. Le jeu n'a pas de champ « royaume » ici:
+// si la personne est sur un autre royaume, la commande peut demander « Nom-Royaume ».
+export function CommandeAnnonce({ annonce }) {
+  const [langue] = useLangueJeu()
+  const joueurSeul = annonce.genre === 'joueur'
+  const valeur = `${joueurSeul ? commandeInviter(langue) : '/w'} ${annonce.perso}`
+  return (
+    <div className="inviter dans-le-jeu">
+      <LigneCopie
+        titre={joueurSeul ? 'Inviter dans le jeu' : 'Écrire dans le jeu'}
+        valeur={valeur}
+        conseil={
+          joueurSeul
+            ? "Colle-le dans le clavardage du jeu (touche Entrée), puis Entrée pour l'envoyer."
+            : 'Colle-le dans le clavardage du jeu (touche Entrée), ajoute un espace, écris ton message, puis Entrée.'
+        }
+      />
+      {joueurSeul && <LangueJeu court />}
     </div>
   )
 }

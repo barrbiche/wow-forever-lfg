@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  ecrireCommande,
   ecrireProfil,
   enregistrerProfil,
-  lireCommande,
   lireProfil,
   modeDemo,
   recommander,
@@ -13,7 +11,6 @@ import {
 import {
   BATTLETAG_FORMAT,
   CLASSES,
-  COMMANDES_INVITER,
   ETIQUETTES,
   FACTIONS,
   LANGUES,
@@ -24,6 +21,7 @@ import {
   normaliserBattleTag,
 } from './data.js'
 import { Icone, LigneCopie, Signalement } from './commun.jsx'
+import { LangueJeu, commandeInviter, useLangueJeu } from './langue.jsx'
 
 // ---------- Onglet « Joueurs »: les profils, qui est en ligne, la réputation ----------
 
@@ -54,11 +52,7 @@ export default function SectionJoueurs({
   filtresActifs,
   effacerFiltres,
 }) {
-  const [commande, setCommande] = useState(lireCommande)
-  const choisirCommande = (id) => {
-    setCommande(id)
-    ecrireCommande(id)
-  }
+  const [langue] = useLangueJeu()
 
   if (!utilisateur) {
     return (
@@ -162,21 +156,7 @@ export default function SectionJoueurs({
             Effacer les filtres
           </button>
         )}
-        <div className="commande" role="group" aria-label="Commande copiée pour inviter un joueur">
-          <span className="commande-titre">Inviter avec</span>
-          {COMMANDES_INVITER.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              className="pastille petite"
-              aria-pressed={commande === c.id}
-              title={c.aide}
-              onClick={() => choisirCommande(c.id)}
-            >
-              {c.texte}
-            </button>
-          ))}
-        </div>
+        <LangueJeu />
       </div>
 
       {visibles.length === 0 ? (
@@ -197,7 +177,7 @@ export default function SectionJoueurs({
             <li key={j.user_id}>
               <CarteJoueur
                 joueur={j}
-                commande={COMMANDES_INVITER.find((c) => c.id === commande).texte}
+                commande={commandeInviter(langue)}
                 enLigne={enLigne.has(j.user_id)}
                 utilisateur={utilisateur}
                 aProfil={!!monProfil}

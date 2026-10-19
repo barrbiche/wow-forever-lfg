@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { creerGuilde, lireProfil, modeDemo, retirerGuilde } from './store.js'
+import { MESSAGE_COMPTE_SUSPENDU, compteSuspendu, creerGuilde, lireProfil, modeDemo, retirerGuilde } from './store.js'
 import {
   DUREES_GUILDE,
   FACTIONS,
@@ -283,8 +283,12 @@ function FormulaireGuilde({ utilisateur, ouvert, fermer, apresInscription }) {
       setChamps((c) => ({ ...GUILDE_VIDE, faction: c.faction, region: c.region, ruleset: c.ruleset, langue: c.langue, perso: c.perso, contact: c.contact }))
       setErreurs({})
       await apresInscription()
-    } catch {
-      setErreurServeur("La guilde n'a pas été inscrite. Réessaie dans un instant (2 guildes actives au maximum par joueur).")
+    } catch (e) {
+      setErreurServeur(
+        compteSuspendu(e)
+          ? MESSAGE_COMPTE_SUSPENDU
+          : "La guilde n'a pas été inscrite. Réessaie dans un instant (2 guildes actives au maximum par joueur).",
+      )
     } finally {
       setEnvoi(false)
     }

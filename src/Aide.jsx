@@ -52,21 +52,60 @@ export default function Aide({ ouvert, fermer }) {
         </section>
 
         <section>
-          <h3>Inviter quelqu'un dans le jeu</h3>
+          <h3>Écrire ou inviter dans le jeu</h3>
           <ul className="puces">
             <li>
-              Sur la carte d'un joueur, « Copier » met la commande dans ton presse-papiers, par exemple{' '}
-              <code>/invite Brokk</code>. Dans le jeu, ouvre le chat (Entrée), colle, puis Entrée: le joueur reçoit ton
-              invitation de groupe.
+              Sur une annonce de groupe, « Copier » met <code>/w Nom</code> dans ton presse-papiers: dans le jeu, ouvre le
+              clavardage (Entrée), colle, ajoute un espace, écris ton message, puis Entrée. Sur une annonce de joueur seul
+              ou sur la carte d'un joueur, la commande est <code>/invite Nom</code>: le joueur reçoit ton invitation de
+              groupe.
             </li>
             <li>
-              <code>/invite</code> marche dans le jeu en français et en anglais. <code>/inviter</code> marche seulement en
-              français. Choisis celle que tu veux au-dessus de la liste. Si le joueur est sur un autre royaume, il faut
-              parfois écrire <code>/invite Nom-Royaume</code>.
+              Dis au site dans quelle langue est ton jeu (« Mon jeu est en »): en français, il te donne{' '}
+              <code>/inviter</code>; en anglais, <code>/invite</code> (qui marche aussi dans le jeu en français). Si la
+              personne est sur un autre royaume, il faut parfois écrire <code>/invite Nom-Royaume</code>.
             </li>
             <li>
               Le BattleTag (<code>Nom#1234</code>), quand le joueur l'a écrit dans son profil, sert à l'ajouter comme ami
               Battle.net. Il ne sert pas à l'inviter dans un groupe: pour ça, c'est le nom du personnage.
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Ne rien manquer</h3>
+          <ul className="puces">
+            <li>
+              <strong>Alerte de nouvelles annonces.</strong> Règle les filtres de l'onglet Groupes, puis « M'alerter des
+              nouvelles annonces ». Tant que le site reste ouvert dans un onglet, chaque nouvelle annonce qui correspond
+              est signalée dans la page et, si tu l'autorises, par une notification de ton navigateur. Rien n'est envoyé
+              à un serveur: l'alerte reste dans ton navigateur et s'arrête si tu fermes l'onglet.
+            </li>
+            <li>
+              <strong>Groupe planifié.</strong> « Ajouter à mon calendrier » télécharge un fichier qui s'ouvre dans Google
+              Agenda, Apple Calendrier, Outlook et les autres. Il contient le jour, l'heure, le nom du personnage et le
+              lien de l'annonce, jamais le contact.
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Guides de donjons</h3>
+          <ul className="puces">
+            <li>
+              L'onglet « Guides » explique chaque donjon, du niveau 13 au 60: comment s'y rendre, les boss, les pièges.
+              Cherche un donjon, un boss ou une zone, ou donne ton niveau pour ne voir que ceux qui te conviennent. Sur
+              une annonce de donjon, « Voir le guide » ouvre le bon.
+            </li>
+            <li>
+              Dis au site dans quelle langue est ton jeu: en français, les boss portent leur nom français quand il est
+              confirmé et les capacités sont expliquées en mots simples; en anglais, les noms restent ceux que tu vois en
+              jeu et le reste est expliqué en français.
+            </li>
+            <li>
+              Les guides viennent de sources publiques écrites avant le lancement (les sources sont sous chaque guide).
+              Chacun dit aussi ce que les sources ne donnent pas ou contredisent. Quelques donjons ne sont pas encore dans
+              la bêta: ils n'ont qu'une fiche courte. Les versions à 10 joueurs ne sont pas couvertes. Vérifie en jeu.
             </li>
           </ul>
         </section>
@@ -87,6 +126,11 @@ export default function Aide({ ouvert, fermer }) {
               Tu vois un problème? Utilise « Signaler » sur l'annonce. Trois signalements de personnes différentes la
               retirent automatiquement. Pour un joueur, trois signalements mettent sa réputation « en vérification »:
               ses pouces ne sont plus affichés.
+            </li>
+            <li>
+              Les personnes qui modèrent le site examinent les signalements. Elles peuvent écarter un signalement, retirer
+              une annonce, une guilde ou un profil, ou suspendre un compte qui abuse (il ne peut plus publier). Elles voient
+              alors le contact de l'annonce signalée.
             </li>
           </ul>
         </section>
@@ -126,14 +170,13 @@ export default function Aide({ ouvert, fermer }) {
               de données. Tes signalements restent eux aussi privés.
             </li>
             <li>
-              <strong>Dans ton navigateur.</strong> Le site garde chez toi le style que tu as choisi, ton personnage et
-              ton contact (pour préremplir tes prochaines annonces) et ta connexion. Il n'y a ni publicité, ni témoin de
-              suivi, ni outil de statistiques.
+              <strong>Dans ton navigateur.</strong> Le site garde chez toi le style que tu as choisi, la langue de ton jeu,
+              ton alerte de nouvelles annonces, ton personnage et ton contact (pour préremplir tes prochaines annonces) et
+              ta connexion. Il n'y a ni publicité, ni témoin de suivi, ni outil de statistiques.
             </li>
             <li>
-              <strong>Les services utilisés.</strong> Le site est hébergé par Netlify, sa base de données et la connexion
-              passent par Supabase, et les polices viennent de Google Fonts (Google voit ton adresse IP quand elles se
-              chargent).
+              <strong>Les services utilisés.</strong> Le site est hébergé par Netlify, et sa base de données et la
+              connexion passent par Supabase. Les polices sont sur le site même: aucune requête vers Google.
             </li>
             <li>
               <strong>Effacer tes données.</strong> Tu peux supprimer ton profil toi-même dans « Mon profil »: les pouces que
