@@ -58,6 +58,7 @@ export default function SectionJoueurs({
       <div className="vide">
         <span className="vide-icone" aria-hidden="true"><Icone nom="joueur" taille={30} /></span>
         <p>La liste des joueurs est réservée aux gens connectés.</p>
+        <p className="aide">Connecte-toi pour voir les joueurs et ceux qui sont en ligne, et pour ajouter des amis.</p>
         <button type="button" className="bouton principal" onClick={onConnexion}>Se connecter</button>
       </div>
     )
@@ -121,6 +122,12 @@ export default function SectionJoueurs({
         {!monProfil && (
           <p className="intro-guildes">
             Crée ton profil pour apparaître dans la liste et recommander les joueurs avec qui tu as joué.
+          </p>
+        )}
+        {amis !== null && (
+          <p className="aide aide-amis">
+            Pour ajouter un ami: trouve son personnage dans la liste et appuie sur « Ajouter en ami ». Il reçoit ta
+            demande et doit l'accepter. Tes amis se retrouvent ensuite dans « Mes amis ».
           </p>
         )}
         {monProfil && !monProfil.visible && (
@@ -199,6 +206,13 @@ export default function SectionJoueurs({
         )}
         <LangueJeu />
       </div>
+
+      {!filtresActifs && joueurs.length > 0 && joueurs.every((j) => j.user_id === utilisateur.id) && (
+        <p className="astuce" role="note">
+          Tu es le seul joueur dans la liste pour l'instant. Les autres apparaissent dès qu'ils créent leur profil:
+          invite tes amis à venir sur le site, puis tu pourras les ajouter ici.
+        </p>
+      )}
 
       {visibles.length === 0 ? (
         <div className="vide">

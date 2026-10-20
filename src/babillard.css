@@ -507,9 +507,11 @@ body::before {
   border-radius: var(--r-papier);
 }
 
-.erreur {
+.erreur,
+.astuce {
   background: var(--grain), var(--surface);
   box-shadow: var(--shadow);
+  border-radius: var(--r-papier);
 }
 
 /* ---------- Pied de page: une dernière fiche ---------- */
