@@ -47,30 +47,32 @@ Elle marche dès que le projet Supabase existe (le fournisseur « Email » est a
 4. Discord > OAuth2 > Redirects: colle cette adresse et sauvegarde.
 5. Netlify > Environment variables: ajoute `VITE_DISCORD_ACTIF` = `1`, puis redéploie. Le bouton Discord apparaît alors dans la fenêtre de connexion.
 
+12. SQL Editor > New query: colle aussi `supabase/ameliorations7.sql`, puis Run (arrête l'envoi des annonces et des guildes dans Discord; voir plus bas). Il se roule **après** `ameliorations6.sql`. On peut le relancer sans problème.
+
+Pour tout rouler d'un coup (4, 5, 6 et 7), il existe aussi un seul fichier « mise à jour complète » qui les colle dans le bon ordre.
+
 Sans Supabase, la connexion est simulée (mode démo).
 
-## Annonces automatiques dans Discord
+## Discord: ce qui reste
 
-1. Discord: dans le canal voulu, Modifier le canal > Intégrations > Webhooks > Nouveau webhook > Copier l'URL du webhook.
-2. Supabase > SQL Editor: roule le contenu de `supabase/discord.sql`.
-3. Dans une autre requête, range l'adresse du webhook dans la table `reglages` (la requête est en commentaire à la fin du fichier). Ne mets jamais cette adresse dans GitHub: le repo est public.
+Le site ne renvoie plus les gens vers un Discord: plus de bouton « Rejoindre le Discord », et les nouvelles annonces et guildes ne sont plus envoyées dans un canal (`ameliorations7.sql` supprime les envois et efface les réglages `discord_webhook`, `discord_webhook_donjon`, `_raid`, `_pvp`, `_guilde` et `discord_role_*`). La variable Netlify `VITE_DISCORD_INVITE` ne sert plus: tu peux la supprimer.
 
-### Réglages facultatifs (table `reglages`, après `ameliorations2.sql`)
+Ce qui reste volontairement:
+- La connexion avec Discord (voir plus haut), à côté du courriel.
+- L'alerte **privée** de signalement: si le réglage `discord_webhook_moderation` est rangé dans `reglages`, chaque signalement y est envoyé (« Signalement 2/3 »; à 3, l'annonce, la guilde ou la réputation est masquée). Pour l'arrêter aussi: `delete from public.reglages where cle = 'discord_webhook_moderation';`.
+- Les joueurs peuvent écrire leur BattleTag (ou leur nom Discord) comme contact. Une guilde peut mettre une invitation Discord, un site, une page Facebook ou un BattleTag: les adresses https deviennent des liens cliquables (jamais un autre protocole).
 
-Chaque réglage est une ligne `cle` / `valeur`. Tout est facultatif: sans eux, tout va dans le canal du réglage `discord_webhook`.
+### Réglage facultatif (table `reglages`)
 
 | `cle` | Rôle |
 | --- | --- |
-| `discord_webhook_donjon`, `discord_webhook_raid`, `discord_webhook_pvp` | Un canal Discord par type d'annonce (sinon `discord_webhook`). |
-| `discord_webhook_guilde` | Canal des guildes qui recrutent (sinon, rien n'est publié). |
-| `discord_webhook_moderation` | Canal privé qui reçoit un message à chaque signalement (« Signalement 2/3 »). À 3, l'annonce ou la guilde est masquée. |
-| `discord_role_tank`, `discord_role_heal`, `discord_role_dps` | Identifiant (nombre) du rôle Discord à mentionner quand un groupe cherche ce rôle. |
+| `discord_webhook_moderation` | Canal privé qui reçoit un message à chaque signalement (« Signalement 2/3 »). |
 
-Pour que le monde voie le lien du Discord au bas du site, ajoute la variable Netlify `VITE_DISCORD_INVITE` (adresse d'invitation, par exemple `https://discord.gg/…`) et redéploie.
+Ancienne installation (gardée pour mémoire): `supabase/discord.sql` créait l'envoi des annonces avec un webhook rangé dans `reglages`. `ameliorations7.sql` l'enlève.
 
 ## Contacts, signalements et modération
 
-- Les contacts (Discord, BattleTag) ne sont visibles que pour les gens connectés: la base refuse de les donner aux visiteurs anonymes. Ça freine le moissonnage en masse, mais tout compte inscrit peut les lire. Le canal Discord, lui, montre le contact: garde-le réservé aux membres.
+- Les contacts (BattleTag, Discord) ne sont visibles que pour les gens connectés: la base refuse de les donner aux visiteurs anonymes. Ça freine le moissonnage en masse, mais tout compte inscrit peut les lire.
 - Chaque personne connectée peut signaler une annonce, une guilde ou un joueur (une fois chacun). Après 3 signalements de comptes différents, elle est masquée automatiquement. Des faux comptes pourraient abuser de ça: surveille le canal de modération.
 - Les guildes restent affichées 7, 14 ou 30 jours; 2 inscriptions actives par joueur.
 

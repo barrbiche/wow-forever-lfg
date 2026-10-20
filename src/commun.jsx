@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { CLASSES, LANCEMENT_LE, MOTIFS_JOUEUR, MOTIFS_SIGNALEMENT, RAIDS_OUVERTS_LE, nomSpecialisation } from './data.js'
 import { signaler } from './store.js'
-import { LIEN_DISCORD } from './config.js'
 import { LangueJeu, commandeInviter, useLangueJeu } from './langue.jsx'
 
 // ---------- Petites icônes (dessinées à la main, héritent la couleur du texte) ----------
@@ -152,9 +151,35 @@ export function jourTexte(iso) {
   return t.charAt(0).toUpperCase() + t.slice(1)
 }
 
+// Une adresse écrite sans « https:// » devient une adresse complète quand c'est clair que c'en est une: elle commence par
+// « www. », elle a un chemin (monsite.ca/guilde), ou c'est un site connu (discord.gg/…, facebook.com/…).
+// Tout le reste (BattleTag, nom Discord comme « jean.tremblay ») reste tel quel.
+const SITES_CONNUS = 'discord\\.gg|discord\\.com|facebook\\.com|fb\\.com|fb\\.me|instagram\\.com|youtube\\.com|youtu\\.be|twitch\\.tv|reddit\\.com|x\\.com|twitter\\.com|linktr\\.ee'
+const ADRESSE_SANS_PROTOCOLE = new RegExp(
+  `^(www\\.[a-z0-9-]+(\\.[a-z0-9-]+)*\\.[a-z]{2,}(/\\S*)?|(${SITES_CONNUS})(/\\S*)?|[a-z0-9-]+(\\.[a-z0-9-]+)*\\.[a-z]{2,}/\\S*)$`,
+  'i',
+)
+
+export function adresseComplete(texte) {
+  const t = texte.trim()
+  return ADRESSE_SANS_PROTOCOLE.test(t) ? `https://${t}` : t
+}
+
+// Adresse https sûre à afficher comme lien, ou null. Seul « https » est accepté, jamais un autre protocole.
+function lienSur(texte) {
+  if (!/^https:\/\/[^\s<>"'`]+$/i.test(texte)) return null
+  try {
+    const u = new URL(texte)
+    return u.protocol === 'https:' && u.hostname.includes('.') ? u : null
+  } catch {
+    return null
+  }
+}
+
 // Contact d'une annonce ou d'une guilde. Les visiteurs non connectés ne le reçoivent pas du serveur.
-// Une invitation Discord (discord.gg/…) devient un lien; tout le reste reste du texte simple.
-export function Contact({ contact, onConnexion }) {
+// Une invitation Discord (discord.gg/…) devient un lien. Pour une guilde (`lienLibre`), n'importe quelle adresse https
+// (site, page Facebook…) devient un lien aussi; tout le reste reste du texte simple.
+export function Contact({ contact, onConnexion, lienLibre = false }) {
   const [copie, setCopie] = useState(false)
 
   if (!contact) {
@@ -168,6 +193,7 @@ export function Contact({ contact, onConnexion }) {
   }
 
   const invitation = /^https:\/\/(discord\.gg|discord\.com\/invite)\/[\w-]+$/i.test(contact)
+  const lien = invitation ? new URL(contact) : lienLibre ? lienSur(contact) : null
 
   const copier = async () => {
     try {
@@ -181,9 +207,9 @@ export function Contact({ contact, onConnexion }) {
 
   return (
     <div className="contact">
-      {invitation ? (
-        <a className="invitation" href={contact} target="_blank" rel="noopener noreferrer">
-          {contact.replace('https://', '')}
+      {lien ? (
+        <a className="invitation" href={lien.href} target="_blank" rel="noopener noreferrer nofollow ugc">
+          {contact.replace('https://', '').replace(/\/$/, '')}
         </a>
       ) : (
         <code>{contact}</code>
@@ -195,20 +221,29 @@ export function Contact({ contact, onConnexion }) {
   )
 }
 
-// Bouton « Rejoindre le Discord » (couleur de Discord, icône de discussion dessinée pour le site).
-// Il n'apparaît que si l'adresse d'invitation est configurée (VITE_DISCORD_INVITE dans Netlify).
-export function BoutonDiscord({ petit = false }) {
-  if (!LIEN_DISCORD) return null
+// Bouton « Copier le lien du site »: pour inviter des amis à venir sur le site.
+export function BoutonLienSite() {
+  const [etat, setEtat] = useState('')
+  const copier = async () => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/`)
+      setEtat('ok')
+    } catch {
+      setEtat('non')
+    }
+    setTimeout(() => setEtat(''), 3000)
+  }
   return (
-    <a
-      className={`discord-bouton${petit ? ' petit' : ''}`}
-      href={LIEN_DISCORD}
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      <Icone nom="discussion" taille={petit ? 17 : 20} />
-      Rejoindre le Discord
-    </a>
+    <span className="lien-site">
+      <button type="button" className="bouton petit" onClick={copier}>
+        {etat === 'ok' ? 'Lien copié' : 'Copier le lien du site'}
+      </button>
+      {etat === 'non' && (
+        <span className="aide" role="status">
+          Copie impossible ici: l'adresse du site est en haut de ton navigateur.
+        </span>
+      )}
+    </span>
   )
 }
 

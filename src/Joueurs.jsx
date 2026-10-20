@@ -23,7 +23,7 @@ import {
   normaliserBattleTag,
   specialisationsDe,
 } from './data.js'
-import { ChipClasse, Icone, LigneCopie, Signalement, vuTexte } from './commun.jsx'
+import { BoutonLienSite, ChipClasse, Icone, LigneCopie, Signalement, vuTexte } from './commun.jsx'
 import { LangueJeu, commandeInviter, useLangueJeu } from './langue.jsx'
 import { BoutonsAmi, SectionAmis } from './Amis.jsx'
 
@@ -210,7 +210,8 @@ export default function SectionJoueurs({
       {!filtresActifs && joueurs.length > 0 && joueurs.every((j) => j.user_id === utilisateur.id) && (
         <p className="astuce" role="note">
           Tu es le seul joueur dans la liste pour l'instant. Les autres apparaissent dès qu'ils créent leur profil:
-          invite tes amis à venir sur le site, puis tu pourras les ajouter ici.
+          invite tes amis à venir sur le site, puis tu pourras les ajouter ici.{' '}
+          <BoutonLienSite />
         </p>
       )}
 

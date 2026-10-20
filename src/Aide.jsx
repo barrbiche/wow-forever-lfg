@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react'
-import { LIEN_DISCORD } from './config.js'
 
 // Fenêtre « Comment ça marche »: les étapes, les règles du site et ce qu'il fait des données.
 // Le texte décrit ce que le site fait vraiment (à mettre à jour si le site change, par exemple quand il aura des pubs).
@@ -36,7 +35,7 @@ export default function Aide({ ouvert, fermer }) {
             </li>
             <li>
               <strong>Connecte-toi pour contacter ou publier.</strong> Avec Discord, ou avec un lien envoyé par courriel.
-              Il n'y a pas de mot de passe. Les contacts (Discord, BattleTag) ne sont montrés qu'aux gens connectés.
+              Il n'y a pas de mot de passe. Les contacts (BattleTag, Discord) ne sont montrés qu'aux gens connectés.
             </li>
             <li>
               <strong>Publie ton annonce.</strong> Un groupe qui cherche des joueurs, ou un joueur seul qui cherche un
@@ -172,9 +171,7 @@ export default function Aide({ ouvert, fermer }) {
             <li>
               <strong>Tes annonces.</strong> Ce que tu écris (personnage, contact, message) est enregistré dans la base du
               site. Le contact n'est montré qu'aux gens connectés.
-              {LIEN_DISCORD
-                ? " Chaque nouvelle annonce est aussi publiée, contact compris, dans le Discord de la communauté: ses membres la voient."
-                : ''}{' '}
+              {' '}
               Une annonce n'est plus affichée une fois son temps écoulé.
             </li>
             <li>
@@ -215,17 +212,7 @@ export default function Aide({ ouvert, fermer }) {
             <li>
               <strong>Effacer tes données.</strong> Tu peux supprimer ton profil toi-même dans « Mon profil »: les pouces que
               tu as reçus partent avec lui. Pour faire retirer ton compte et tes annonces,{' '}
-              {LIEN_DISCORD ? (
-                <>
-                  écris-nous sur{' '}
-                  <a className="invitation" href={LIEN_DISCORD} target="_blank" rel="noopener noreferrer">
-                    le Discord de la communauté
-                  </a>
-                  .
-                </>
-              ) : (
-                'écris à la personne qui gère le site.'
-              )}
+              écris à la personne qui gère le site.
             </li>
           </ul>
         </section>

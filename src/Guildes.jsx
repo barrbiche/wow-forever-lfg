@@ -11,7 +11,7 @@ import {
   STYLES,
   nomDe,
 } from './data.js'
-import { Contact, Icone, LienDirect, Signalement, depuis } from './commun.jsx'
+import { Contact, Icone, LienDirect, Signalement, depuis, adresseComplete } from './commun.jsx'
 
 // ---------- Onglet « Guildes qui recrutent » ----------
 
@@ -164,7 +164,7 @@ function CarteGuilde({ guilde: g, proprietaire, utilisateur, onConnexion, apres 
               <span>Encore {jours} {jours > 1 ? 'jours' : 'jour'}</span>
             </div>
           </div>
-          <Contact contact={g.contact} onConnexion={onConnexion} />
+          <Contact contact={g.contact} onConnexion={onConnexion} lienLibre />
         </div>
 
         {proprietaire ? (
@@ -252,7 +252,8 @@ function FormulaireGuilde({ utilisateur, ouvert, fermer, apresInscription }) {
     if (champs.focus.length === 0) e.focus = 'Choisis au moins une activité.'
     if (!(niveau >= 1 && niveau <= 60)) e.niveau_min = 'Entre 1 et 60.'
     if (!champs.perso.trim()) e.perso = 'Écris le nom de ton personnage.'
-    if (!champs.contact.trim()) e.contact = 'Écris un lien d’invitation Discord ou ton BattleTag.'
+    if (!champs.contact.trim()) e.contact = 'Écris un lien (invitation Discord, site, page Facebook…) ou ton BattleTag.'
+    else if (adresseComplete(champs.contact).length > 80) e.contact = 'Ce lien est trop long (80 caractères au plus).'
     setErreurs(e)
     return Object.keys(e).length === 0
   }
@@ -276,7 +277,7 @@ function FormulaireGuilde({ utilisateur, ouvert, fermer, apresInscription }) {
           niveau_min: Number(champs.niveau_min),
           description: champs.description.trim(),
           perso: champs.perso.trim(),
-          contact: champs.contact.trim(),
+          contact: adresseComplete(champs.contact),
         },
         Number(champs.jours),
       )
@@ -408,10 +409,13 @@ function FormulaireGuilde({ utilisateur, ouvert, fermer, apresInscription }) {
           </div>
 
           <label className="champ">
-            <span>Contact (lien d'invitation Discord ou BattleTag)</span>
-            <input type="text" maxLength={80} autoComplete="off" value={champs.contact} onChange={(e) => maj('contact', e.target.value)} aria-invalid={!!erreurs.contact} placeholder="https://discord.gg/…" />
+            <span>Contact ou lien de la guilde</span>
+            <input type="text" maxLength={80} autoComplete="off" value={champs.contact} onChange={(e) => maj('contact', e.target.value)} aria-invalid={!!erreurs.contact} placeholder="https://discord.gg/… ou ton site, ta page Facebook" />
             {erreur('contact')}
-            <small className="aide">Visible seulement pour les gens connectés.</small>
+            <small className="aide">
+              Une invitation Discord, un site, une page Facebook ou un BattleTag. Les adresses (https://…) deviennent des liens cliquables.
+              Visible seulement pour les gens connectés.
+            </small>
           </label>
 
           {modeDemo && (

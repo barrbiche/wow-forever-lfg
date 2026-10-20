@@ -717,7 +717,7 @@ export async function agirAmi(id, action) {
 const CLE_MODERATION_DEMO = 'forever-demo-moderation'
 
 export const MESSAGE_COMPTE_SUSPENDU =
-  "Ton compte est suspendu: tu ne peux plus publier. Si tu penses que c'est une erreur, écris à l'équipe du serveur Discord."
+  "Ton compte est suspendu: tu ne peux plus publier. Si tu penses que c'est une erreur, contacte l'équipe du site."
 
 // Vrai si l'erreur vient d'un compte suspendu par la modération.
 export const compteSuspendu = (e) => /compte suspendu/i.test(e?.message ?? '')

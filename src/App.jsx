@@ -45,7 +45,6 @@ import {
   raidsOuverts,
 } from './data.js'
 import {
-  BoutonDiscord,
   ChipClasse,
   CommandeAnnonce,
   Contact,
@@ -77,7 +76,6 @@ import {
 import Aide from './Aide.jsx'
 import SectionGuildes from './Guildes.jsx'
 import SectionJoueurs, { ProfilJoueur } from './Joueurs.jsx'
-import { LIEN_DISCORD } from './config.js'
 
 // La page de modération ne sert qu'aux modérateurs: elle n'est chargée que quand on l'ouvre.
 const Moderation = lazy(() => import('./Moderation.jsx').then((m) => ({ default: m.Moderation })))
@@ -643,7 +641,6 @@ export default function App() {
               <button type="button" className="lien aide-lien" onClick={() => setAideOuverte(true)}>
                 Comment ça marche?
               </button>
-              <BoutonDiscord petit />
             </div>
           </div>
           <div className="styles" role="group" aria-label="Apparence du site">
@@ -922,16 +919,6 @@ export default function App() {
               Comment ça marche, règles et données personnelles
             </button>
           </p>
-          {LIEN_DISCORD && (
-            <div className="discord-carte">
-              <span className="discord-carte-icone" aria-hidden="true"><Icone nom="discussion" taille={26} /></span>
-              <div className="discord-carte-texte">
-                <strong>Rejoins la communauté sur Discord</strong>
-                <span>Pose tes questions, trouve du monde et dis-nous ce qui manque au site.</span>
-              </div>
-              <BoutonDiscord />
-            </div>
-          )}
           <p className="avis">
             Babillard Forever est un site de fans, sans lien avec Blizzard Entertainment. World of Warcraft est une
             marque de Blizzard Entertainment, Inc.
@@ -1375,7 +1362,7 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
       else if (max < min) e.niveau_max = 'Doit être au moins égal au niveau minimum.'
     }
     if (!champs.perso.trim()) e.perso = 'Écris le nom de ton personnage.'
-    if (!champs.contact.trim()) e.contact = 'Écris ton Discord ou ton BattleTag pour que les gens te trouvent.'
+    if (!champs.contact.trim()) e.contact = 'Écris ton BattleTag (ou ton Discord) pour que les gens te trouvent.'
     if (champs.activite !== 'pvp' && champs.roles.length === 0) {
       e.roles = joueur
         ? 'Choisis au moins un rôle que tu joues.'
@@ -1652,16 +1639,12 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
               {erreur('perso')}
             </label>
             <label className="champ">
-              <span>Contact (Discord ou BattleTag)</span>
-              <input type="text" maxLength={48} autoComplete="off" value={champs.contact} onChange={(e) => maj('contact', e.target.value)} aria-invalid={!!erreurs.contact} />
+              <span>Contact (BattleTag, ou Discord si tu préfères)</span>
+              <input type="text" maxLength={48} autoComplete="off" value={champs.contact} onChange={(e) => maj('contact', e.target.value)} aria-invalid={!!erreurs.contact} placeholder="Ex.: Nom#1234" />
               {erreur('contact')}
             </label>
           </div>
-          <p className="aide">
-            {LIEN_DISCORD
-              ? "Ton contact est visible pour les gens connectés et dans le Discord de la communauté. Il est gardé pour ta prochaine annonce."
-              : "Ton contact n'est visible que pour les gens connectés. Il est gardé pour ta prochaine annonce."}
-          </p>
+          <p className="aide">Ton contact n'est visible que pour les gens connectés. Il est gardé pour ta prochaine annonce.</p>
 
           <label className="champ">
             <span>Message (facultatif)</span>
