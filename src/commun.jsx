@@ -19,6 +19,9 @@ export const CHEMINS = {
   cloche: 'M6 8a6 6 0 1112 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 003.4 0',
   discussion: 'M5 4h14a2 2 0 012 2v9a2 2 0 01-2 2h-7l-5 4v-4H5a2 2 0 01-2-2V6a2 2 0 012-2zM8 10h.01M12 10h.01M16 10h.01',
   livre: 'M4 4h7a2 2 0 012 2v14a2 2 0 00-2-2H4V4zM20 4h-7a2 2 0 00-2 2v14a2 2 0 012-2h7V4z',
+  ami: 'M10 12a4 4 0 100-8 4 4 0 000 8zM2 21a8 8 0 0116 0M19 8v6M16 11h6',
+  amis: 'M9 11a4 4 0 100-8 4 4 0 000 8zM2 21a7 7 0 0114 0M16 3.1a4 4 0 010 7.8M22 21a7 7 0 00-5-6.7',
+  coche: 'M5 12.5l4.5 4.5L19 7',
   pouce: 'M3 11h4v10H3zM7 12l4-8c1.7 0 2.7 1.1 2.7 2.6V10h5.2c1.4 0 2.4 1.3 2.1 2.6l-1.4 6.2c-.2 1.2-1.2 2-2.4 2H7',
 }
 export const NOMS_ACTIVITE = { donjon: 'Donjon', raid: 'Raid', pvp: 'PvP' }
@@ -42,6 +45,16 @@ export function Icone({ nom, taille = 18 }) {
 }
 
 // ---------- Utilitaires ----------
+
+// « Vu il y a 3 h » (l'heure exacte est arrondie par la base, donc on reste approximatif).
+export function vuTexte(iso) {
+  const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000))
+  if (min < 60) return 'Vu récemment'
+  const h = Math.floor(min / 60)
+  if (h < 24) return `Vu il y a ${h} h`
+  const j = Math.floor(h / 24)
+  return `Vu il y a ${j} ${j > 1 ? 'jours' : 'jour'}`
+}
 
 export function depuis(iso) {
   const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000))

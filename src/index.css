@@ -2660,6 +2660,159 @@ h2 {
   }
 }
 
+/* ---------- Amis ---------- */
+
+.onglet {
+  position: relative;
+}
+
+/* Pastille dorée sur l'onglet Joueurs: nombre de demandes d'ami reçues. */
+.onglet-alerte,
+.pastille-alerte {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-family: var(--texte);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--gold-ink);
+  background: var(--gold-light);
+}
+
+.onglet-alerte {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+}
+
+.pastille-alerte {
+  margin-left: 6px;
+}
+
+.sous-vues {
+  margin-bottom: 4px;
+}
+
+.amis {
+  display: grid;
+  gap: 26px;
+  margin-top: 20px;
+}
+
+/* « Bloquer » reste à l'écart des boutons qu'on utilise le plus. */
+.ami-actions .bloquer,
+.joueur-actions .bloquer {
+  margin-left: auto;
+}
+
+.amis-titre {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin: 0 0 12px;
+  font-size: 1.15rem;
+}
+
+.amis-titre .onglet-nombre {
+  margin-left: 0;
+}
+
+.ami-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.ami-actions .bouton:has(svg) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ami-etat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--heal);
+}
+
+.ami-etat.attente {
+  color: var(--muted);
+}
+
+.amis-lignes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.ami-ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.ami-ligne-nom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 0;
+}
+
+.ami-ligne .msg-erreur {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+.amis .plus {
+  padding: 4px 2px;
+}
+
+.carte.joueur .carte-corps > .joueur-actions .aide {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+/* Très petits écrans (320 px): les quatre onglets avec leurs nombres doivent tenir sur une ligne. */
+@media (max-width: 360px) {
+  .onglet {
+    padding: 0 3px;
+    font-size: 0.86rem;
+  }
+
+  .onglet-nombre {
+    margin-left: 3px;
+    padding: 1px 5px;
+    font-size: 0.74rem;
+  }
+
+  .onglet-alerte {
+    top: 1px;
+    right: 0;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    font-size: 0.72rem;
+  }
+}
+
 /* ---------- Style Alliance: bleu royal et or, coins arrondis ---------- */
 
 :root[data-style='alliance'] {

@@ -11,6 +11,7 @@ import {
   estModerateur,
   lireAnnonces,
   lireGuildes,
+  lireAmis,
   lireJoueurs,
   lireProfil,
   MESSAGE_COMPTE_SUSPENDU,
@@ -195,6 +196,9 @@ export default function App() {
   const [guideCible, setGuideCible] = useState(null) // { valeur: id ou nom du donjon, n }
   const [joueurs, setJoueurs] = useState([]) // null: pas encore disponibles (ex.: base pas à jour)
   const [enLigne, setEnLigne] = useState(() => new Set())
+  const [amis, setAmis] = useState([]) // null: pas encore disponibles (ameliorations6.sql pas roulé)
+  const [vueJoueurs, setVueJoueurs] = useState('tous') // 'tous' ou 'amis'
+  const demandesVuesRef = useRef(null)
   const [profilOuvert, setProfilOuvert] = useState(false)
   const [moderateur, setModerateur] = useState(false)
   const [moderationOuverte, setModerationOuverte] = useState(false)
@@ -248,6 +252,25 @@ export default function App() {
     }
   }, [])
 
+  // Les amis et les demandes. Une nouvelle demande reçue pendant que le site est ouvert est annoncée une fois.
+  const chargerAmis = useCallback(async () => {
+    try {
+      const liste = await lireAmis()
+      setAmis(liste)
+      const recues = liste.filter((a) => a.lien === 'recue')
+      if (demandesVuesRef.current === null) {
+        demandesVuesRef.current = new Set(recues.map((a) => a.user_id))
+        return
+      }
+      const neuves = recues.filter((a) => !demandesVuesRef.current.has(a.user_id))
+      neuves.forEach((a) => demandesVuesRef.current.add(a.user_id))
+      if (neuves.length === 1) setMessage(`${neuves[0].perso} t'a envoyé une demande d'ami.`)
+      else if (neuves.length > 1) setMessage(`${neuves.length} nouvelles demandes d'ami.`)
+    } catch {
+      setAmis(null)
+    }
+  }, [])
+
   const charger = useCallback(async () => {
     try {
       const liste = await lireAnnonces()
@@ -269,7 +292,8 @@ export default function App() {
     } catch {
       setJoueurs(null)
     }
-  }, [detecterNouvelles])
+    await chargerAmis()
+  }, [detecterNouvelles, chargerAmis])
 
   useEffect(() => {
     const minuterie = setInterval(charger, 30000)
@@ -354,6 +378,8 @@ export default function App() {
 
   // Connexion ou déconnexion: on recharge, car les contacts ne sont envoyés qu'aux gens connectés.
   useEffect(() => {
+    demandesVuesRef.current = null // la première lecture des demandes d'un compte n'est pas « nouvelle »
+    setVueJoueurs('tous')
     charger()
   }, [charger, utilisateur?.id])
 
@@ -434,9 +460,12 @@ export default function App() {
   const basculer = (cle, valeur) => setFiltres((f) => ({ ...f, [cle]: f[cle] === valeur ? FILTRES_VIDES[cle] : valeur }))
   const ouvrirConnexion = () => setFormulaireOuvert(true)
   const joueursParId = useMemo(() => new Map((joueurs ?? []).map((j) => [j.user_id, j])), [joueurs])
+  const liensAmis = useMemo(() => new Map((amis ?? []).map((a) => [a.user_id, a.lien])), [amis])
+  const nbDemandesAmis = (amis ?? []).filter((a) => a.lien === 'recue').length
   // Depuis une annonce: aller au profil de son auteur, dans l'onglet Joueurs.
   const voirProfil = (id) => {
     setVue('joueurs')
+    setVueJoueurs('tous')
     setFiltres(FILTRES_VIDES)
     setCiblee({ type: 'joueur', id })
   }
@@ -589,6 +618,15 @@ export default function App() {
             <button type="button" className="onglet" aria-pressed={vue === 'joueurs'} onClick={() => setVue('joueurs')}>
               Joueurs
               {utilisateur && joueurs && <span className="onglet-nombre">{joueurs.length}</span>}
+              {utilisateur && nbDemandesAmis > 0 && (
+                <span
+                  className="onglet-alerte"
+                  role="img"
+                  aria-label={`${nbDemandesAmis} ${nbDemandesAmis > 1 ? 'demandes' : 'demande'} d'ami`}
+                >
+                  {nbDemandesAmis}
+                </span>
+              )}
             </button>
             <button type="button" className="onglet" aria-pressed={vue === 'guides'} onClick={() => setVue('guides')}>
               Guides
@@ -629,6 +667,11 @@ export default function App() {
             apres={charger}
             annoncer={setMessage}
             voirAnnonce={voirAnnonce}
+            amis={amis}
+            liens={liensAmis}
+            sousVue={vueJoueurs}
+            changerSousVue={setVueJoueurs}
+            apresAmis={chargerAmis}
             filtres={filtres}
             changer={changer}
             basculer={basculer}

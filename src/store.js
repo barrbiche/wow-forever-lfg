@@ -635,6 +635,99 @@ export async function signalerJoueur(id, motif) {
   if (error) throw error
 }
 
+// ---------- Amis (ameliorations6.sql) ----------
+// Une demande, une réponse, une liste. Le serveur décide de tout (limites, blocage); le site affiche seulement.
+// Liens possibles: 'ami', 'recue' (quelqu'un m'a demandé), 'envoyee' (j'ai demandé), 'bloque'.
+
+const CLE_AMIS_DEMO = 'forever-demo-amis'
+
+function amisDemoInitiaux() {
+  return {
+    'demo-j-thalyn': { lien: 'ami', depuis: minutes(3 * 24 * 60) },
+    'demo-j-mirabelle': { lien: 'recue', depuis: minutes(35) },
+  }
+}
+
+function lireAmisDemo() {
+  try {
+    const brut = localStorage.getItem(CLE_AMIS_DEMO)
+    if (brut) return JSON.parse(brut) ?? {}
+    const depart = amisDemoInitiaux()
+    localStorage.setItem(CLE_AMIS_DEMO, JSON.stringify(depart))
+    return depart
+  } catch {
+    return amisDemoInitiaux()
+  }
+}
+
+function ecrireAmisDemo(liens) {
+  try {
+    localStorage.setItem(CLE_AMIS_DEMO, JSON.stringify(liens))
+  } catch {
+    // navigation privée: le changement n'est pas gardé
+  }
+}
+
+// Retourne [] pour un visiteur. Lance une erreur si la base n'est pas encore à jour (ameliorations6.sql).
+export async function lireAmis() {
+  if (!(await estConnecte())) return []
+  if (modeDemo) {
+    const joueurs = lireJoueursDemo()
+    return Object.entries(lireAmisDemo()).flatMap(([id, l]) => {
+      const j = joueurs.find((x) => x.user_id === id)
+      if (!j) return []
+      const montrer = l.lien === 'ami' && j.visible
+      return [
+        {
+          user_id: id, lien: l.lien, depuis: l.depuis,
+          perso: j.perso, classe: j.classe, niveau: j.niveau, roles: j.roles, faction: j.faction, region: j.region,
+          langue: j.langue, style: j.style, guilde: j.guilde, bio: j.bio, visible: j.visible,
+          battletag: montrer ? j.battletag : '',
+          vu_le: montrer ? j.vu_le : null,
+        },
+      ]
+    })
+  }
+  const { data, error } = await supabase.rpc('lister_amis')
+  if (error) throw error
+  return data
+}
+
+// action: 'demander', 'accepter', 'refuser', 'annuler', 'retirer', 'bloquer' ou 'debloquer'.
+// Retourne le nouveau lien: 'aucun', 'envoyee', 'ami' ou 'bloque'.
+export async function agirAmi(id, action) {
+  if (modeDemo) {
+    const erreur = (message, code) => Object.assign(new Error(message), { code })
+    const liens = { ...lireAmisDemo() }
+    const actuel = liens[id]?.lien
+    if (action === 'demander') {
+      if (!lireJoueursDemo().some((j) => j.moi)) throw erreur("crée ton profil avant d'ajouter des amis", '22023')
+      if (actuel === 'bloque') throw erreur("tu as bloqué cette personne, débloque-la d'abord", '22023')
+      if (actuel === 'ami') return 'ami'
+      if (actuel === 'recue') liens[id] = { lien: 'ami', depuis: new Date().toISOString() }
+      else liens[id] = { lien: 'envoyee', depuis: new Date().toISOString() }
+    } else if (action === 'accepter') {
+      if (actuel !== 'recue') throw erreur('demande introuvable', 'P0002')
+      liens[id] = { lien: 'ami', depuis: new Date().toISOString() }
+    } else if (action === 'refuser') {
+      if (actuel === 'recue') delete liens[id]
+    } else if (action === 'annuler') {
+      if (actuel === 'envoyee') delete liens[id]
+    } else if (action === 'retirer') {
+      if (actuel === 'ami') delete liens[id]
+    } else if (action === 'bloquer') {
+      liens[id] = { lien: 'bloque', depuis: new Date().toISOString() }
+    } else if (action === 'debloquer') {
+      if (actuel === 'bloque') delete liens[id]
+    }
+    ecrireAmisDemo(liens)
+    return liens[id]?.lien ?? 'aucun'
+  }
+  const { data, error } = await supabase.rpc('agir_ami', { p_user: id, p_action: action })
+  if (error) throw error
+  return data
+}
+
 // ---------- Modération (ameliorations5.sql) ----------
 // Réservée aux modérateurs: chaque fonction du serveur revérifie le compte. Ici, on affiche seulement la page.
 

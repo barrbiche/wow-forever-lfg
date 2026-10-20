@@ -111,6 +111,32 @@ export default function Aide({ ouvert, fermer }) {
         </section>
 
         <section>
+          <h3>Amis</h3>
+          <ul className="puces">
+            <li>
+              Sur la carte d'un joueur, « Ajouter en ami » lui envoie une demande. La personne voit ton personnage (nom,
+              classe, niveau) et choisit: accepter, refuser ou bloquer. Si vous vous demandez en même temps, c'est
+              accepté tout de suite. Il faut avoir créé ton profil.
+            </li>
+            <li>
+              Une fois amis, vous êtes dans la liste « Mes amis » l'un de l'autre (onglet Joueurs): qui est en ligne, la
+              commande pour l'inviter dans le jeu et son BattleTag s'il l'a écrit. Être ami ne donne pas accès à plus
+              d'information qu'un profil visible. Si un ami cache son profil, il reste dans ta liste, mais tu ne vois plus son
+              BattleTag ni quand il est en ligne.
+            </li>
+            <li>
+              Refuser n'avertit pas l'autre personne, qui ne peut pas redemander avant 30 jours. Bloquer retire l'amitié et
+              empêche la personne de te redemander: elle ne le sait pas, sa demande n'arrive simplement pas. Tu peux
+              débloquer quelqu'un dans « Mes amis ».
+            </li>
+            <li>
+              Pour éviter le spam: 10 nouvelles demandes par jour, 30 en attente et 100 amis au plus. Quelqu'un te harcèle
+              avec des demandes? Bloque-le et signale-le.
+            </li>
+          </ul>
+        </section>
+
+        <section>
           <h3>Les règles</h3>
           <ul className="puces">
             <li>Sois respectueux. Pas d'insultes ni de harcèlement.</li>
@@ -158,6 +184,13 @@ export default function Aide({ ouvert, fermer }) {
               contact de tes annonces n'y est jamais. Seules les personnes connectées voient la liste des joueurs et les
               BattleTag. Dans « Mon profil », tu peux tout modifier, te cacher de la liste ou
               supprimer ton profil.
+            </li>
+            <li>
+              <strong>Tes amis.</strong> Ta liste d'amis, tes demandes et les personnes que tu as bloquées ne sont visibles
+              que par toi: personne ne voit qui t'a refusé ou bloqué. Une personne à qui tu envoies une demande voit ton
+              personnage (nom, classe, niveau, etc.), jamais ton contact ni ton BattleTag. Supprimer ton profil efface tes
+              amitiés, tes demandes et tes blocages. Les personnes qui gèrent le site peuvent les lire dans la base de
+              données.
             </li>
             <li>
               <strong>En ligne et dernière visite.</strong> Le point vert « en ligne » s'affiche tant que le site est ouvert

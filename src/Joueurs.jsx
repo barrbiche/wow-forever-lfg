@@ -20,20 +20,11 @@ import {
   nomDe,
   normaliserBattleTag,
 } from './data.js'
-import { Icone, LigneCopie, Signalement } from './commun.jsx'
+import { Icone, LigneCopie, Signalement, vuTexte } from './commun.jsx'
 import { LangueJeu, commandeInviter, useLangueJeu } from './langue.jsx'
+import { BoutonsAmi, SectionAmis } from './Amis.jsx'
 
 // ---------- Onglet « Joueurs »: les profils, qui est en ligne, la réputation ----------
-
-// « Vu il y a 3 h » (l'heure exacte est arrondie par la base, donc on reste approximatif).
-export function vuTexte(iso) {
-  const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000))
-  if (min < 60) return 'Vu récemment'
-  const h = Math.floor(min / 60)
-  if (h < 24) return `Vu il y a ${h} h`
-  const j = Math.floor(h / 24)
-  return `Vu il y a ${j} ${j > 1 ? 'jours' : 'jour'}`
-}
 
 export default function SectionJoueurs({
   joueurs,
@@ -51,6 +42,11 @@ export default function SectionJoueurs({
   basculer,
   filtresActifs,
   effacerFiltres,
+  amis,
+  liens,
+  sousVue,
+  changerSousVue,
+  apresAmis,
 }) {
   const [langue] = useLangueJeu()
 
@@ -73,10 +69,52 @@ export default function SectionJoueurs({
   }
 
   const nbEnLigne = joueurs.filter((j) => enLigne.has(j.user_id)).length
+  const nbDemandes = (amis ?? []).filter((a) => a.lien === 'recue').length
+  const nbAmis = (amis ?? []).filter((a) => a.lien === 'ami').length
+
+  const commutateur = (
+    <div className="pastilles sous-vues" role="group" aria-label="Tous les joueurs ou mes amis">
+      <button type="button" className="pastille" aria-pressed={sousVue === 'tous'} onClick={() => changerSousVue('tous')}>
+        Tous les joueurs
+      </button>
+      <button type="button" className="pastille" aria-pressed={sousVue === 'amis'} onClick={() => changerSousVue('amis')}>
+        Mes amis{nbAmis > 0 ? ` (${nbAmis})` : ''}
+        {nbDemandes > 0 && (
+          <span className="pastille-alerte" aria-label={`${nbDemandes} ${nbDemandes > 1 ? 'demandes' : 'demande'} d'ami`}>
+            {nbDemandes}
+          </span>
+        )}
+      </button>
+    </div>
+  )
+
+  if (sousVue === 'amis') {
+    return (
+      <>
+        <section className="filtres" aria-label="Mes amis">
+          {commutateur}
+          <p className="intro-guildes">
+            Tes amis d'un coup d'œil, avec ceux qui sont en ligne et la commande pour les inviter. Une demande d'ami doit
+            être acceptée par l'autre personne.
+          </p>
+          <LangueJeu />
+        </section>
+        <SectionAmis
+          amis={amis}
+          enLigne={enLigne}
+          commande={commandeInviter(langue)}
+          apres={apresAmis}
+          annoncer={annoncer}
+          voirTous={() => changerSousVue('tous')}
+        />
+      </>
+    )
+  }
 
   return (
     <>
       <section className="filtres" aria-label="Filtres des joueurs">
+        {commutateur}
         {!monProfil && (
           <p className="intro-guildes">
             Crée ton profil pour apparaître dans la liste et recommander les joueurs avec qui tu as joué.
@@ -179,6 +217,8 @@ export default function SectionJoueurs({
                 joueur={j}
                 commande={commandeInviter(langue)}
                 enLigne={enLigne.has(j.user_id)}
+                lien={amis === null ? undefined : (liens.get(j.user_id) ?? null)}
+                apresAmis={apresAmis}
                 utilisateur={utilisateur}
                 aProfil={!!monProfil}
                 ouvrirProfil={ouvrirProfil}
@@ -197,7 +237,7 @@ export default function SectionJoueurs({
 
 // ---------- Carte d'un joueur ----------
 
-function CarteJoueur({ joueur: j, commande, enLigne, utilisateur, aProfil, ouvrirProfil, apres, annoncer, voirAnnonce, onConnexion }) {
+function CarteJoueur({ joueur: j, commande, enLigne, lien, apresAmis, utilisateur, aProfil, ouvrirProfil, apres, annoncer, voirAnnonce, onConnexion }) {
   const classe = CLASSES.find((c) => c.id === j.classe)
   const [choisir, setChoisir] = useState(false)
   const [choix, setChoix] = useState([])
@@ -382,6 +422,16 @@ function CarteJoueur({ joueur: j, commande, enLigne, utilisateur, aProfil, ouvri
                   </>
                 )}
               </form>
+            )}
+            {lien !== undefined && (
+              <BoutonsAmi
+                joueur={j}
+                lien={lien}
+                aProfil={aProfil}
+                ouvrirProfil={ouvrirProfil}
+                apres={apresAmis}
+                annoncer={annoncer}
+              />
             )}
             <div className="joueur-actions">
               {j.ma_reco ? (

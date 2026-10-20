@@ -1,6 +1,6 @@
 # Babillard Forever
 
-Petit site pour trouver du monde avec qui jouer dans WoW Forever: annonces de groupes (donjons, raids, PvP) ou de joueurs seuls, agenda des sorties planifiées, babillard de guildes qui recrutent, avec filtres (faction, règles de jeu, région, rôle, niveau, langue), liste de joueurs, guides de donjons et une page de modération.
+Petit site pour trouver du monde avec qui jouer dans WoW Forever: annonces de groupes (donjons, raids, PvP) ou de joueurs seuls, agenda des sorties planifiées, babillard de guildes qui recrutent, avec filtres (faction, règles de jeu, région, rôle, niveau, langue), liste de joueurs et d'amis, guides de donjons et une page de modération.
 
 Stack: Vite + React, base de données Supabase, hébergement Netlify (déploiement automatique à chaque push sur `main`).
 
@@ -29,6 +29,8 @@ Sans configuration, le site tourne en **mode démo**: les annonces restent dans 
 9. SQL Editor > New query: colle aussi `supabase/ameliorations4.sql`, puis Run (page « Joueurs »: profils, pouces de réputation, signalements de joueurs). Il se roule **après** `ameliorations3.sql`, avant ou après le déploiement du site qui s'en sert: tant que la base n'est pas à jour, l'onglet Joueurs affiche « pas encore disponible » et le reste du site marche normalement. On peut le relancer sans problème.
 
 10. SQL Editor > New query: colle aussi `supabase/ameliorations5.sql`, puis Run (page « Modération »: modérateurs, comptes suspendus, journal). Il se roule **après** `ameliorations4.sql`. Tant qu'il n'est pas roulé, personne n'est modérateur et le lien « Modération » n'apparaît pas; le reste du site marche. Pour te donner l'accès, suis les étapes en commentaire au début du fichier (tu écris ton propre identifiant dans la table `moderateurs`; ne le mets jamais dans GitHub). On peut le relancer sans problème.
+
+11. SQL Editor > New query: colle aussi `supabase/ameliorations6.sql`, puis Run (amis: demandes, liste, blocage). Il se roule **après** `ameliorations5.sql` (il refuse de rouler sans lui, avec un message clair). Tant qu'il n'est pas roulé, les boutons d'amis n'apparaissent pas et « Mes amis » dit « pas encore disponibles »; le reste du site marche. On peut le relancer sans problème.
 
 ## Connexion par courriel
 
@@ -115,6 +117,14 @@ Pour que le monde voie le lien du Discord au bas du site, ajoute la variable Net
 
 - Le lien « Modération » (à côté de « Mon profil ») n'apparaît que pour les comptes de la table `moderateurs`. La page liste ce qui a été signalé avec le motif, le contact (que les visiteurs ne voient pas) et les actions: écarter, retirer, remettre en ligne, suspendre ou rétablir un compte. Un compte suspendu ne peut plus publier et son profil reste caché. Chaque action est revérifiée par la base et notée dans `moderation_journal` (à lire dans Table Editor).
 - Pour ajouter ou retirer un modérateur, voir les commentaires au début de `supabase/ameliorations5.sql`.
+
+## Amis
+
+- Sur la carte d'un joueur: « Ajouter en ami » (demande), « Accepter sa demande », « Annuler », « Bloquer ». L'onglet Joueurs a deux vues: « Tous les joueurs » et « Mes amis » (demandes reçues, amis avec « en ligne », commande d'invitation et BattleTag, demandes envoyées, personnes bloquées). Une pastille dorée sur l'onglet Joueurs montre le nombre de demandes reçues; une nouvelle demande reçue pendant que le site est ouvert est annoncée (la liste se relit toutes les 30 secondes). Le code est dans `src/Amis.jsx` et `src/store.js` (`lireAmis`, `agirAmi`).
+- Les données sont dans `amities` et `blocages` (`supabase/ameliorations6.sql`). Aucune n'est lisible directement: tout passe par `lister_amis()` et `agir_ami(joueur, action)`, qui vérifient le compte à chaque appel (actions: demander, accepter, refuser, annuler, retirer, bloquer, debloquer). Tu peux les lire dans Supabase > Table Editor.
+- Règles voulues: la demande doit être acceptée; **refuser n'avertit personne** (la ligne reste, « refusée », et empêche une nouvelle demande pendant 30 jours); **bloquer est silencieux** (la demande de la personne bloquée a l'air d'être envoyée, mais rien n'est enregistré); limites de 10 nouvelles demandes par 24 h, 30 en attente, 100 amis, 200 blocages; un compte suspendu ne peut pas demander et ses demandes ne s'affichent pas; on ne demande qu'à un profil visible; supprimer son profil (ou son compte) efface ses amitiés, ses demandes et ses blocages.
+- Être ami ne donne **pas** accès à plus d'information: BattleTag et « en ligne » viennent du profil visible, comme dans la liste des joueurs. Un ami qui cache son profil reste dans la liste, sans BattleTag ni « en ligne ». Une idée pour plus tard: une visibilité « amis seulement ».
+- Limites connues: l'autre personne ne voit jamais pourquoi une demande n'arrive pas; on peut contourner la limite quotidienne en annulant puis en redemandant (la limite de 30 demandes en attente et le blocage restent); pas de notification quand le site est fermé.
 
 ## Limites de la version 1
 
