@@ -673,13 +673,16 @@ export default function App() {
         <div className="barre">
           <div className="onglets" role="group" aria-label="Section du site">
             <button type="button" className="onglet" aria-pressed={vue === 'groupes'} onClick={() => setVue('groupes')}>
-              Groupes <span className="onglet-nombre">{annonces.length}</span>
+              <Icone nom="donjon" taille={22} />
+              <span className="onglet-nom">Groupes</span> <span className="onglet-nombre">{annonces.length}</span>
             </button>
             <button type="button" className="onglet" aria-pressed={vue === 'guildes'} onClick={() => setVue('guildes')}>
-              Guildes <span className="onglet-nombre">{guildes ? guildes.length : 0}</span>
+              <Icone nom="guilde" taille={22} />
+              <span className="onglet-nom">Guildes</span> <span className="onglet-nombre">{guildes ? guildes.length : 0}</span>
             </button>
             <button type="button" className="onglet" aria-pressed={vue === 'joueurs'} onClick={() => setVue('joueurs')}>
-              Joueurs
+              <Icone nom="joueur" taille={22} />
+              <span className="onglet-nom">Joueurs</span>
               {utilisateur && joueurs && <span className="onglet-nombre">{joueurs.length}</span>}
               {utilisateur && nbDemandesAmis > 0 && (
                 <span
@@ -692,7 +695,8 @@ export default function App() {
               )}
             </button>
             <button type="button" className="onglet" aria-pressed={vue === 'guides'} onClick={() => setVue('guides')}>
-              Guides
+              <Icone nom="livre" taille={22} />
+              <span className="onglet-nom">Guides</span>
             </button>
           </div>
 
@@ -934,6 +938,13 @@ export default function App() {
           </p>
         </footer>
       </main>
+
+      {vue !== 'guides' && (
+        <button type="button" className="fab" onClick={ouvrirPublication}>
+          <Icone nom="plus" taille={22} />
+          Publier
+        </button>
+      )}
 
       <Aide ouvert={aideOuverte} fermer={() => setAideOuverte(false)} />
 

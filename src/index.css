@@ -2226,6 +2226,11 @@ h2 {
   }
 }
 
+/* Bouton « Publier » flottant: visible seulement sur cellulaire (voir babillard.css). */
+.fab {
+  display: none;
+}
+
 /* ---------- Message de confirmation ---------- */
 
 .toast {

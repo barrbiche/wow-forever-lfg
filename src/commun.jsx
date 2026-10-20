@@ -11,6 +11,7 @@ export const CHEMINS = {
   pvp: 'M4 4l16 16M20 4L4 20M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
   tank: 'M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z',
   heal: 'M12 5v14M5 12h14',
+  plus: 'M12 5v14M5 12h14',
   dps: 'M6 18L18 6M13 6h5v5M6 14l4 4M4 20l3-3',
   raid: 'M4 21V8h3v3h3V8h4v3h3V8h3v13M3 21h18M10 21v-4a2 2 0 014 0v4',
   horloge: 'M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18z',

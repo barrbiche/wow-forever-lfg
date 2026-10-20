@@ -128,6 +128,12 @@ Pour que le monde voie le lien du Discord au bas du site, ajoute la variable Net
 - Être ami ne donne **pas** accès à plus d'information: BattleTag et « en ligne » viennent du profil visible, comme dans la liste des joueurs. Un ami qui cache son profil reste dans la liste, sans BattleTag ni « en ligne ». Une idée pour plus tard: une visibilité « amis seulement ».
 - Limites connues: l'autre personne ne voit jamais pourquoi une demande n'arrive pas; on peut contourner la limite quotidienne en annulant puis en redemandant (la limite de 30 demandes en attente et le blocage restent); pas de notification quand le site est fermé.
 
+## Look « babillard d'auberge »
+
+Les annonces sont des papiers épinglés sur un tableau: liège pour le style Neutre (bois sombre en mode sombre), feutre matelassé avec boutons de laiton pour Alliance, plaques de fer rivetées pour Horde. L'en-tête et la barre de navigation sont en bois, l'onglet actif est une plaque de laiton, et chaque annonce porte la bannière de sa faction. Sur cellulaire, les quatre onglets passent dans une barre en bas de l'écran (sous le pouce) avec un bouton « Publier » flottant; sur ordinateur, la barre reste collée en haut quand on défile.
+
+Tout ça vit dans deux fichiers: `src/textures.css` (les textures, en SVG dans le CSS, aucune image à télécharger) et `src/babillard.css` (couleurs et habillage). `src/index.css` garde la structure. Pour revenir au look sobre, retire les imports de `textures.css` et `babillard.css` dans `src/main.jsx`.
+
 ## Limites de la version 1
 
 - Connexion obligatoire pour publier, par courriel (Discord en option) (5 annonces actives par joueur au maximum). La connexion Battle.net avec import du personnage viendra après, une fois qu'on aura confirmé que l'API de Blizzard voit les personnages de Forever.
