@@ -682,6 +682,99 @@ h2 {
   }
 }
 
+/* ---------- Ruban défilant (rappel « Mon profil ») ---------- */
+
+.ruban {
+  background: var(--gold);
+  color: var(--gold-ink);
+}
+
+/* Sans animation (réglage « réduire les animations »): une seule ligne fixe, centrée, qui se replie. */
+.ruban-bouton {
+  display: block;
+  width: 100%;
+  padding: 9px 16px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.ruban-bouton:hover .ruban-texte {
+  text-decoration: underline;
+}
+
+.ruban-bouton:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+
+.ruban-groupe,
+.ruban-texte {
+  display: block;
+}
+
+.ruban-groupe + .ruban-groupe,
+.ruban-texte + .ruban-texte {
+  display: none;
+}
+
+@keyframes ruban {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ruban-bouton {
+    padding: 0;
+  }
+
+  /* Deux groupes identiques: on glisse d'un groupe entier, puis on recommence sans saut. */
+  .ruban-piste {
+    display: flex;
+    width: max-content;
+    animation: ruban 80s linear infinite;
+  }
+
+  .ruban-groupe,
+  .ruban-groupe + .ruban-groupe {
+    display: flex;
+    flex: none;
+  }
+
+  .ruban-texte,
+  .ruban-texte + .ruban-texte {
+    display: flex;
+    align-items: center;
+    flex: none;
+    padding: 9px 0;
+    white-space: nowrap;
+    text-align: left;
+  }
+
+  .ruban-texte::after {
+    content: '';
+    flex: none;
+    width: 7px;
+    height: 7px;
+    margin: 0 30px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.5;
+  }
+
+  .ruban-bouton:hover .ruban-piste,
+  .ruban-bouton:focus-visible .ruban-piste {
+    animation-play-state: paused;
+  }
+}
+
 /* ---------- Bandeaux ---------- */
 
 .bandeau {

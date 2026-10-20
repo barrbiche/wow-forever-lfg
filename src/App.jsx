@@ -172,6 +172,36 @@ function lireLienDirect() {
   return null
 }
 
+// ---------- Ruban défilant: rappel de garder son profil à jour ----------
+
+const TEXTE_RUBAN = "N'oublie pas de mettre à jour ton personnage dans « Mon profil » pour un bon déroulement sur le site."
+
+// Le texte défile sans arrêt (il s'arrête sous la souris ou au clavier). Pour les gens qui demandent moins de
+// mouvement, il reste fixe, sur une seule ligne qui se replie. Cliquer ouvre « Mon profil » (ou la connexion).
+// Le texte est répété pour remplir les très grands écrans; seul le premier est lu par les lecteurs d'écran.
+function Ruban({ connecte, onClick }) {
+  return (
+    <div className="ruban">
+      <button
+        type="button"
+        className="ruban-bouton"
+        onClick={onClick}
+        aria-label={`${TEXTE_RUBAN} ${connecte ? 'Ouvrir mon profil.' : 'Se connecter.'}`}
+      >
+        <span className="ruban-piste" aria-hidden="true">
+          {[0, 1].map((g) => (
+            <span key={g} className="ruban-groupe">
+              {Array.from({ length: 6 }, (_, i) => (
+                <span key={i} className="ruban-texte">{TEXTE_RUBAN}</span>
+              ))}
+            </span>
+          ))}
+        </span>
+      </button>
+    </div>
+  )
+}
+
 // ---------- Page ----------
 
 export default function App() {
@@ -546,6 +576,11 @@ export default function App() {
 
   return (
     <>
+      <Ruban
+        connecte={!!utilisateur}
+        onClick={() => (utilisateur ? setProfilOuvert(true) : ouvrirConnexion())}
+      />
+
       <header className="haut">
         <svg className="haut-infini" viewBox="0 0 240 120" aria-hidden="true" focusable="false">
           <path
