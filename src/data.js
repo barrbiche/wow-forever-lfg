@@ -148,6 +148,89 @@ export const CLASSES = [
   { id: 'druide', nom: 'Druide', couleur: '#FF7D0A' },
 ]
 
+// Les trois spécialisations (arbres de talents) de chaque classe. L'identifiant est celui que la base accepte
+// (ameliorations4.sql: profils_specialisation_ok): ne le change pas sans changer la base.
+// Noms français: seemeta.com/fr/wow-forever/classes. Noms anglais: warcrafttavern.com/forever/guides/classes.
+// À revérifier une fois le jeu sorti.
+export const SPECIALISATIONS = {
+  guerrier: [
+    { id: 'armes', fr: 'Armes', en: 'Arms' },
+    { id: 'fureur', fr: 'Fureur', en: 'Fury' },
+    { id: 'protection', fr: 'Protection', en: 'Protection' },
+  ],
+  paladin: [
+    { id: 'sacre', fr: 'Sacré', en: 'Holy' },
+    { id: 'protection', fr: 'Protection', en: 'Protection' },
+    { id: 'vindicte', fr: 'Vindicte', en: 'Retribution' },
+  ],
+  chasseur: [
+    { id: 'maitrise_des_betes', fr: 'Maîtrise des bêtes', en: 'Beast Mastery' },
+    { id: 'precision', fr: 'Précision', en: 'Marksmanship' },
+    { id: 'survie', fr: 'Survie', en: 'Survival' },
+  ],
+  voleur: [
+    { id: 'assassinat', fr: 'Assassinat', en: 'Assassination' },
+    { id: 'combat', fr: 'Combat', en: 'Combat' },
+    { id: 'finesse', fr: 'Finesse', en: 'Subtlety' },
+  ],
+  pretre: [
+    { id: 'discipline', fr: 'Discipline', en: 'Discipline' },
+    { id: 'sacre', fr: 'Sacré', en: 'Holy' },
+    { id: 'ombre', fr: 'Ombre', en: 'Shadow' },
+  ],
+  chaman: [
+    { id: 'elementaire', fr: 'Élémentaire', en: 'Elemental' },
+    { id: 'amelioration', fr: 'Amélioration', en: 'Enhancement' },
+    { id: 'restauration', fr: 'Restauration', en: 'Restoration' },
+  ],
+  mage: [
+    { id: 'arcanes', fr: 'Arcanes', en: 'Arcane' },
+    { id: 'feu', fr: 'Feu', en: 'Fire' },
+    { id: 'givre', fr: 'Givre', en: 'Frost' },
+  ],
+  demoniste: [
+    { id: 'affliction', fr: 'Affliction', en: 'Affliction' },
+    { id: 'demonologie', fr: 'Démonologie', en: 'Demonology' },
+    { id: 'destruction', fr: 'Destruction', en: 'Destruction' },
+  ],
+  druide: [
+    { id: 'equilibre', fr: 'Équilibre', en: 'Balance' },
+    { id: 'combat_farouche', fr: 'Combat farouche', en: 'Feral Combat' },
+    { id: 'restauration', fr: 'Restauration', en: 'Restoration' },
+  ],
+}
+
+export const specialisationsDe = (classe) => SPECIALISATIONS[classe] ?? []
+
+// Nom d'une spécialisation dans la langue du jeu de la personne ('fr' ou 'en'); vide si elle est inconnue.
+export function nomSpecialisation(classe, id, langue = 'fr') {
+  const s = specialisationsDe(classe).find((x) => x.id === id)
+  return s ? (langue === 'en' ? s.en : s.fr) : ''
+}
+
+// Ce qu'il faut avoir rempli dans son profil pour publier une annonce: nom, classe, spécialisation, niveau et
+// au moins un rôle. Retourne la liste de ce qui manque (vide: le profil est complet).
+// `exigerSpec` est faux quand la base n'a pas encore la colonne (ameliorations4.sql pas roulé): on n'enferme alors personne.
+export function champsManquants(profil, exigerSpec = true) {
+  const p = profil ?? {}
+  const manque = []
+  if (!String(p.perso ?? '').trim()) manque.push('perso')
+  if (!p.classe) manque.push('classe')
+  if (exigerSpec && !specialisationsDe(p.classe).some((s) => s.id === p.specialisation)) manque.push('specialisation')
+  const niveau = Number(p.niveau)
+  if (!(Number.isInteger(niveau) && niveau >= 1 && niveau <= 60)) manque.push('niveau')
+  if (!Array.isArray(p.roles) || p.roles.length === 0) manque.push('roles')
+  return manque
+}
+
+export const NOMS_CHAMPS_PROFIL = {
+  perso: 'le nom de ton personnage',
+  classe: 'ta classe',
+  specialisation: 'ta spécialisation',
+  niveau: 'ton niveau',
+  roles: 'au moins un rôle',
+}
+
 export const MOTIFS_SIGNALEMENT = [
   { id: 'spam', nom: 'Spam ou publicité' },
   { id: 'faux_contact', nom: 'Faux contact' },

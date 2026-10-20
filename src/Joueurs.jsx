@@ -17,10 +17,13 @@ import {
   REGIONS,
   ROLES,
   STYLES,
+  champsManquants,
   nomDe,
+  nomSpecialisation,
   normaliserBattleTag,
+  specialisationsDe,
 } from './data.js'
-import { Icone, LigneCopie, Signalement, vuTexte } from './commun.jsx'
+import { ChipClasse, Icone, LigneCopie, Signalement, vuTexte } from './commun.jsx'
 import { LangueJeu, commandeInviter, useLangueJeu } from './langue.jsx'
 import { BoutonsAmi, SectionAmis } from './Amis.jsx'
 
@@ -238,7 +241,6 @@ export default function SectionJoueurs({
 // ---------- Carte d'un joueur ----------
 
 function CarteJoueur({ joueur: j, commande, enLigne, lien, apresAmis, utilisateur, aProfil, ouvrirProfil, apres, annoncer, voirAnnonce, onConnexion }) {
-  const classe = CLASSES.find((c) => c.id === j.classe)
   const [choisir, setChoisir] = useState(false)
   const [choix, setChoix] = useState([])
   const [occupe, setOccupe] = useState(false)
@@ -314,12 +316,7 @@ function CarteJoueur({ joueur: j, commande, enLigne, lien, apresAmis, utilisateu
         </div>
 
         <ul className="infos">
-          {classe && (
-            <li className="chip classe">
-              <span className="classe-point" style={{ background: classe.couleur }} aria-hidden="true" />
-              {classe.nom}
-            </li>
-          )}
+          <ChipClasse classe={j.classe} specialisation={j.specialisation} />
           {j.guilde && <li className="chip fort">{j.guilde}</li>}
           <li className="chip">{j.region}</li>
           <li className="chip">{nomDe(STYLES, j.style)}</li>
@@ -473,6 +470,7 @@ function CarteJoueur({ joueur: j, commande, enLigne, lien, apresAmis, utilisateu
 const PROFIL_VIDE = {
   perso: '',
   classe: '',
+  specialisation: '',
   niveau: '',
   roles: [],
   faction: 'alliance',
@@ -492,6 +490,7 @@ function champsInitiaux(profil, factionParDefaut) {
       ...PROFIL_VIDE,
       perso: profil.perso ?? '',
       classe: profil.classe ?? '',
+      specialisation: profil.specialisation ?? '',
       niveau: profil.niveau ? String(profil.niveau) : '',
       roles: profil.roles ?? [],
       faction: profil.faction,
@@ -517,7 +516,13 @@ function champsInitiaux(profil, factionParDefaut) {
   }
 }
 
-export function ProfilJoueur({ ouvert, fermer, profil, factionParDefaut, apres, annoncer }) {
+// `pourPublier`: la fenêtre s'ouvre parce qu'il faut un profil complet pour publier une annonce.
+// `exigerSpec`: faux quand la base ne connaît pas encore les spécialisations (le champ disparaît alors).
+// `apresEnregistrement`: appelée une fois le profil enregistré (le site ouvre alors le formulaire d'annonce).
+export function ProfilJoueur({
+  ouvert, fermer, profil, factionParDefaut, apres, annoncer, pourPublier = false, exigerSpec = true, apresEnregistrement,
+}) {
+  const [langueJeu] = useLangueJeu()
   const dialogue = useRef(null)
   const [champs, setChamps] = useState(() => champsInitiaux(profil, factionParDefaut))
   const [erreurs, setErreurs] = useState({})
@@ -545,15 +550,25 @@ export function ProfilJoueur({ ouvert, fermer, profil, factionParDefaut, apres, 
     setErreurs((e) => (e[cle] ? { ...e, [cle]: undefined } : e))
   }
 
-  const basculerRole = (id) =>
+  // Une spécialisation appartient à une classe: en changer fait recommencer le choix.
+  const changerClasse = (classe) => {
+    setChamps((c) => ({ ...c, classe, specialisation: '' }))
+    setErreurs((e) => ({ ...e, classe: undefined, specialisation: undefined }))
+  }
+
+  const basculerRole = (id) => {
     setChamps((c) => ({ ...c, roles: c.roles.includes(id) ? c.roles.filter((r) => r !== id) : [...c.roles, id] }))
+    setErreurs((e) => (e.roles ? { ...e, roles: undefined } : e))
+  }
 
   const valider = () => {
     const e = {}
-    if (!champs.perso.trim()) e.perso = 'Écris le nom de ton personnage.'
-    if (champs.niveau !== '' && !(Number(champs.niveau) >= 1 && Number(champs.niveau) <= 60)) {
-      e.niveau = 'Entre 1 et 60, ou laisse vide.'
-    }
+    const manque = champsManquants(champs, exigerSpec)
+    if (manque.includes('perso')) e.perso = 'Écris le nom de ton personnage.'
+    if (manque.includes('classe')) e.classe = 'Choisis ta classe.'
+    else if (manque.includes('specialisation')) e.specialisation = 'Choisis ta spécialisation.'
+    if (manque.includes('niveau')) e.niveau = 'Écris ton niveau, entre 1 et 60.'
+    if (manque.includes('roles')) e.roles = 'Choisis au moins un rôle que tu joues.'
     if (champs.battletag.trim() && !BATTLETAG_FORMAT.test(normaliserBattleTag(champs.battletag))) {
       e.battletag = "Écris-le comme Nom#1234: un nom de 3 à 12 caractères, un dièse, puis 4 à 8 chiffres."
     }
@@ -563,7 +578,17 @@ export function ProfilJoueur({ ouvert, fermer, profil, factionParDefaut, apres, 
 
   const envoyer = async (ev) => {
     ev.preventDefault()
-    if (!valider()) return
+    if (!valider()) {
+      // La fenêtre défile: on amène la personne au premier champ à corriger.
+      setTimeout(() => {
+        const d = dialogue.current
+        const el = d?.querySelector('[aria-invalid="true"]') ?? d?.querySelector('.msg-erreur')
+        if (!el) return
+        if (el.matches('input, select, textarea')) el.focus()
+        else el.scrollIntoView({ block: 'center' })
+      }, 0)
+      return
+    }
     setEnvoi(true)
     setErreurServeur('')
     try {
@@ -579,6 +604,7 @@ export function ProfilJoueur({ ouvert, fermer, profil, factionParDefaut, apres, 
       })
       annoncer('Profil enregistré.')
       await apres()
+      apresEnregistrement?.()
       fermer()
     } catch {
       setErreurServeur("Le profil n'a pas été enregistré. Réessaie dans un instant.")
@@ -618,25 +644,52 @@ export function ProfilJoueur({ ouvert, fermer, profil, factionParDefaut, apres, 
           <button type="button" className="bouton petit" onClick={fermer}>Fermer</button>
         </div>
 
-        <label className="champ">
-          <span>Nom de ton personnage</span>
-          <input type="text" maxLength={24} autoComplete="off" value={champs.perso} onChange={(e) => maj('perso', e.target.value)} aria-invalid={!!erreurs.perso} />
-          {erreur('perso')}
-        </label>
+        {pourPublier && (
+          <p className="bandeau profil-requis" role="note">
+            Pour publier une annonce, ton profil doit être complet: nom, classe, spécialisation, niveau et au moins un rôle.
+            Une fois enregistré, tu pourras publier tout de suite.
+          </p>
+        )}
 
         <div className="deux court">
           <label className="champ">
-            <span>Classe</span>
-            <select value={champs.classe} onChange={(e) => maj('classe', e.target.value)}>
-              <option value="">Non précisée</option>
-              {CLASSES.map((c) => <option key={c.id} value={c.id}>{c.nom}</option>)}
-            </select>
+            <span>Nom de ton personnage</span>
+            <input type="text" maxLength={24} autoComplete="off" value={champs.perso} onChange={(e) => maj('perso', e.target.value)} aria-invalid={!!erreurs.perso} />
+            {erreur('perso')}
           </label>
           <label className="champ">
-            <span>Niveau (facultatif)</span>
+            <span>Niveau</span>
             <input type="number" inputMode="numeric" min="1" max="60" value={champs.niveau} onChange={(e) => maj('niveau', e.target.value)} aria-invalid={!!erreurs.niveau} />
             {erreur('niveau')}
           </label>
+        </div>
+
+        <div className="deux">
+          <label className="champ">
+            <span>Classe</span>
+            <select value={champs.classe} onChange={(e) => changerClasse(e.target.value)} aria-invalid={!!erreurs.classe}>
+              <option value="">Choisis ta classe</option>
+              {CLASSES.map((c) => <option key={c.id} value={c.id}>{c.nom}</option>)}
+            </select>
+            {erreur('classe')}
+          </label>
+          {exigerSpec && (
+            <label className="champ">
+              <span>Spécialisation</span>
+              <select
+                value={champs.specialisation}
+                onChange={(e) => maj('specialisation', e.target.value)}
+                disabled={!champs.classe}
+                aria-invalid={!!erreurs.specialisation}
+              >
+                <option value="">{champs.classe ? 'Choisis ta spécialisation' : "Choisis d'abord ta classe"}</option>
+                {specialisationsDe(champs.classe).map((s) => (
+                  <option key={s.id} value={s.id}>{nomSpecialisation(champs.classe, s.id, langueJeu)}</option>
+                ))}
+              </select>
+              {erreur('specialisation')}
+            </label>
+          )}
         </div>
 
         <fieldset className="groupe">
@@ -650,6 +703,7 @@ export function ProfilJoueur({ ouvert, fermer, profil, factionParDefaut, apres, 
               </label>
             ))}
           </div>
+          {erreur('roles')}
         </fieldset>
 
         <div className="deux court">
@@ -728,7 +782,7 @@ export function ProfilJoueur({ ouvert, fermer, profil, factionParDefaut, apres, 
         {erreurServeur && <p className="erreur" role="alert">{erreurServeur}</p>}
 
         <button type="submit" className="bouton principal large" disabled={envoi}>
-          {envoi ? 'Enregistrement…' : 'Enregistrer mon profil'}
+          {envoi ? 'Enregistrement…' : pourPublier ? 'Enregistrer et publier mon annonce' : 'Enregistrer mon profil'}
         </button>
 
         {profil && (

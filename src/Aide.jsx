@@ -178,12 +178,13 @@ export default function Aide({ ouvert, fermer }) {
               Une annonce n'est plus affichée une fois son temps écoulé.
             </li>
             <li>
-              <strong>Ton profil de joueur.</strong> Il est créé quand tu publies ta première annonce, ou quand tu le
-              remplis toi-même dans « Mon profil ». Il contient ton personnage (nom, faction, région, langue, style et, si
-              tu les donnes, classe, niveau, rôles, guilde et petit mot) et, seulement si tu l'écris, ton BattleTag. Le
-              contact de tes annonces n'y est jamais. Seules les personnes connectées voient la liste des joueurs et les
-              BattleTag. Dans « Mon profil », tu peux tout modifier, te cacher de la liste ou
-              supprimer ton profil.
+              <strong>Ton profil de joueur.</strong> Il doit être complet pour publier une annonce: le nom de ton
+              personnage, ta classe, ta spécialisation, ton niveau et au moins un rôle. Quand tu cliques sur « Publier une
+              annonce » sans profil complet, le site ouvre d'abord « Mon profil », puis le formulaire d'annonce. Le profil
+              contient aussi ta faction, ta région, ta langue, ton style et, si tu les donnes, ta guilde et un petit mot,
+              et, seulement si tu l'écris, ton BattleTag. Le contact de tes annonces n'y est jamais. Seules les personnes
+              connectées voient la liste des joueurs et les BattleTag. Dans « Mon profil », tu peux tout modifier, te
+              cacher de la liste ou supprimer ton profil (tu devras alors le refaire pour publier).
             </li>
             <li>
               <strong>Tes amis.</strong> Ta liste d'amis, tes demandes et les personnes que tu as bloquées ne sont visibles

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { MESSAGE_COMPTE_SUSPENDU, agirAmi, compteSuspendu } from './store.js'
-import { CLASSES, FACTIONS, LANGUES, ROLES, STYLES, nomDe } from './data.js'
-import { Icone, LigneCopie, depuis, vuTexte } from './commun.jsx'
+import { FACTIONS, LANGUES, ROLES, STYLES, nomDe } from './data.js'
+import { ChipClasse, Icone, LigneCopie, depuis, vuTexte } from './commun.jsx'
 
 // ---------- Amis: demandes, liste, blocage (ameliorations6.sql) ----------
 // Le serveur décide de tout (limites, blocage, qui voit quoi). Ici on affiche les boutons et les messages.
@@ -131,7 +131,6 @@ export function BoutonsAmi({ joueur: j, lien, aProfil, ouvrirProfil, apres, anno
 
 // Le haut d'une carte: plaque de niveau, nom, faction, puces, rôles, petit mot.
 function CorpsJoueur({ a, droite, children }) {
-  const classe = CLASSES.find((c) => c.id === a.classe)
   return (
     <>
       <div className="carte-plaque">
@@ -149,12 +148,7 @@ function CorpsJoueur({ a, droite, children }) {
           {droite}
         </div>
         <ul className="infos">
-          {classe && (
-            <li className="chip classe">
-              <span className="classe-point" style={{ background: classe.couleur }} aria-hidden="true" />
-              {classe.nom}
-            </li>
-          )}
+          <ChipClasse classe={a.classe} specialisation={a.specialisation} />
           {a.guilde && <li className="chip fort">{a.guilde}</li>}
           <li className="chip">{a.region}</li>
           <li className="chip">{nomDe(STYLES, a.style)}</li>

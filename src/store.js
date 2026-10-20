@@ -406,6 +406,7 @@ export function ecrireProfil(profil) {
 const CLE_JOUEURS_DEMO = 'forever-demo-joueurs'
 const EN_LIGNE_DEMO = ['demo-j-thalyn', 'demo-j-mirabelle']
 const JOUEUR_VIDE = {
+  specialisation: '',
   guilde: '',
   bio: '',
   battletag: '',
@@ -423,33 +424,33 @@ function joueursDemo() {
   const j = (champs) => ({ ...JOUEUR_VIDE, ...champs })
   return [
     j({
-      user_id: 'demo-j-thalyn', perso: 'Thalyn', classe: 'mage', niveau: 38, roles: ['dps'], faction: 'alliance',
+      user_id: 'demo-j-thalyn', perso: 'Thalyn', classe: 'mage', specialisation: 'givre', niveau: 38, roles: ['dps'], faction: 'alliance',
       region: 'US', langue: 'fr', style: 'relax', guilde: 'Les Braves du Nord',
       bio: 'Mage de Québec, je joue surtout en soirée.', battletag: 'Thalyn#1234', vu_le: minutes(4),
       pouces: 12, etiquettes: { sympa: 9, ponctuel: 7, competent: 4 },
     }),
     j({
-      user_id: 'demo-j-mirabelle', perso: 'Mirabelle', classe: 'druide', niveau: 22, roles: ['heal', 'tank'],
+      user_id: 'demo-j-mirabelle', perso: 'Mirabelle', classe: 'druide', specialisation: 'restauration', niveau: 22, roles: ['heal', 'tank'],
       faction: 'alliance', region: 'EU', langue: 'fr', style: 'apprentissage',
       bio: 'Je cherche un groupe régulier pour apprendre les donjons.', vu_le: minutes(11),
       pouces: 5, etiquettes: { patient: 4, sympa: 3 },
     }),
     j({
-      user_id: 'demo-j-grumash', perso: 'Grumash', classe: 'chasseur', niveau: 55, roles: ['dps'], faction: 'horde',
+      user_id: 'demo-j-grumash', perso: 'Grumash', classe: 'chasseur', specialisation: 'precision', niveau: 55, roles: ['dps'], faction: 'horde',
       region: 'US', langue: 'fr', style: 'competitif', guilde: 'Sang et Fer', battletag: 'Grumash#5678', vu_le: minutes(95),
       pouces: 8, etiquettes: { competent: 6, bon_chef: 3 },
     }),
     j({
-      user_id: 'demo-j-lyra', perso: 'Lyra', classe: 'pretre', niveau: 47, roles: ['heal'], faction: 'alliance',
+      user_id: 'demo-j-lyra', perso: 'Lyra', classe: 'pretre', specialisation: 'sacre', niveau: 47, roles: ['heal'], faction: 'alliance',
       region: 'US', langue: 'en', style: 'carry', bio: 'English-speaking healer, happy to help.',
       vu_le: minutes(300), pouces: 3, etiquettes: { sympa: 3 },
     }),
     j({
-      user_id: 'demo-j-brokk', perso: 'Brokk', classe: 'guerrier', niveau: 25, roles: ['tank'], faction: 'horde',
+      user_id: 'demo-j-brokk', perso: 'Brokk', classe: 'guerrier', specialisation: 'protection', niveau: 25, roles: ['tank'], faction: 'horde',
       region: 'US', langue: 'fr', style: 'relax', vu_le: minutes(26 * 60),
     }),
     j({
-      user_id: 'demo-j-zulgar', perso: 'Zulgar', classe: 'voleur', niveau: 30, roles: ['dps'], faction: 'horde',
+      user_id: 'demo-j-zulgar', perso: 'Zulgar', classe: 'voleur', specialisation: 'assassinat', niveau: 30, roles: ['dps'], faction: 'horde',
       region: 'EU', langue: 'fr', style: 'relax', vu_le: minutes(30 * 60),
       en_revision: true, pouces: null, etiquettes: null,
     }),
@@ -480,6 +481,8 @@ function versLigneProfil(c) {
   return {
     perso: String(c.perso ?? '').trim(),
     classe: c.classe || null,
+    // Une spécialisation n'existe qu'avec sa classe (la base le vérifie aussi).
+    specialisation: c.classe ? String(c.specialisation ?? '') : '',
     niveau: c.niveau ? Number(c.niveau) : null,
     roles: c.roles ?? [],
     faction: c.faction,
@@ -515,31 +518,7 @@ export async function lireJoueurs() {
   return data
 }
 
-// Crée le profil à partir d'une première annonce, sans toucher à un profil qui existe déjà.
-// Retourne vrai si le profil vient d'être créé.
-export async function assurerProfil(champs) {
-  const ligne = versLigneProfil(champs)
-  if (modeDemo) {
-    const liste = lireJoueursDemo()
-    if (liste.some((j) => j.moi)) return false
-    ecrireJoueursDemo([
-      { ...JOUEUR_VIDE, ...ligne, user_id: UTILISATEUR_DEMO.id, moi: true, vu_le: new Date().toISOString() },
-      ...liste,
-    ])
-    return true
-  }
-  const uid = await idConnecte()
-  if (!uid) return false
-  const { data, error } = await supabase
-    .from('profils')
-    .upsert({ user_id: uid, ...ligne }, { onConflict: 'user_id', ignoreDuplicates: true })
-    .select('user_id')
-  if (error) throw error
-  return (data?.length ?? 0) > 0
-}
-
 export async function enregistrerProfil(champs) {
-  // Le BattleTag n'est écrit que par ce formulaire (jamais par le profil créé avec une annonce).
   const ligne = { ...versLigneProfil(champs), battletag: normaliserBattleTag(champs.battletag) }
   if (modeDemo) {
     const liste = lireJoueursDemo()
@@ -552,12 +531,16 @@ export async function enregistrerProfil(champs) {
   }
   const uid = await idConnecte()
   if (!uid) throw new Error('connexion requise')
-  let { error } = await supabase.from('profils').upsert({ user_id: uid, ...ligne }, { onConflict: 'user_id' })
-  if (error?.code === 'PGRST204' && !ligne.battletag) {
-    // La base n'a pas encore la colonne « battletag » (ameliorations4.sql pas encore roulé de nouveau): on enregistre le reste.
-    const sansBattleTag = { ...ligne }
-    delete sansBattleTag.battletag
-    ;({ error } = await supabase.from('profils').upsert({ user_id: uid, ...sansBattleTag }, { onConflict: 'user_id' }))
+  // Si la base n'a pas encore une colonne (ameliorations4.sql pas roulé de nouveau), on enregistre le reste:
+  // le BattleTag s'il est vide, et la spécialisation (le site ne l'exige plus tant que la base ne la connaît pas).
+  const manquantes = ['specialisation', ...(ligne.battletag ? [] : ['battletag'])]
+  let envoi = { ...ligne }
+  let { error } = await supabase.from('profils').upsert({ user_id: uid, ...envoi }, { onConflict: 'user_id' })
+  for (let i = 0; i < 2 && error?.code === 'PGRST204'; i += 1) {
+    const colonne = manquantes.find((c) => error.message?.includes(`'${c}'`))
+    if (!colonne) break
+    delete envoi[colonne]
+    ;({ error } = await supabase.from('profils').upsert({ user_id: uid, ...envoi }, { onConflict: 'user_id' }))
   }
   if (error) throw error
 }
@@ -680,7 +663,7 @@ export async function lireAmis() {
       return [
         {
           user_id: id, lien: l.lien, depuis: l.depuis,
-          perso: j.perso, classe: j.classe, niveau: j.niveau, roles: j.roles, faction: j.faction, region: j.region,
+          perso: j.perso, classe: j.classe, specialisation: j.specialisation, niveau: j.niveau, roles: j.roles, faction: j.faction, region: j.region,
           langue: j.langue, style: j.style, guilde: j.guilde, bio: j.bio, visible: j.visible,
           battletag: montrer ? j.battletag : '',
           vu_le: montrer ? j.vu_le : null,

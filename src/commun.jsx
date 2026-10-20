@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LANCEMENT_LE, MOTIFS_JOUEUR, MOTIFS_SIGNALEMENT, RAIDS_OUVERTS_LE } from './data.js'
+import { CLASSES, LANCEMENT_LE, MOTIFS_JOUEUR, MOTIFS_SIGNALEMENT, RAIDS_OUVERTS_LE, nomSpecialisation } from './data.js'
 import { signaler } from './store.js'
 import { LIEN_DISCORD } from './config.js'
 import { LangueJeu, commandeInviter, useLangueJeu } from './langue.jsx'
@@ -25,6 +25,22 @@ export const CHEMINS = {
   pouce: 'M3 11h4v10H3zM7 12l4-8c1.7 0 2.7 1.1 2.7 2.6V10h5.2c1.4 0 2.4 1.3 2.1 2.6l-1.4 6.2c-.2 1.2-1.2 2-2.4 2H7',
 }
 export const NOMS_ACTIVITE = { donjon: 'Donjon', raid: 'Raid', pvp: 'PvP' }
+
+// La classe d'un personnage, avec sa spécialisation quand on la connaît (« Mage Givre »). Les noms de spécialisations
+// suivent la langue du jeu de la personne qui regarde.
+export function ChipClasse({ classe: id, specialisation }) {
+  const [langue] = useLangueJeu()
+  const classe = CLASSES.find((c) => c.id === id)
+  if (!classe) return null
+  const spec = nomSpecialisation(id, specialisation, langue)
+  return (
+    <li className="chip classe">
+      <span className="classe-point" style={{ background: classe.couleur }} aria-hidden="true" />
+      {classe.nom}
+      {spec && <span className="spec">{spec}</span>}
+    </li>
+  )
+}
 
 export function Icone({ nom, taille = 18 }) {
   return (

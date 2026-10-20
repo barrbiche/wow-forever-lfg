@@ -1677,15 +1677,53 @@ h2 {
   padding-top: 8px;
 }
 
-.dialogue-connexion {
+.dialogue-connexion,
+.besoin-profil {
   display: grid;
   gap: 14px;
   padding: 18px;
 }
 
-.dialogue-connexion p {
+.dialogue-connexion p,
+.besoin-profil p {
   margin: 0;
   max-width: 52ch;
+}
+
+/* Publier une annonce demande un profil complet: la liste de ce qui manque. */
+.besoin-liste {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.besoin-liste li {
+  padding-left: 22px;
+  position: relative;
+  font-weight: 600;
+}
+
+.besoin-liste li::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 0.55em;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold-line);
+}
+
+.profil-requis {
+  margin-bottom: 0;
+}
+
+/* Spécialisation à côté de la classe (« Mage Givre »): un peu plus discrète que la classe. */
+.chip.classe .spec {
+  font-weight: 500;
+  color: var(--muted);
 }
 
 .formulaire-courriel {

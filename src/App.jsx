@@ -1,6 +1,5 @@
 import { Fragment, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  assurerProfil,
   connecter,
   compteSuspendu,
   creerAnnonce,
@@ -34,17 +33,20 @@ import {
   FACTIONS,
   LANGUES,
   NIVEAUX_DONJONS,
+  NOMS_CHAMPS_PROFIL,
   PVP_PEU_IMPORTE,
   RAIDS,
   REGIONS,
   ROLES,
   RULESETS,
   STYLES,
+  champsManquants,
   nomDe,
   raidsOuverts,
 } from './data.js'
 import {
   BoutonDiscord,
+  ChipClasse,
   CommandeAnnonce,
   Contact,
   Icone,
@@ -200,6 +202,11 @@ export default function App() {
   const [vueJoueurs, setVueJoueurs] = useState('tous') // 'tous' ou 'amis'
   const demandesVuesRef = useRef(null)
   const [profilOuvert, setProfilOuvert] = useState(false)
+  // Vrai quand la fenêtre « Mon profil » s'est ouverte parce qu'il faut un profil complet pour publier.
+  const [publierApresProfil, setPublierApresProfil] = useState(false)
+  // Vrai une fois la liste des joueurs lue pour le compte connecté (avant, on ne sait pas si son profil est complet).
+  const [joueursPrets, setJoueursPrets] = useState(false)
+  const lectureRef = useRef(0)
   const [moderateur, setModerateur] = useState(false)
   const [moderationOuverte, setModerationOuverte] = useState(false)
 
@@ -272,6 +279,8 @@ export default function App() {
   }, [])
 
   const charger = useCallback(async () => {
+    // Une lecture plus récente (par exemple après une connexion) remplace une plus ancienne qui finit en retard.
+    const lecture = ++lectureRef.current
     try {
       const liste = await lireAnnonces()
       setAnnonces(liste)
@@ -288,7 +297,11 @@ export default function App() {
       setGuildes(null)
     }
     try {
-      setJoueurs(await lireJoueurs())
+      const liste = await lireJoueurs()
+      if (lecture === lectureRef.current) {
+        setJoueurs(liste)
+        setJoueursPrets(true)
+      }
     } catch {
       setJoueurs(null)
     }
@@ -344,6 +357,12 @@ export default function App() {
   // Ton profil de joueur (la liste te renvoie toujours le tien, même caché) et la présence « en ligne ».
   const monProfil = useMemo(() => (joueurs ?? []).find((j) => j.moi) ?? null, [joueurs])
   const partagerPresence = !!monProfil && monProfil.visible
+
+  // Profil obligatoire pour publier: nom, classe, spécialisation, niveau et au moins un rôle. La spécialisation n'est
+  // exigée que si la base la connaît (ameliorations4.sql); sans la liste des joueurs, on n'enferme personne.
+  const exigerSpec = !monProfil || 'specialisation' in monProfil
+  const manquants = champsManquants(monProfil, exigerSpec)
+  const besoinProfil = !!utilisateur && joueursPrets && joueurs !== null && manquants.length > 0
   useEffect(() => {
     if (!utilisateur) {
       setEnLigne(new Set())
@@ -380,6 +399,8 @@ export default function App() {
   useEffect(() => {
     demandesVuesRef.current = null // la première lecture des demandes d'un compte n'est pas « nouvelle »
     setVueJoueurs('tous')
+    setJoueursPrets(false)
+    setPublierApresProfil(false)
     charger()
   }, [charger, utilisateur?.id])
 
@@ -459,6 +480,13 @@ export default function App() {
   const basculerFaction = (id) => setFiltres((f) => ({ ...f, faction: f.faction === id ? '' : id }))
   const basculer = (cle, valeur) => setFiltres((f) => ({ ...f, [cle]: f[cle] === valeur ? FILTRES_VIDES[cle] : valeur }))
   const ouvrirConnexion = () => setFormulaireOuvert(true)
+  // « Publier une annonce »: sans profil complet, on commence par le profil, puis le formulaire s'ouvre tout seul.
+  const completerProfil = () => {
+    setFormulaireOuvert(false)
+    setPublierApresProfil(true)
+    setProfilOuvert(true)
+  }
+  const ouvrirPublication = () => (besoinProfil ? completerProfil() : setFormulaireOuvert(true))
   const joueursParId = useMemo(() => new Map((joueurs ?? []).map((j) => [j.user_id, j])), [joueurs])
   const liensAmis = useMemo(() => new Map((amis ?? []).map((a) => [a.user_id, a.lien])), [amis])
   const nbDemandesAmis = (amis ?? []).filter((a) => a.lien === 'recue').length
@@ -555,7 +583,7 @@ export default function App() {
                   Se connecter
                 </button>
               )}
-              <button type="button" className="bouton principal" onClick={() => setFormulaireOuvert(true)}>
+              <button type="button" className="bouton principal" onClick={ouvrirPublication}>
                 Publier une annonce
               </button>
             </div>
@@ -814,7 +842,7 @@ export default function App() {
                     ? 'Aucune annonce avec ces filtres.'
                     : "Personne n'a publié d'annonce pour l'instant."}
                 </p>
-                <button type="button" className="bouton" onClick={() => setFormulaireOuvert(true)}>
+                <button type="button" className="bouton" onClick={ouvrirPublication}>
                   Publier la première annonce
                 </button>
               </div>
@@ -882,11 +910,19 @@ export default function App() {
 
       <ProfilJoueur
         ouvert={profilOuvert && !!utilisateur}
-        fermer={() => setProfilOuvert(false)}
+        fermer={() => {
+          setProfilOuvert(false)
+          setPublierApresProfil(false)
+        }}
         profil={monProfil}
         factionParDefaut={styleSite === 'horde' ? 'horde' : 'alliance'}
         apres={charger}
         annoncer={setMessage}
+        pourPublier={publierApresProfil}
+        exigerSpec={exigerSpec}
+        apresEnregistrement={() => {
+          if (publierApresProfil) setFormulaireOuvert(true)
+        }}
       />
 
       <Formulaire
@@ -894,14 +930,12 @@ export default function App() {
         utilisateur={utilisateur}
         ouvert={formulaireOuvert}
         fermer={() => setFormulaireOuvert(false)}
-        profilExiste={!!monProfil}
-        apresPublication={async ({ profilCree } = {}) => {
+        profil={monProfil}
+        manquants={besoinProfil ? manquants : []}
+        completerProfil={completerProfil}
+        apresPublication={async () => {
           setFormulaireOuvert(false)
-          setMessage(
-            profilCree
-              ? 'Annonce publiée. Ton personnage est aussi dans la liste des joueurs: « Mon profil » pour le modifier ou le cacher.'
-              : 'Annonce publiée.',
-          )
+          setMessage('Annonce publiée.')
           setVue('groupes')
           await charger()
         }}
@@ -974,12 +1008,7 @@ function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietai
 
         <ul className="infos">
           {nouvelle && <li className="chip nouveau">Nouveau</li>}
-          {classe && (
-            <li className="chip classe">
-              <span className="classe-point" style={{ background: classe.couleur }} aria-hidden="true" />
-              {classe.nom}
-            </li>
-          )}
+          <ChipClasse classe={a.classe} specialisation={profil?.classe === a.classe ? profil?.specialisation : ''} />
           {a.activite === 'raid' && (
             <li className="chip fort">{RAIDS.find((r) => r.nom === a.cible)?.taille ?? ''} joueurs</li>
           )}
@@ -1153,7 +1182,7 @@ const CHOIX_ACTIVITE = [
   ['pvp', 'Du PvP', 'Champ de bataille ou monde ouvert.'],
 ]
 
-function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublication, profilExiste }) {
+function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublication, profil, manquants, completerProfil }) {
   const dialogue = useRef(null)
   const [champs, setChamps] = useState(() => {
     const profil = lireProfil()
@@ -1171,8 +1200,23 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
   useEffect(() => {
     const d = dialogue.current
     if (!d) return
-    if (ouvert && !d.open) d.showModal()
+    if (ouvert && !d.open) {
+      // Le personnage de l'annonce est celui du profil (modifiable pour cette annonce seulement).
+      if (profil) {
+        setChamps((c) => ({
+          ...c,
+          perso: profil.perso || c.perso,
+          classe: profil.classe || c.classe,
+          faction: profil.faction || c.faction,
+          region: profil.region || c.region,
+          langue: profil.langue || c.langue,
+        }))
+      }
+      d.showModal()
+    }
     if (!ouvert && d.open) d.close()
+    // Le profil sert seulement à l'ouverture: une relecture de la liste ne doit pas écraser ce que la personne écrit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ouvert])
 
   // Choisir le style Horde ou Alliance propose aussi cette faction dans le formulaire.
@@ -1336,27 +1380,9 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
         Number(champs.heures),
       )
       ecrireProfil(versProfil(champs))
-      // Premier passage: le personnage entre aussi dans la liste des joueurs. Si ça échoue (base pas à jour,
-      // par exemple), l'annonce est quand même publiée.
-      let profilCree = false
-      try {
-        profilCree = await assurerProfil({
-          perso: champs.perso,
-          classe: champs.classe,
-          faction: champs.faction,
-          region: champs.region,
-          langue: champs.langue,
-          style: champs.style,
-          // Le niveau et les rôles sont ceux du joueur seulement dans une annonce de « joueur seul ».
-          niveau: joueur ? champs.niveau_min : '',
-          roles: joueur && champs.activite !== 'pvp' ? champs.roles : [],
-        })
-      } catch {
-        profilCree = false
-      }
       setChamps((c) => ({ ...FORMULAIRE_VIDE, ...versProfil(c) }))
       setErreurs({})
-      await apresPublication({ profilCree })
+      await apresPublication()
     } catch (e) {
       setErreurServeur(compteSuspendu(e) ? MESSAGE_COMPTE_SUSPENDU : "L'annonce n'a pas été publiée. Réessaie dans un instant.")
     } finally {
@@ -1379,6 +1405,22 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
     >
       {!utilisateur ? (
         <PanneauConnexion fermer={fermer} />
+      ) : manquants.length > 0 ? (
+        <div className="besoin-profil">
+          <div className="dialogue-haut">
+            <h2 id="titre-formulaire">Complète ton profil d'abord</h2>
+            <button type="button" className="bouton petit" onClick={fermer}>Fermer</button>
+          </div>
+          <p>
+            Pour publier une annonce, ton profil doit être complet, pour que les autres sachent qui tu es. Il manque:
+          </p>
+          <ul className="besoin-liste">
+            {manquants.map((m) => <li key={m}>{NOMS_CHAMPS_PROFIL[m]}</li>)}
+          </ul>
+          <button type="button" className="bouton principal large" onClick={completerProfil}>
+            Compléter mon profil
+          </button>
+        </div>
       ) : (
         <form onSubmit={envoyer} noValidate>
           <div className="dialogue-haut">
@@ -1573,7 +1615,6 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
             {LIEN_DISCORD
               ? "Ton contact est visible pour les gens connectés et dans le Discord de la communauté. Il est gardé pour ta prochaine annonce."
               : "Ton contact n'est visible que pour les gens connectés. Il est gardé pour ta prochaine annonce."}
-            {!profilExiste && ' Ton personnage est aussi ajouté à la liste des joueurs (sans ton contact): tu peux te cacher dans « Mon profil ».'}
           </p>
 
           <label className="champ">

@@ -6,7 +6,7 @@
 --
 -- Ce qui est visible, et par qui:
 --   - La liste des joueurs n'est visible que pour les gens connectés (jamais pour les visiteurs).
---   - Un profil contient le personnage (nom, classe, niveau, rôles, faction, région, langue, style, guilde,
+--   - Un profil contient le personnage (nom, classe, spécialisation, niveau, rôles, faction, région, langue, style, guilde,
 --     petit mot) et, seulement si le joueur l'écrit lui-même, son BattleTag (colonne « battletag »). Pas de
 --     courriel, pas d'autre contact. Le BattleTag n'est visible que pour les gens connectés.
 --   - Un joueur peut se cacher de la liste en tout temps (colonne « visible »).
@@ -42,6 +42,26 @@ alter table public.profils
   add column if not exists battletag text not null default ''
   check (battletag = '' or battletag ~ '^[^[:space:]#]{3,12}#[0-9]{4,8}$');
 
+-- Spécialisation (arbre de talents): trois par classe dans Forever. Vide = pas encore choisie. Le site la rend
+-- obligatoire avant de publier une annonce. La base vérifie qu'elle va avec la classe.
+alter table public.profils add column if not exists specialisation text not null default '';
+
+alter table public.profils drop constraint if exists profils_specialisation_ok;
+alter table public.profils add constraint profils_specialisation_ok check (
+  specialisation = ''
+  or (classe is not null and specialisation = any (case classe
+        when 'guerrier'  then array['armes', 'fureur', 'protection']
+        when 'paladin'   then array['sacre', 'protection', 'vindicte']
+        when 'chasseur'  then array['maitrise_des_betes', 'precision', 'survie']
+        when 'voleur'    then array['assassinat', 'combat', 'finesse']
+        when 'pretre'    then array['discipline', 'sacre', 'ombre']
+        when 'chaman'    then array['elementaire', 'amelioration', 'restauration']
+        when 'mage'      then array['arcanes', 'feu', 'givre']
+        when 'demoniste' then array['affliction', 'demonologie', 'destruction']
+        when 'druide'    then array['equilibre', 'combat_farouche', 'restauration']
+      end))
+);
+
 alter table public.profils enable row level security;
 
 -- Chacun ne voit directement que son propre profil; la liste des autres passe par lister_joueurs().
@@ -63,11 +83,11 @@ create policy "suppression de son profil" on public.profils
 
 revoke all on public.profils from anon, authenticated;
 grant select, delete on public.profils to authenticated;
-grant insert (user_id, perso, classe, niveau, roles, faction, region, langue, style, guilde, bio, battletag, visible)
+grant insert (user_id, perso, classe, specialisation, niveau, roles, faction, region, langue, style, guilde, bio, battletag, visible)
   on public.profils to authenticated;
 -- user_id figure dans la liste parce que le site enregistre son profil en « upsert » (qui réécrit toutes les
 -- colonnes envoyées). La règle de sécurité exige de toute façon user_id = auth.uid() avant et après.
-grant update (user_id, perso, classe, niveau, roles, faction, region, langue, style, guilde, bio, battletag, visible, vu_le)
+grant update (user_id, perso, classe, specialisation, niveau, roles, faction, region, langue, style, guilde, bio, battletag, visible, vu_le)
   on public.profils to authenticated;
 
 -- ============================================================
@@ -122,6 +142,7 @@ returns table (
   user_id         uuid,
   perso           text,
   classe          text,
+  specialisation  text,
   niveau          int,
   roles           text[],
   faction         text,
@@ -147,7 +168,7 @@ security definer
 set search_path = public
 as $$
   select
-    p.user_id, p.perso, p.classe, p.niveau, p.roles, p.faction, p.region, p.langue, p.style, p.guilde, p.bio,
+    p.user_id, p.perso, p.classe, p.specialisation, p.niveau, p.roles, p.faction, p.region, p.langue, p.style, p.guilde, p.bio,
     p.battletag,
     p.visible,
     date_bin('10 minutes', p.vu_le, timestamptz '2000-01-01'),

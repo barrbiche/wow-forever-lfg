@@ -6,7 +6,7 @@
 -- Comment ça marche:
 --   - Une personne connectée, avec son profil, envoie une demande d'ami à un joueur visible dans la liste.
 --     L'autre accepte, refuse ou bloque. Si les deux se demandent mutuellement, c'est accepté tout de suite.
---   - Ce que voit la personne qui reçoit la demande: le personnage (nom, classe, niveau, rôles, faction, région,
+--   - Ce que voit la personne qui reçoit la demande: le personnage (nom, classe, spécialisation, niveau, rôles, faction, région,
 --     langue, style, guilde, petit mot). Jamais le BattleTag, jamais le contact des annonces, jamais de courriel.
 --   - Être ami ne donne pas accès à plus d'information: la liste d'amis montre ce que la liste des joueurs montre
 --     déjà pour un profil visible (BattleTag, heure de dernière visite). Un ami qui cache son profil reste dans la
@@ -76,6 +76,7 @@ returns table (
   depuis    timestamptz,
   perso     text,
   classe    text,
+  specialisation text,
   niveau    int,
   roles     text[],
   faction   text,
@@ -120,7 +121,7 @@ as $$
   )
   select
     r.user_id, r.lien, r.depuis_le,
-    r.perso, r.classe, r.niveau, r.roles, r.faction, r.region, r.langue, r.style, r.guilde, r.bio,
+    r.perso, r.classe, r.specialisation, r.niveau, r.roles, r.faction, r.region, r.langue, r.style, r.guilde, r.bio,
     case when r.lien = 'ami' and r.visible then r.battletag else '' end,
     r.visible,
     case when r.lien = 'ami' and r.visible
