@@ -455,6 +455,43 @@ h2 {
   cursor: progress;
 }
 
+/* « Continuer avec Google »: bouton clair avec le logo en couleurs, comme le demande Google (fond blanc, texte gris foncé). */
+.bouton-google {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font: inherit;
+  font-weight: 600;
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: var(--r-bouton);
+  border: 1px solid #747775;
+  background: #fff;
+  color: #1f1f1f;
+  cursor: pointer;
+  transition: background-color 0.15s, box-shadow 0.15s;
+}
+
+.bouton-google:hover {
+  background: #f2f2f2;
+}
+
+.bouton-google:focus-visible {
+  outline: 3px solid #4285f4;
+  outline-offset: 2px;
+}
+
+.bouton-google.large {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.logo-google {
+  flex: none;
+  display: block;
+}
+
 .lien {
   font: inherit;
   background: none;

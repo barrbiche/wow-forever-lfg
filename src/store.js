@@ -10,6 +10,8 @@ const cle = import.meta.env.VITE_SUPABASE_ANON_KEY
 export const modeDemo = !(url && cle)
 // La connexion Discord s'affiche seulement une fois configurée (VITE_DISCORD_ACTIF=1 dans Netlify).
 export const discordActif = import.meta.env.VITE_DISCORD_ACTIF === '1'
+// Idem pour Google (VITE_GOOGLE_ACTIF=1): le bouton reste caché tant que Google n'est pas branché dans Supabase.
+export const googleActif = import.meta.env.VITE_GOOGLE_ACTIF === '1'
 const supabase = modeDemo ? null : createClient(url, cle)
 
 const CLE_DEMO = 'forever-demo-annonces'
@@ -151,9 +153,25 @@ export async function creerAnnonce(champs, heures) {
 
 // ---------- Connexion ----------
 
+// Un compte Google donne le vrai nom complet de la personne. On ne le préremplit jamais comme contact (il se
+// retrouverait publié par erreur) et on n'affiche que le prénom. Discord donne un nom d'utilisateur: pas de souci.
+function nomVientDeGoogle(u, m) {
+  if (String(m.iss ?? '').includes('google')) return true
+  const fournisseurs = [u.app_metadata?.provider, ...(u.app_metadata?.providers ?? []), ...(u.identities ?? []).map((i) => i.provider)]
+  return fournisseurs.includes('google') && !fournisseurs.includes('discord')
+}
+
 function versUtilisateur(u) {
   if (!u) return null
   const m = u.user_metadata ?? {}
+  if (nomVientDeGoogle(u, m)) {
+    const complet = String(m.full_name || m.name || '').trim()
+    return {
+      id: u.id,
+      nom: String(m.given_name || '').trim() || complet.split(/\s+/)[0] || u.email?.split('@')[0] || 'Joueur',
+      contact: '',
+    }
+  }
   return {
     id: u.id,
     nom: m.custom_claims?.global_name || m.full_name || m.name || u.email?.split('@')[0] || 'Joueur',
@@ -184,7 +202,8 @@ export function suivreUtilisateur(rappel) {
   return () => data.subscription.unsubscribe()
 }
 
-export async function connecter() {
+// `fournisseur`: 'discord' (par défaut) ou 'google'. En mode démo, la connexion est simulée.
+export async function connecter(fournisseur = 'discord') {
   if (modeDemo) {
     try {
       localStorage.setItem(CLE_CONNEXION_DEMO, '1')
@@ -195,7 +214,7 @@ export async function connecter() {
     return
   }
   const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'discord',
+    provider: fournisseur === 'google' ? 'google' : 'discord',
     options: { redirectTo: window.location.origin },
   })
   if (error) throw error

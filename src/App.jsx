@@ -6,6 +6,7 @@ import {
   deconnecter,
   discordActif,
   envoyerLienCourriel,
+  googleActif,
   ecrireProfil,
   estModerateur,
   lireAnnonces,
@@ -1741,10 +1742,40 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
 
 // ---------- Connexion ----------
 
+// Le « G » de Google (logo officiel, quatre couleurs), pour le bouton « Continuer avec Google ».
+function LogoGoogle() {
+  return (
+    <svg className="logo-google" viewBox="0 0 48 48" width="20" height="20" aria-hidden="true" focusable="false">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+    </svg>
+  )
+}
+
+// Vrai quand le site est ouvert dans le navigateur intégré d'une autre appli (Messenger, Facebook, Instagram, TikTok…).
+// Google refuse de se connecter là-dedans (erreur « disallowed_useragent »).
+function dansNavigateurIntegre() {
+  const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent
+  if (/FBAN|FBAV|FB_IAB|FBIOS|Instagram|Messenger|TikTok|musical_ly|Snapchat|Line\/|MicroMessenger|Twitter/i.test(ua)) return true
+  if (/; wv\)/i.test(ua)) return true // WebView Android
+  return /(iPhone|iPod|iPad)/i.test(ua) && /AppleWebKit/i.test(ua) && !/Safari\//i.test(ua) && !/CriOS|FxiOS|EdgiOS/i.test(ua)
+}
+
 function PanneauConnexion({ fermer }) {
   const [courriel, setCourriel] = useState('')
   const [etat, setEtat] = useState('attente')
   const [probleme, setProbleme] = useState('')
+  const [problemeCompte, setProblemeCompte] = useState('')
+  const integre = googleActif && dansNavigateurIntegre()
+
+  const continuerAvec = (fournisseur) => {
+    setProblemeCompte('')
+    connecter(fournisseur).catch(() => {
+      setProblemeCompte(`La connexion avec ${fournisseur === 'google' ? 'Google' : 'Discord'} n'a pas marché. Réessaie, ou utilise ton courriel.`)
+    })
+  }
 
   const envoyer = async (e) => {
     e.preventDefault()
@@ -1781,11 +1812,24 @@ function PanneauConnexion({ fermer }) {
             Il faut être connecté pour publier, et tu pourras retirer ton annonce quand ton groupe est
             complet.
           </p>
+          {googleActif && (
+            <button type="button" className="bouton-google large" onClick={() => continuerAvec('google')}>
+              <LogoGoogle />
+              <span>Continuer avec Google</span>
+            </button>
+          )}
+          {integre && (
+            <p className="astuce" role="note">
+              Tu es dans le navigateur d'une autre appli (Messenger, Facebook, Instagram…). Google risque de refuser ici:
+              ouvre le site dans ton navigateur habituel (Chrome, Safari…), ou reçois un lien par courriel plus bas.
+            </p>
+          )}
           {discordActif && (
-            <button type="button" className="bouton principal large" onClick={() => connecter().catch(() => {})}>
+            <button type="button" className={`bouton large${googleActif ? '' : ' principal'}`} onClick={() => continuerAvec('discord')}>
               Se connecter avec Discord
             </button>
           )}
+          {problemeCompte && <p className="erreur" role="alert">{problemeCompte}</p>}
           <form className="formulaire-courriel" onSubmit={envoyer} noValidate>
             <label className="champ">
               <span>Ou reçois un lien par courriel, sans mot de passe</span>
@@ -1798,7 +1842,7 @@ function PanneauConnexion({ fermer }) {
               />
               {probleme && <span className="msg-erreur" role="alert">{probleme}</span>}
             </label>
-            <button type="submit" className={`bouton large${discordActif ? '' : ' principal'}`} disabled={etat === 'envoi'}>
+            <button type="submit" className={`bouton large${discordActif || googleActif ? '' : ' principal'}`} disabled={etat === 'envoi'}>
               {etat === 'envoi' ? 'Envoi…' : 'Recevoir un lien de connexion'}
             </button>
           </form>

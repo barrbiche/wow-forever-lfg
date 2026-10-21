@@ -34,7 +34,7 @@ export default function Aide({ ouvert, fermer }) {
               Amérique et Europe.
             </li>
             <li>
-              <strong>Connecte-toi pour contacter ou publier.</strong> Avec Discord, ou avec un lien envoyé par courriel.
+              <strong>Connecte-toi pour contacter ou publier.</strong> Avec Google, avec Discord, ou avec un lien envoyé par courriel.
               Il n'y a pas de mot de passe. Les contacts (BattleTag, Discord) ne sont montrés qu'aux gens connectés.
             </li>
             <li>
@@ -164,9 +164,11 @@ export default function Aide({ ouvert, fermer }) {
           <h3>Tes données</h3>
           <ul className="puces">
             <li>
-              <strong>Ton compte.</strong> Avec Discord, le site reçoit les informations de base de ton compte (nom
-              d'utilisateur, identifiant et, selon tes réglages Discord, ton courriel). Avec le courriel, il reçoit ton
-              adresse pour t'envoyer le lien de connexion. Il ne reçoit aucun mot de passe.
+              <strong>Ton compte.</strong> Avec Google, le site reçoit ton nom, ton adresse courriel et l'adresse de ta
+              photo de profil. Avec Discord, il reçoit ton nom d'utilisateur, ton identifiant et, selon tes réglages
+              Discord, ton courriel. Avec le courriel, il reçoit ton adresse pour t'envoyer le lien de connexion. Il ne
+              reçoit aucun mot de passe. Ton nom et ton courriel ne sont jamais montrés aux autres joueurs: seul ce que tu
+              écris toi-même dans une annonce ou un profil est publié.
             </li>
             <li>
               <strong>Tes annonces.</strong> Ce que tu écris (personnage, contact, message) est enregistré dans la base du

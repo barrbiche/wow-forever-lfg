@@ -39,6 +39,28 @@ Elle marche dès que le projet Supabase existe (le fournisseur « Email » est a
 1. Supabase > Authentication > URL Configuration: mets l'adresse de ton site Netlify dans « Site URL ».
 2. Avant le lancement, branche un vrai service de courriel (Supabase > Authentication > SMTP Settings, par exemple avec Resend). Le service de courriel intégré à Supabase envoie seulement quelques messages par heure, ce qui ne suffira pas quand le monde va arriver.
 
+## Connexion Google (recommandée)
+
+Google est la connexion la plus simple pour la plupart des gens, et elle ne dépend pas de l'envoi de courriels. Le bouton « Continuer avec Google » reste caché tant que la variable Netlify n'est pas mise (étape 8).
+
+1. Supabase > Authentication > Sign In / Providers > **Google**: ouvre la page sans rien remplir et copie la « Callback URL » (elle ressemble à `https://<ton-projet>.supabase.co/auth/v1/callback`).
+2. console.cloud.google.com: crée un projet (par exemple « Babillard Forever »).
+3. Menu > **Google Auth Platform** > Get started (ou Branding): nom de l'application « Babillard Forever », ton courriel d'assistance, public (Audience) **External**, ton courriel de contact. Dans Branding, mets l'adresse du site comme page d'accueil.
+4. **Audience** > **Publish app** (« In production »). Sinon, seuls les comptes que tu ajoutes comme testeurs peuvent se connecter. Le site ne demande que les permissions de base (courriel et profil): d'après la doc de Supabase, seules les permissions sensibles demandent une vérification de Google.
+5. **Clients** > Create client > type **Web application**:
+   - Authorized JavaScript origins: l'adresse du site (`https://babillard-forever.netlify.app`).
+   - Authorized redirect URIs: la « Callback URL » copiée à l'étape 1.
+   - Copie le **Client ID** et le **Client Secret**.
+6. Retourne dans Supabase, même page Google: active-le, colle le Client ID et le Client Secret, **Save**.
+7. Supabase > Authentication > URL Configuration: vérifie que « Site URL » est l'adresse du site et que cette adresse est dans « Redirect URLs » (c'est déjà le cas si la connexion par courriel ou Discord marche).
+8. Netlify > Site configuration > Environment variables: ajoute `VITE_GOOGLE_ACTIF` = `1`, puis Deploys > Trigger deploy > **Clear cache and deploy site** (les variables `VITE_` sont lues au moment de la construction du site).
+9. Essaie dans une fenêtre privée: Se connecter > Continuer avec Google.
+
+À savoir:
+- Le site reçoit le nom complet, le courriel et l'adresse de la photo du compte Google. Il n'affiche que le prénom à la personne elle-même, ne préremplit jamais le nom complet comme contact, et ne montre jamais le nom ni le courriel aux autres joueurs.
+- Google refuse la connexion dans le navigateur intégré d'autres applications (Messenger, Facebook, Instagram…, erreur `disallowed_useragent`). Le site détecte la plupart de ces cas et suggère d'ouvrir le site dans le navigateur ou d'utiliser le courriel.
+- Si le bouton Google mène à une page d'erreur de Supabase (« provider is not enabled »), l'étape 6 n'est pas faite ou pas sauvegardée.
+
 ## Connexion Discord (facultative)
 
 1. discord.com/developers/applications > New Application.
@@ -58,7 +80,7 @@ Sans Supabase, la connexion est simulée (mode démo).
 Le site ne renvoie plus les gens vers un Discord: plus de bouton « Rejoindre le Discord », et les nouvelles annonces et guildes ne sont plus envoyées dans un canal (`ameliorations7.sql` supprime les envois et efface les réglages `discord_webhook`, `discord_webhook_donjon`, `_raid`, `_pvp`, `_guilde` et `discord_role_*`). La variable Netlify `VITE_DISCORD_INVITE` ne sert plus: tu peux la supprimer.
 
 Ce qui reste volontairement:
-- La connexion avec Discord (voir plus haut), à côté du courriel.
+- La connexion avec Discord (voir plus haut), à côté de Google et du courriel.
 - L'alerte **privée** de signalement: si le réglage `discord_webhook_moderation` est rangé dans `reglages`, chaque signalement y est envoyé (« Signalement 2/3 »; à 3, l'annonce, la guilde ou la réputation est masquée). Pour l'arrêter aussi: `delete from public.reglages where cle = 'discord_webhook_moderation';`.
 - Les joueurs peuvent écrire leur BattleTag (ou leur nom Discord) comme contact. Une guilde peut mettre une invitation Discord, un site, une page Facebook ou un BattleTag: les adresses https deviennent des liens cliquables (jamais un autre protocole).
 
@@ -138,7 +160,7 @@ Tout ça vit dans deux fichiers: `src/textures.css` (les textures, en SVG dans l
 
 ## Limites de la version 1
 
-- Connexion obligatoire pour publier, par courriel (Discord en option) (5 annonces actives par joueur au maximum). La connexion Battle.net avec import du personnage viendra après, une fois qu'on aura confirmé que l'API de Blizzard voit les personnages de Forever.
+- Connexion obligatoire pour publier, par Google, Discord (chacun activé par une variable Netlify) ou par courriel (5 annonces actives par joueur au maximum). La connexion Battle.net avec import du personnage viendra après, une fois qu'on aura confirmé que l'API de Blizzard voit les personnages de Forever.
 - Les annonces expirent automatiquement (1 à 6 heures, ou 1 heure après le départ pour une annonce planifiée, dans les 3 prochains jours). Le joueur peut retirer son annonce ou marquer un rôle comme trouvé; le renouvellement est la seule autre modification.
 - Donjons et raids demandent les mêmes règles de jeu (Normal, PvP, Jeu de rôle); les champs de bataille peuvent les mélanger. Le style de jeu reprend les quatre choix de l'outil de groupe du jeu.
 - Pas de champ « royaume » pour l'instant: on l'ajoutera quand la liste des royaumes de Forever sera connue.
