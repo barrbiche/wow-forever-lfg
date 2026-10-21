@@ -780,3 +780,12 @@ body::before {
     font-size: 0.66rem;
   }
 }
+
+/* ---------- Page publique /confidentialite: une feuille de papier sur la planche ---------- */
+
+.page-legale article {
+  background: var(--grain), var(--surface);
+  border-radius: var(--r-papier);
+  border-color: color-mix(in srgb, var(--line) 80%, #000);
+  box-shadow: 0 14px 40px rgb(0 0 0 / 0.4);
+}

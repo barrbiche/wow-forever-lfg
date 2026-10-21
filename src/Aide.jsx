@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { SectionDonnees } from './Confidentialite.jsx'
 
 // Fenêtre « Comment ça marche »: les étapes, les règles du site et ce qu'il fait des données.
 // Le texte décrit ce que le site fait vraiment (à mettre à jour si le site change, par exemple quand il aura des pubs).
@@ -160,64 +161,7 @@ export default function Aide({ ouvert, fermer }) {
           </ul>
         </section>
 
-        <section>
-          <h3>Tes données</h3>
-          <ul className="puces">
-            <li>
-              <strong>Ton compte.</strong> Avec Google, le site reçoit ton nom, ton adresse courriel et l'adresse de ta
-              photo de profil. Avec Discord, il reçoit ton nom d'utilisateur, ton identifiant et, selon tes réglages
-              Discord, ton courriel. Avec le courriel, il reçoit ton adresse pour t'envoyer le lien de connexion. Il ne
-              reçoit aucun mot de passe. Ton nom et ton courriel ne sont jamais montrés aux autres joueurs: seul ce que tu
-              écris toi-même dans une annonce ou un profil est publié.
-            </li>
-            <li>
-              <strong>Tes annonces.</strong> Ce que tu écris (personnage, contact, message) est enregistré dans la base du
-              site. Le contact n'est montré qu'aux gens connectés.
-              {' '}
-              Une annonce n'est plus affichée une fois son temps écoulé.
-            </li>
-            <li>
-              <strong>Ton profil de joueur.</strong> Il doit être complet pour publier une annonce: le nom de ton
-              personnage, ta classe, ta spécialisation, ton niveau et au moins un rôle. Quand tu cliques sur « Publier une
-              annonce » sans profil complet, le site ouvre d'abord « Mon profil », puis le formulaire d'annonce. Le profil
-              contient aussi ta faction, ta région, ta langue, ton style et, si tu les donnes, ta guilde et un petit mot,
-              et, seulement si tu l'écris, ton BattleTag. Le contact de tes annonces n'y est jamais. Seules les personnes
-              connectées voient la liste des joueurs et les BattleTag. Dans « Mon profil », tu peux tout modifier, te
-              cacher de la liste ou supprimer ton profil (tu devras alors le refaire pour publier).
-            </li>
-            <li>
-              <strong>Tes amis.</strong> Ta liste d'amis, tes demandes et les personnes que tu as bloquées ne sont visibles
-              que par toi: personne ne voit qui t'a refusé ou bloqué. Une personne à qui tu envoies une demande voit ton
-              personnage (nom, classe, niveau, etc.), jamais ton contact ni ton BattleTag. Supprimer ton profil efface tes
-              amitiés, tes demandes et tes blocages. Les personnes qui gèrent le site peuvent les lire dans la base de
-              données.
-            </li>
-            <li>
-              <strong>En ligne et dernière visite.</strong> Le point vert « en ligne » s'affiche tant que le site est ouvert
-              dans ton navigateur et que ton profil est visible. Le site garde aussi l'heure approximative de ta dernière
-              visite pour afficher « Vu il y a 3 h ». Si tu te caches, tu n'apparais plus du tout.
-            </li>
-            <li>
-              <strong>Les pouces.</strong> Un pouce est lié à ton compte, mais les autres joueurs ne voient jamais qui l'a
-              donné: seulement le nombre et les étiquettes. Les personnes qui gèrent le site peuvent le voir dans la base
-              de données. Tes signalements restent eux aussi privés.
-            </li>
-            <li>
-              <strong>Dans ton navigateur.</strong> Le site garde chez toi le style que tu as choisi, la langue de ton jeu,
-              ton alerte de nouvelles annonces, ton personnage et ton contact (pour préremplir tes prochaines annonces) et
-              ta connexion. Il n'y a ni publicité, ni témoin de suivi, ni outil de statistiques.
-            </li>
-            <li>
-              <strong>Les services utilisés.</strong> Le site est hébergé par Netlify, et sa base de données et la
-              connexion passent par Supabase. Les polices sont sur le site même: aucune requête vers Google.
-            </li>
-            <li>
-              <strong>Effacer tes données.</strong> Tu peux supprimer ton profil toi-même dans « Mon profil »: les pouces que
-              tu as reçus partent avec lui. Pour faire retirer ton compte et tes annonces,{' '}
-              écris à la personne qui gère le site.
-            </li>
-          </ul>
-        </section>
+        <SectionDonnees />
 
         <p className="aide">
           Babillard Forever est un site de fans, sans lien avec Blizzard Entertainment. World of Warcraft est une marque de
