@@ -96,6 +96,7 @@ function creerGroupeDemo(etat, a) {
     created_at: a.created_at,
     fin_le: a.expires_at,
     ferme: false,
+    complet: false,
   }
   etat.groupes[g.id] = g
   return g
@@ -200,6 +201,21 @@ function avecEtat(fn) {
   return resultat
 }
 
+// Joueurs à accepter (sans le chef) pour que le groupe soit plein, ou null si on ne le sait pas (comme groupe_places_max en SQL).
+function placesMaxDemo(a) {
+  if (!a) return null
+  if (a.activite === 'donjon') return 4
+  if (a.activite === 'raid' && a.roles_nb) return Object.values(a.roles_nb).reduce((n, v) => n + (Number(v) > 0 ? Number(v) : 0), 0) || null
+  return null
+}
+
+function ajusterCompletDemo(etat, g) {
+  const maxi = placesMaxDemo(lireDemo().find((x) => x.id === g.annonce_id))
+  if (!maxi) return
+  const nb = etat.demandes.filter((d) => d.groupe_id === g.id && d.statut === 'acceptee').length
+  g.complet = nb >= maxi
+}
+
 const membresDemo = (etat, gid) => etat.demandes.filter((d) => d.groupe_id === gid && d.statut === 'acceptee')
 const estMembreDemo = (etat, g) => !!g && (g.chef === MOI || membresDemo(etat, g.id).some((d) => d.de === MOI))
 const groupeOuvert = (g) => !!g && new Date(g.fin_le).getTime() > Date.now() - DUREE_APRES_FIN
@@ -236,6 +252,45 @@ export async function lireMesDemandes() {
   const { data, error } = await supabase.rpc('mes_demandes')
   if (error) throw error
   return data ?? []
+}
+
+// [{ annonce_id, complet, acceptes, par_role }]: qui est déjà dans chaque groupe (nombres seulement). Vide si la base n'est pas à jour.
+export async function lirePlaces() {
+  if (modeDemo) {
+    if (!(await estConnecte())) return []
+    return avecEtat((etat) =>
+      Object.values(etat.groupes)
+        .filter((g) => g.annonce_id && !g.ferme && groupeOuvert(g) && new Date(g.fin_le).getTime() > Date.now())
+        .map((g) => {
+          const membres = membresDemo(etat, g.id)
+          const par_role = {}
+          for (const d of membres) if (d.role) par_role[d.role] = (par_role[d.role] ?? 0) + 1
+          return { annonce_id: g.annonce_id, complet: !!g.complet, acceptes: membres.length, par_role }
+        })
+        .filter((p) => p.complet || p.acceptes > 0),
+    )
+  }
+  try {
+    const { data, error } = await supabase.rpc('places_groupes')
+    return error ? [] : data ?? []
+  } catch {
+    return []
+  }
+}
+
+// Le chef ferme (true) ou rouvre (false) les demandes de son groupe.
+export async function reglerComplet(groupe, complet) {
+  if (modeDemo) {
+    return avecEtat((etat) => {
+      const g = etat.groupes[groupe]
+      if (!g || g.chef !== MOI) throw erreur('réservé au chef du groupe', '42501')
+      g.complet = !!complet
+      return g.complet
+    })
+  }
+  const { data, error } = await supabase.rpc('groupe_complet', { p_groupe: groupe, p_complet: !!complet })
+  if (error) throw error
+  return data
 }
 
 // Groupes où je suis chef ou accepté + amis avec qui j'ai écrit. Chaque ligne:
@@ -303,6 +358,7 @@ export async function demanderRejoindre(annonce, role, message) {
       const d = etat.demandes.find((x) => x.groupe_id === g.id && x.de === MOI)
       if (d && ['en_attente', 'acceptee'].includes(d.statut)) return d.statut
       if (d && d.statut !== 'quitte') throw erreur('demande refusée', '42501')
+      if (g.complet) throw erreur('groupe complet', '55000')
       if (etat.demandes.filter((x) => x.de === MOI && x.statut === 'en_attente').length >= 10) throw erreur('trop de demandes en attente', '54000')
       const neuve = { id: `d-${g.id}-${MOI}`, groupe_id: g.id, de: MOI, role: role || null, message: mot, statut: 'en_attente', created_at: new Date().toISOString() }
       if (d) Object.assign(d, neuve)
@@ -364,6 +420,7 @@ export async function agirDemande(demande, action) {
         if (d.de !== MOI || d.statut !== 'acceptee') throw erreur("tu n'es pas dans ce groupe", '22023')
         d.statut = 'quitte'
         message('quitte', MOI)
+        ajusterCompletDemo(etat, g)
         return 'quitte'
       }
       if (g.chef !== MOI) throw erreur('réservé au chef du groupe', '42501')
@@ -378,6 +435,7 @@ export async function agirDemande(demande, action) {
           id: nouveauId(etat), groupe_id: g.id, de: d.de, genre: 'texte', masque: false, created_at: maintenant,
           texte: d.role === 'tank' ? "Merci! J'arrive, je suis prêt." : 'Merci de m’avoir accepté! J’arrive.',
         })
+        ajusterCompletDemo(etat, g)
         return 'acceptee'
       }
       if (action === 'refuser') {
@@ -389,6 +447,7 @@ export async function agirDemande(demande, action) {
       if (d.statut !== 'acceptee') throw erreur("ce joueur n'est pas dans le groupe", '22023')
       d.statut = 'expulse'
       message('expulse', d.de)
+      ajusterCompletDemo(etat, g)
       return 'expulse'
     })
   }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { MESSAGE_COMPTE_SUSPENDU, compteSuspendu } from './store.js'
+import { MESSAGE_COMPTE_SUSPENDU, compteSuspendu, recommander } from './store.js'
+import { activerPush, desactiverPush, etatPush, pushConfigure } from './push.js'
 import {
   LONGUEUR_MESSAGE,
   LONGUEUR_MOT,
@@ -12,6 +13,7 @@ import {
   lireMembres,
   lireMessagesAmi,
   lireMessagesGroupe,
+  reglerComplet,
   signalerMessage,
 } from './messagerie.js'
 import { CLASSES, MOTIFS_MESSAGE, ROLES, STYLES, nomDe } from './data.js'
@@ -32,6 +34,7 @@ export function messageMessagerie(e) {
     if (/demandes/i.test(t)) return 'Ce groupe a déjà beaucoup de demandes en attente.'
     return 'Doucement: attends quelques secondes avant d’écrire un autre message.'
   }
+  if (e?.code === '55000' || /complet/i.test(t)) return 'Ce groupe est complet.'
   if (/refusée/i.test(t)) return 'Ta demande a été refusée: tu ne peux pas la refaire.'
   if (/profil/i.test(t)) return 'Crée d’abord ton profil: le chef doit voir ton personnage.'
   if (/propre annonce/i.test(t)) return 'C’est ta propre annonce.'
@@ -52,13 +55,27 @@ const couleurClasse = (id) => CLASSES.find((c) => c.id === id)?.couleur
 // ---------- Sur la carte d'une annonce ----------
 
 // Remplace le contact: « Demander à rejoindre » (ou l'état de ma demande), ou, pour le chef, l'accès aux demandes.
-export function ZoneRejoindre({ annonce: a, proprietaire, utilisateur, onConnexion, demande, conv, disponible, ouvrirDemande, ouvrirChat, apres, annoncer }) {
+export function ZoneRejoindre({ annonce: a, proprietaire, utilisateur, onConnexion, demande, conv, disponible, complet, ouvrirDemande, ouvrirChat, apres, annoncer }) {
   const [occupe, setOccupe] = useState(false)
   const [probleme, setProbleme] = useState('')
   const joueur = a.genre === 'joueur'
 
   if (disponible === false) {
     return <p className="aide rejoindre-note">Les demandes pour rejoindre arrivent bientôt sur ce site.</p>
+  }
+
+  const basculerComplet = async () => {
+    setOccupe(true)
+    setProbleme('')
+    try {
+      await reglerComplet(conv.cible, !complet)
+      annoncer(complet ? 'Les demandes sont rouvertes.' : 'Groupe marqué complet: plus de nouvelles demandes.')
+      await apres()
+    } catch (e) {
+      setProbleme(messageMessagerie(e))
+    } finally {
+      setOccupe(false)
+    }
   }
 
   if (proprietaire) {
@@ -73,7 +90,13 @@ export function ZoneRejoindre({ annonce: a, proprietaire, utilisateur, onConnexi
         <button type="button" className="bouton petit" onClick={() => ouvrirChat('groupe', conv.cible)}>
           Ouvrir le chat
         </button>
+        {!joueur && (
+          <button type="button" className="bouton petit" onClick={basculerComplet} disabled={occupe} aria-pressed={!!complet}>
+            {complet ? 'Rouvrir les demandes' : 'Groupe complet'}
+          </button>
+        )}
         <span className="aide rejoindre-note">Ton contact reste caché jusqu’à ce que tu acceptes quelqu’un.</span>
+        {probleme && <p className="msg-erreur" role="alert">{probleme}</p>}
       </div>
     )
   }
@@ -95,7 +118,13 @@ export function ZoneRejoindre({ annonce: a, proprietaire, utilisateur, onConnexi
   const statut = demande?.statut
   return (
     <div className="rejoindre">
-      {!statut && (
+      {!statut && complet && (
+        <>
+          <span className="ami-etat attente">Groupe complet</span>
+          <span className="aide rejoindre-note">Le chef ne prend plus de demandes pour le moment.</span>
+        </>
+      )}
+      {!statut && !complet && (
         <>
           <button type="button" className="bouton petit principal" onClick={() => (utilisateur ? ouvrirDemande(a) : onConnexion())}>
             <Icone nom="discussion" taille={15} />
@@ -632,7 +661,81 @@ function Fil({ type, cible, lire, ecrire, peutEcrire, raison, apresLecture, anno
 
 // ---------- Une conversation de groupe ----------
 
-function ConversationGroupe({ conv, demandeId, panneauDepart, retour, apres, annoncer }) {
+// Après la fin de l'annonce: un pouce pour ceux avec qui ça a bien été (pouces de réputation de la page Joueurs).
+function PoucesFin({ conv, moi }) {
+  const cle = `forever-pouces-${conv.cible}`
+  const [membres, setMembres] = useState(null)
+  const [donnes, setDonnes] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(cle) || '[]')
+    } catch {
+      return []
+    }
+  })
+  const [occupe, setOccupe] = useState('')
+  const [probleme, setProbleme] = useState('')
+
+  useEffect(() => {
+    let actif = true
+    lireMembres(conv.cible).then((m) => actif && setMembres(m)).catch(() => actif && setMembres([]))
+    return () => {
+      actif = false
+    }
+  }, [conv.cible])
+
+  const autres = (membres ?? []).filter((m) => m.user_id !== moi)
+  if (autres.length === 0) return null
+
+  const donner = async (m) => {
+    setOccupe(m.user_id)
+    setProbleme('')
+    try {
+      await recommander(m.user_id, [])
+      const suite = [...donnes, m.user_id]
+      setDonnes(suite)
+      try {
+        localStorage.setItem(cle, JSON.stringify(suite))
+      } catch {
+        // pas grave: le bouton redevient disponible au prochain chargement
+      }
+    } catch (e) {
+      setProbleme(
+        e?.code === '54000'
+          ? "Tu as donné beaucoup de pouces aujourd'hui. Réessaie demain."
+          : e?.code === '22023'
+            ? "Crée d'abord ton profil pour donner un pouce."
+            : "Le pouce n'a pas été enregistré. Réessaie dans un instant.",
+      )
+    } finally {
+      setOccupe('')
+    }
+  }
+
+  return (
+    <section className="recommandation pouces-fin" aria-label="Pouces de fin de soirée">
+      <p><strong>L’annonce est terminée.</strong> Donne un pouce à ceux avec qui ça a bien été: ça aide les autres à les choisir.</p>
+      <ul className="msg-membres">
+        {autres.map((m) => (
+          <li key={m.user_id}>
+            <strong>{m.perso}</strong>
+            <ul className="infos"><ChipClasse classe={m.classe} specialisation={m.specialisation} /></ul>
+            {donnes.includes(m.user_id) ? (
+              <span className="ami-etat"><Icone nom="coche" taille={15} />Pouce donné</span>
+            ) : (
+              <button type="button" className="bouton petit" disabled={occupe === m.user_id} onClick={() => donner(m)}>
+                <Icone nom="pouce" taille={15} />
+                Donner un pouce
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      {probleme && <p className="msg-erreur" role="alert">{probleme}</p>}
+    </section>
+  )
+}
+
+function ConversationGroupe({ conv, demandeId, panneauDepart, moi, retour, apres, annoncer }) {
   const [panneau, setPanneau] = useState(panneauDepart ?? '')
   const [copie, setCopie] = useState(false)
   const [quitter, setQuitter] = useState(false)
@@ -724,6 +827,7 @@ function ConversationGroupe({ conv, demandeId, panneauDepart, retour, apres, ann
         <PanneauDemandes groupe={conv.cible} genre="groupe" apres={apresDecision} annoncer={annoncer} />
       )}
       {panneau === 'membres' && <PanneauMembres groupe={conv.cible} />}
+      {termine && !conv.ferme && <PoucesFin conv={conv} moi={moi} />}
 
       <p className="aide msg-duree">
         {termine
@@ -774,6 +878,69 @@ function ConversationAmi({ conv, retour, apres, annoncer }) {
 }
 
 // ---------- L'onglet « Messages » ----------
+
+// ---------- Alertes sur cet appareil (notifications push) ----------
+
+function AlertesAppareil({ utilisateur }) {
+  const [etat, setEtat] = useState(null) // null: pas encore lu
+  const [occupe, setOccupe] = useState(false)
+  const [probleme, setProbleme] = useState('')
+
+  useEffect(() => {
+    let actif = true
+    if (pushConfigure && utilisateur) etatPush(utilisateur.id).then((e) => actif && setEtat(e))
+    return () => {
+      actif = false
+    }
+  }, [utilisateur])
+
+  if (!pushConfigure || !utilisateur || !etat) return null
+
+  const changer = async () => {
+    setOccupe(true)
+    setProbleme('')
+    try {
+      if (etat.actif) await desactiverPush()
+      else await activerPush(utilisateur.id)
+      setEtat(await etatPush(utilisateur.id))
+    } catch (e) {
+      setProbleme(
+        e?.code === 'refuse'
+          ? 'Les alertes sont refusées. Autorise-les dans les réglages du site de ton navigateur, puis réessaie.'
+          : 'Les alertes n’ont pas pu être changées. Réessaie dans un instant.',
+      )
+      setEtat(await etatPush(utilisateur.id))
+    } finally {
+      setOccupe(false)
+    }
+  }
+
+  return (
+    <div className="msg-alertes">
+      {!etat.supporte ? (
+        <p className="aide">
+          Les alertes ne marchent pas dans ce navigateur. Sur iPhone et iPad, ajoute d’abord le site à ton écran d’accueil
+          (Partager, puis « Sur l’écran d’accueil »), puis ouvre-le depuis l’icône.
+        </p>
+      ) : etat.bloque && !etat.actif ? (
+        <p className="aide">Les alertes sont bloquées dans ton navigateur. Autorise-les dans les réglages du site pour les activer.</p>
+      ) : (
+        <>
+          <button type="button" className="bouton petit" onClick={changer} disabled={occupe} aria-pressed={etat.actif}>
+            <Icone nom="cloche" taille={15} />
+            {etat.actif ? 'Alertes activées sur cet appareil' : 'Activer les alertes sur cet appareil'}
+          </button>
+          <span className="aide">
+            {etat.actif
+              ? 'Cliquer pour les désactiver.'
+              : 'Pour savoir quand on te répond, même si le site est fermé. Le texte des messages n’est jamais envoyé.'}
+          </span>
+        </>
+      )}
+      {probleme && <p className="msg-erreur" role="alert">{probleme}</p>}
+    </div>
+  )
+}
 
 export function SectionMessages({ utilisateur, onConnexion, conversations, demandes, amis, cible, apres, annoncer }) {
   const [choix, setChoix] = useState(null) // { type, id, panneau }
@@ -827,6 +994,8 @@ export function SectionMessages({ utilisateur, onConnexion, conversations, deman
   }
 
   return (
+    <>
+      <AlertesAppareil utilisateur={utilisateur} />
     <section className={`messagerie${courante ? ' ouverte' : ''}`} aria-label="Messages">
       <div className="msg-colonne">
         {conversations.length === 0 && amisSansConv.length === 0 && (
@@ -908,6 +1077,7 @@ export function SectionMessages({ utilisateur, onConnexion, conversations, deman
             conv={courante}
             demandeId={demandeCourante?.id}
             panneauDepart={choix?.panneau}
+            moi={utilisateur?.id}
             retour={retour}
             apres={apres}
             annoncer={annoncer}
@@ -919,5 +1089,6 @@ export function SectionMessages({ utilisateur, onConnexion, conversations, deman
         )}
       </div>
     </section>
+    </>
   )
 }

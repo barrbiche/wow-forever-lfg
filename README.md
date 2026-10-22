@@ -36,6 +36,8 @@ Sans configuration, le site tourne en **mode démo**: les annonces restent dans 
 
 13. (Facultatif, pour le badge « Supporter ») SQL Editor > New query: colle `supabase/ameliorations9.sql`, puis Run. Voir la section « Dons et badge » plus bas. Sans ce fichier, le site marche pareil: il n'y a juste pas de badge.
 
+14. SQL Editor > New query: colle `supabase/ameliorations10.sql`, puis Run (groupe complet, statistiques, annonces qui se répètent, alertes). À rouler après `ameliorations8.sql` (et 9 si tu l'as). Chaque partie du fichier a un titre « PARTIE n »; on peut le relancer sans problème (si tu relances `ameliorations8.sql`, relance `ameliorations10.sql` juste après). Le site marche avec ou sans ce fichier: tant qu'une partie manque, la fonction correspondante ne s'affiche tout simplement pas.
+
 ## Connexion par courriel
 
 Elle marche dès que le projet Supabase existe (le fournisseur « Email » est activé par défaut).
@@ -117,6 +119,34 @@ Ancienne installation (gardée pour mémoire): `supabase/discord.sql` créait l'
 - Le bouton « Soutenir le site » (en bas de page) n'apparaît que si la variable `VITE_LIEN_DONS` est définie dans Netlify (Site configuration > Environment variables), avec une adresse qui commence par `https://` (ta page Ko-fi, Buy Me a Coffee, etc.). Après l'avoir ajoutée, relance un déploiement (Deploys > Trigger deploy).
 - Pour le badge: colle `supabase/ameliorations9.sql` dans le SQL Editor (étape 13), puis, pour chaque personne qui donne, Table Editor > `supporters` > Insert row avec son `user_id` (Authentication > Users > User UID). Supprime la ligne pour retirer le badge. Seuls les gens connectés voient le badge.
 - Rien n'est vérifié automatiquement: c'est toi qui décides qui reçoit le badge.
+
+## Groupe complet, statistiques, annonces qui se répètent (`ameliorations10.sql`)
+
+- **Groupe complet** (partie 1): `groupes.complet`. Un donjon (chef + 4) ou un raid avec composition se ferme tout seul quand le dernier joueur est accepté, et se rouvre si quelqu'un part. Le chef peut fermer ou rouvrir à la main. Quand c'est complet, `demander_rejoindre` refuse (erreur `55000`) et la carte dit « Groupe complet ». `places_groupes()` donne aux cartes les nombres d'acceptés par rôle (aucun nom; lisible même sans compte).
+- **Quand ça joue le plus** (partie 2): table `activite_horaire` (semaine, jour, heure, nombre), remplie par un déclencheur sur `annonces` (heure de l'Est, départ prévu sinon heure de publication). Aucun lien avec un compte; 12 semaines gardées. Le graphique, en bas de page, ne s'affiche qu'à partir de 30 annonces.
+- **Annonces qui se répètent** (partie 3): table `recurrences` (copie de l'annonce, contact compris; table fermée). Une annonce de groupe avec heure de départ peut se répéter chaque semaine (3 au plus par personne). `generer_recurrences()` publie l'annonce 24 h avant le départ; le site l'appelle quand quelqu'un est connecté (au plus aux 5 minutes), donc pas de tâche programmée à installer. Si personne ne vient avant, la semaine est sautée. Un compte suspendu perd ses répétitions; 5 annonces actives au plus s'applique toujours.
+- **Reprendre ma dernière annonce**: gardé dans le navigateur (`forever-derniere-annonce`), aucun réglage.
+- **Pouces de fin de soirée**: dans le chat d'un groupe terminé; utilise les pouces existants (`recommander`), aucun réglage.
+
+## Alertes sur l'appareil (notifications push)
+
+Facultatif. Sans ces réglages, rien ne s'affiche et le reste du site marche pareil.
+
+1. **Netlify** (Site configuration > Environment variables), 5 variables: `VAPID_PUBLIC` (clé publique), `VAPID_PRIVE` (clé privée, à ne jamais partager), `VAPID_SUJET` (`https://babillard-forever.netlify.app`), `PUSH_SECRET` (mot de passe entre la base et le site) et `VITE_VAPID_PUBLIC` (la même valeur que `VAPID_PUBLIC`). Puis Deploys > Trigger deploy. Pour fabriquer de nouvelles clés: `npx web-push generate-vapid-keys`.
+2. **Supabase** (SQL Editor): roule `ameliorations10.sql`, puis ces deux lignes (avec ton adresse et le même `PUSH_SECRET`):
+
+```sql
+insert into public.reglages (cle, valeur) values
+  ('push_url', 'https://babillard-forever.netlify.app/.netlify/functions/push'),
+  ('push_secret', 'LE_MEME_PUSH_SECRET')
+on conflict (cle) do update set valeur = excluded.valeur;
+```
+
+3. Sur le site, onglet Messages > « Activer les alertes sur cet appareil ». Pour tester: avec un 2e compte (ou un ami), demande à rejoindre ton groupe: une alerte doit s'afficher.
+
+Comment ça marche: un déclencheur dans la base (demande reçue ou acceptée, message de groupe, message d'ami) appelle la fonction Netlify `netlify/functions/push.mjs` avec le mot de passe `PUSH_SECRET`; la fonction envoie l'alerte avec les clés VAPID. L'alerte ne contient jamais le texte du message, et une seule alerte est envoyée par conversation toutes les 2 minutes. Les abonnements sont dans `push_abonnements` (5 appareils au plus par personne, retirés après 60 jours sans visite). Le service worker est `public/sw.js` (aucun cache). Le site est aussi installable sur l'écran d'accueil (`public/manifest.webmanifest`), ce qui est nécessaire pour les alertes sur iPhone.
+
+Si les alertes n'arrivent pas: Netlify > Functions > `push` > Logs (erreur 401 = les deux `PUSH_SECRET` ne sont pas pareils), puis Supabase > Database > Extensions (`pg_net` doit être activée) et la table `net._http_response` (réponses de la fonction).
 
 ## Demandes pour rejoindre, chat de groupe et chat d'amis
 

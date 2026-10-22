@@ -3576,3 +3576,81 @@ h2 {
   gap: 8px 12px;
 }
 .pied .soutien .bouton { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+
+/* ---------- Pouces de fin de soirée ---------- */
+.pouces-fin .msg-membres li { align-items: center; }
+.pouces-fin .bouton { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---------- Reprendre ma dernière annonce ---------- */
+.reprise {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: var(--field);
+}
+
+/* ---------- Reprendre ma dernière annonce ---------- */
+.reprise {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: var(--field);
+}
+
+/* ---------- Statistiques d'achalandage ---------- */
+.achalandage { margin-bottom: 12px; }
+.achalandage summary { cursor: pointer; font-weight: 700; }
+.achalandage-jours { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
+.barres {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  align-items: end;
+  height: 120px;
+  margin: 0;
+  padding: 0 0 18px;
+  list-style: none;
+}
+.barres li { position: relative; display: flex; align-items: flex-end; height: 100%; }
+.barres .barre {
+  display: block;
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+  background: var(--gold);
+  border: 1px solid color-mix(in srgb, var(--gold) 60%, black);
+}
+.barres .barre-heure {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -18px;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+/* ---------- Alertes sur l'appareil ---------- */
+.msg-alertes {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: var(--field);
+}
+.msg-alertes .bouton { display: inline-flex; align-items: center; gap: 6px; }

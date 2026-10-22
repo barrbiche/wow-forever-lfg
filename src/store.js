@@ -152,6 +152,101 @@ export async function creerAnnonce(champs, heures) {
   return data
 }
 
+// ---------- Annonces qui se répètent chaque semaine (supabase/ameliorations10.sql, partie 3) ----------
+
+const CLE_REC_DEMO = 'forever-demo-recurrences'
+const SEMAINE = 7 * 24 * 3600000
+
+function lireRecDemo() {
+  try {
+    return JSON.parse(localStorage.getItem(CLE_REC_DEMO) || '[]')
+  } catch {
+    return []
+  }
+}
+
+function ecrireRecDemo(liste) {
+  try {
+    localStorage.setItem(CLE_REC_DEMO, JSON.stringify(liste))
+  } catch {
+    // navigation privée: rien n'est gardé
+  }
+}
+
+// Vrai si la base n'a pas encore reçu la partie 3 de ameliorations10.sql.
+export const recurrencesAbsentes = (e) =>
+  e?.code === 'PGRST202' || e?.code === '42883' || /could not find the function|schema cache/i.test(e?.message ?? '')
+
+export async function creerRecurrence(idAnnonce) {
+  if (modeDemo) {
+    const a = lireDemo().find((x) => x.id === idAnnonce)
+    if (!a?.debut || a.genre === 'joueur') throw Object.assign(new Error('annonce invalide'), { code: '22023' })
+    const liste = lireRecDemo()
+    const deja = liste.find((r) => r.source === idAnnonce || r.derniere === idAnnonce)
+    if (deja) return deja.id
+    if (liste.length >= 3) throw Object.assign(new Error('trop de répétitions'), { code: '54000' })
+    const { id: _id, created_at: _c, user_id: _u, ...modele } = a
+    const r = { id: `rec-${Date.now()}`, source: a.id, derniere: a.id, modele, prochain: new Date(new Date(a.debut).getTime() + SEMAINE).toISOString() }
+    ecrireRecDemo([...liste, r])
+    return r.id
+  }
+  const { data, error } = await supabase.rpc('creer_recurrence', { p_annonce: idAnnonce })
+  if (error) throw error
+  return data
+}
+
+// [{ id, source, derniere, prochain }]; [] pour un visiteur ou si la base n'est pas à jour.
+export async function lireRecurrences() {
+  if (!(await estConnecte())) return []
+  if (modeDemo) return lireRecDemo().map(({ id, source, derniere, prochain }) => ({ id, source, derniere, prochain }))
+  const { data, error } = await supabase.rpc('mes_recurrences')
+  if (error) return []
+  return data ?? []
+}
+
+export async function arreterRecurrence(id) {
+  if (modeDemo) {
+    ecrireRecDemo(lireRecDemo().filter((r) => r.id !== id))
+    return
+  }
+  const { error } = await supabase.rpc('arreter_recurrence', { p_id: id })
+  if (error) throw error
+}
+
+// Publie les annonces qui partent dans les 24 prochaines heures. Retourne le nombre publié (0 si rien ou base pas à jour).
+export async function genererRecurrences() {
+  if (!(await estConnecte())) return 0
+  if (modeDemo) {
+    const maintenant = Date.now()
+    let n = 0
+    const liste = lireRecDemo().map((r) => {
+      let p = new Date(r.prochain).getTime()
+      while (p < maintenant - 600000) p += SEMAINE
+      if (p > maintenant + 24 * 3600000) return { ...r, prochain: new Date(p).toISOString() }
+      const id = `demo-${Date.now()}-${n}`
+      const annonce = {
+        ...r.modele,
+        id,
+        user_id: UTILISATEUR_DEMO.id,
+        created_at: new Date().toISOString(),
+        debut: new Date(p).toISOString(),
+        expires_at: new Date(p + 3600000).toISOString(),
+      }
+      try {
+        localStorage.setItem(CLE_DEMO, JSON.stringify([annonce, ...lireDemo()]))
+      } catch {
+        return r
+      }
+      n += 1
+      return { ...r, derniere: id, prochain: new Date(p + SEMAINE).toISOString() }
+    })
+    ecrireRecDemo(liste)
+    return n
+  }
+  const { data, error } = await supabase.rpc('generer_recurrences')
+  return error ? 0 : Number(data) || 0
+}
+
 // ---------- Connexion ----------
 
 // Un compte Google donne le vrai nom complet de la personne. On ne le préremplit jamais comme contact (il se
@@ -536,6 +631,29 @@ export async function lireJoueurs() {
   const { data, error } = await supabase.rpc('lister_joueurs')
   if (error) throw error
   return data
+}
+
+// Quand les groupes se forment: [{ jour (0 = dimanche), heure (heure de l'Est), n }]. Public. null si la base n'est pas à jour.
+export async function lireAchalandage() {
+  if (modeDemo) {
+    // Fausses données de démonstration: surtout en soirée, plus le week-end.
+    const lignes = []
+    for (let jour = 0; jour < 7; jour += 1) {
+      for (let heure = 12; heure < 24; heure += 1) {
+        const soir = Math.max(0, 10 - Math.abs(heure - 20.5) * 2.2)
+        const fin = jour === 0 || jour === 5 || jour === 6 ? 1.6 : 1
+        const n = Math.round(soir * fin + ((jour * 7 + heure) % 3))
+        if (n > 0) lignes.push({ jour, heure, n })
+      }
+    }
+    return { lignes, demo: true }
+  }
+  try {
+    const { data, error } = await supabase.rpc('stats_achalandage')
+    return error ? null : { lignes: data ?? [], demo: false }
+  } catch {
+    return null
+  }
 }
 
 // Comptes « Supporter » (liste tenue à la main dans Supabase, table « supporters »). Retourne un Set vide si on ne peut pas la lire.

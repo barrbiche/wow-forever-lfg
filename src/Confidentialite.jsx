@@ -24,6 +24,21 @@ export function SectionDonnees() {
           tu acceptes dans ton groupe, dans le chat du groupe. Une annonce n'est plus affichée une fois son temps écoulé.
         </li>
         <li>
+          <strong>Les alertes sur l'appareil.</strong> Si tu les actives, le site garde l'adresse d'envoi de ton
+          navigateur et ses clés (pas ton nom). Elles servent seulement à t'envoyer des alertes. Une alerte ne contient
+          jamais le texte d'un message, seulement une phrase comme « Nouveau message dans ton groupe ». Elles passent par
+          le service d'alertes de ton navigateur (Google, Apple ou Mozilla). Tu peux les couper en tout temps; un appareil
+          sans visite depuis 60 jours est retiré.
+        </li>
+        <li>
+          <strong>Les annonces qui se répètent.</strong> Pour republier ton annonce chaque semaine, le site en garde une
+          copie (contact compris, jamais montré) jusqu'à ce que tu arrêtes la répétition ou que ton compte soit supprimé.
+        </li>
+        <li>
+          <strong>Les statistiques.</strong> Le site compte combien d'annonces sont publiées par jour et par heure. Ces
+          chiffres ne sont liés à aucun compte et sont gardés 12 semaines.
+        </li>
+        <li>
           <strong>Le badge « Supporter ».</strong> Si tu fais un don et que la personne qui gère le site te donne le
           badge, ton identifiant de compte est ajouté à une liste. Les gens connectés voient le badge à côté du nom de
           ton personnage. Le montant du don n'est pas gardé sur le site. Demande-lui de retirer le badge quand tu veux.

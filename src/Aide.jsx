@@ -79,8 +79,41 @@ export default function Aide({ ouvert, fermer }) {
               décider.
             </li>
             <li>
+              Un groupe de donjon (le chef et 4 joueurs) ou un raid avec composition devient « Groupe complet » tout seul
+              quand le dernier joueur est accepté, et les demandes se ferment. Le chef peut aussi fermer ou rouvrir les
+              demandes à la main (« Groupe complet » sur sa carte). Si quelqu'un part, le groupe se rouvre.
+            </li>
+            <li>
+              Quand l'annonce est terminée, le chat te propose de donner un pouce aux joueurs avec qui ça a bien été: ça
+              compte dans leur réputation (page Joueurs).
+            </li>
+            <li>
+              Les alertes sur l'appareil (onglet Messages, « Activer les alertes ») affichent une notification quand on
+              demande à rejoindre ton groupe, qu'on t'accepte, qu'on écrit dans ton groupe ou qu'un ami t'écrit, même si
+              le site est fermé. Elles ne contiennent jamais le texte du message. Chaque appareil s'active séparément et on
+              peut les couper en tout temps. Sur iPhone, ajoute d'abord le site à l'écran d'accueil.
+            </li>
+            <li>
               Pour éviter le spam: 10 demandes en attente et 20 par jour, 15 messages par 30 secondes, 500 caractères par
               message. Les adresses écrites dans le chat ne sont pas cliquables.
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Publier plus vite</h3>
+          <ul className="puces">
+            <li>
+              « Reprendre ma dernière annonce » (en haut du formulaire) remplit tout avec ta dernière annonce; tu changes
+              ce que tu veux avant de publier. Elle est gardée seulement dans ton navigateur.
+            </li>
+            <li>
+              Une annonce avec une heure de départ peut se répéter chaque semaine (case « Répéter chaque semaine », ou le
+              bouton sur ta carte): la nouvelle annonce est publiée 24 heures avant, à la même heure (heure de l'Est).
+              « Arrêter la répétition » la coupe. Maximum 3 répétitions.
+            </li>
+            <li>
+              En bas de la page, « Quand est-ce que ça joue le plus? » montre les heures où il se forme le plus de groupes.
             </li>
           </ul>
         </section>

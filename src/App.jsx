@@ -3,6 +3,10 @@ import {
   connecter,
   compteSuspendu,
   creerAnnonce,
+  creerRecurrence,
+  lireRecurrences,
+  arreterRecurrence,
+  genererRecurrences,
   deconnecter,
   envoyerLienCourriel,
   googleActif,
@@ -67,6 +71,8 @@ import {
   versChampDate,
 } from './commun.jsx'
 import { telechargerIcs } from './calendrier.js'
+import Achalandage from './Achalandage.jsx'
+import { rafraichirPush, retirerAlertesAppareil } from './push.js'
 import {
   Alerte,
   demanderNotifications,
@@ -79,7 +85,7 @@ import {
 } from './alertes.jsx'
 import Aide from './Aide.jsx'
 import { DialogueDemande, SectionMessages, ZoneRejoindre } from './Messages.jsx'
-import { lireConversations, lireMesDemandes, messagerieAbsente } from './messagerie.js'
+import { lireConversations, lireMesDemandes, lirePlaces, messagerieAbsente } from './messagerie.js'
 import SectionGuildes from './Guildes.jsx'
 import SectionJoueurs, { ProfilJoueur } from './Joueurs.jsx'
 
@@ -224,12 +230,15 @@ export default function App() {
   }
 
   const [guildes, setGuildes] = useState(null) // null: pas encore disponibles (ex.: base pas à jour)
-  const [vue, setVue] = useState('groupes')
+  const [vue, setVue] = useState(() => (new URLSearchParams(window.location.search).get('vue') === 'messages' ? 'messages' : 'groupes'))
   const [aideOuverte, setAideOuverte] = useState(false)
   const [lien] = useState(lireLienDirect)
   const [lienTraite, setLienTraite] = useState(false)
   const [ciblee, setCiblee] = useState(null) // { type: 'annonce' | 'guilde', id }
   const [guideCible, setGuideCible] = useState(null) // { valeur: id ou nom du donjon, n }
+  const [recurrences, setRecurrences] = useState([])
+  const dernierGenRef = useRef(0)
+  const [places, setPlaces] = useState(() => new Map())
   const [supporters, setSupporters] = useState(() => new Set())
   const [joueurs, setJoueurs] = useState([]) // null: pas encore disponibles (ex.: base pas à jour)
   const [enLigne, setEnLigne] = useState(() => new Set())
@@ -263,6 +272,24 @@ export default function App() {
   const utilisateurRef = useRef(null)
   const voirAvisRef = useRef(null)
   const nonLusRef = useRef(0)
+  // Une alerte sur l'appareil ouvre l'onglet Messages (ouverture du site ou clic sur une alerte quand le site est déjà ouvert).
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('vue') === 'messages') {
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+    const sw = navigator.serviceWorker
+    if (!sw) return undefined
+    const ecoute = (e) => {
+      if (e.data?.type === 'ouvrir' && String(e.data.url).includes('vue=messages')) setVue('messages')
+    }
+    sw.addEventListener('message', ecoute)
+    return () => sw.removeEventListener('message', ecoute)
+  }, [])
+
+  useEffect(() => {
+    if (utilisateur?.id) rafraichirPush(utilisateur.id)
+  }, [utilisateur?.id])
+
   useEffect(() => {
     alerteRef.current = alerte
   }, [alerte])
@@ -322,7 +349,16 @@ export default function App() {
 
   // Les demandes à traiter et les messages non lus. Une nouvelle demande ou un nouveau message est annoncé une fois
   // quand on n'est pas dans l'onglet Messages.
+  const chargerPlaces = useCallback(async () => {
+    try {
+      setPlaces(new Map((await lirePlaces()).map((p) => [p.annonce_id, p])))
+    } catch {
+      // pas grave: les cartes n'affichent simplement pas les places
+    }
+  }, [])
+
   const chargerMessagerie = useCallback(async () => {
+    chargerPlaces()
     try {
       const [conv, dem] = await Promise.all([lireConversations(), lireMesDemandes()])
       setConversations(conv)
@@ -344,7 +380,7 @@ export default function App() {
         setMesDemandes([])
       }
     }
-  }, [])
+  }, [chargerPlaces])
 
   const charger = useCallback(async () => {
     // Une lecture plus récente (par exemple après une connexion) remplace une plus ancienne qui finit en retard.
@@ -374,6 +410,16 @@ export default function App() {
       setJoueurs(null)
     }
     setSupporters(await lireSupporters())
+    try {
+      // Les annonces qui se répètent: la première personne connectée avant le départ les publie.
+      if (Date.now() - dernierGenRef.current > 5 * 60000) {
+        dernierGenRef.current = Date.now()
+        if ((await genererRecurrences()) > 0) setAnnonces(await lireAnnonces())
+      }
+      setRecurrences(await lireRecurrences())
+    } catch {
+      setRecurrences([])
+    }
     await chargerAmis()
     await chargerMessagerie()
   }, [detecterNouvelles, chargerAmis, chargerMessagerie])
@@ -676,7 +722,7 @@ export default function App() {
                   {moderateur && (
                     <button type="button" className="lien" onClick={() => setModerationOuverte(true)}>Modération</button>
                   )}
-                  <button type="button" className="lien" onClick={deconnecter}>Se déconnecter</button>
+                  <button type="button" className="lien" onClick={async () => { await retirerAlertesAppareil(); await deconnecter() }}>Se déconnecter</button>
                 </p>
               ) : (
                 <button type="button" className="bouton" onClick={ouvrirConnexion}>
@@ -989,6 +1035,8 @@ export default function App() {
                         apres={charger}
                         demande={demandesParAnnonce.get(a.id)}
                         conv={groupesParAnnonce.get(a.id)}
+                        places={places.get(a.id)}
+                        repetition={recurrences.find((r) => r.source === a.id || r.derniere === a.id)}
                         messagerie={conversations !== null}
                         ouvrirDemande={setDemandeAnnonce}
                         ouvrirChat={ouvrirChat}
@@ -1003,6 +1051,7 @@ export default function App() {
         )}
 
         <footer className="pied">
+          <Achalandage />
           <p>
             Les annonces disparaissent toutes seules quand leur durée est écoulée. Dans Forever, les groupes
             Alliance et Horde ne se mélangent pas.
@@ -1077,9 +1126,9 @@ export default function App() {
         profil={monProfil}
         manquants={besoinProfil ? manquants : []}
         completerProfil={completerProfil}
-        apresPublication={async () => {
+        apresPublication={async (note) => {
           setFormulaireOuvert(false)
-          setMessage('Annonce publiée.')
+          setMessage(note ? `Annonce publiée. ${note}` : 'Annonce publiée.')
           setVue('groupes')
           await charger()
         }}
@@ -1102,14 +1151,20 @@ export default function App() {
 
 // ---------- Carte d'annonce ----------
 
-function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietaire, utilisateur, onConnexion, apres, demande, conv, messagerie, ouvrirDemande, ouvrirChat, annoncer }) {
+function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietaire, utilisateur, onConnexion, apres, demande, conv, places, repetition, messagerie, ouvrirDemande, ouvrirChat, annoncer }) {
   const [probleme, setProbleme] = useState('')
   const joueur = a.genre === 'joueur'
   const classe = CLASSES.find((c) => c.id === a.classe)
   // Raid qui cherche un nombre précis de joueurs par rôle (ex.: 2 tanks, 5 heals, 12 DPS).
   const composition = a.activite === 'raid' && a.roles_nb ? a.roles_nb : null
   const tailleRaid = a.activite === 'raid' ? RAIDS.find((r) => r.nom === a.cible)?.taille : undefined
-  const manque = composition ? ROLES.reduce((n, r) => n + (composition[r.id] || 0), 0) : 0
+  const acceptes = places?.acceptes ?? 0
+  const parRole = places?.par_role ?? {}
+  // Ce qui reste à trouver: la composition du raid moins les joueurs déjà acceptés.
+  const restant = (r) => (composition ? Math.max(0, (composition[r] || 0) - (parRole[r] || 0)) : 0)
+  const manque = composition ? ROLES.reduce((n, r) => n + restant(r.id), 0) : 0
+  const rolesVisibles = ROLES.filter((r) => a.roles.includes(r.id) && !(composition?.[r.id] > 0 && restant(r.id) === 0))
+  const groupeComplet = !joueur && (!!places?.complet || (a.activite !== 'pvp' && a.roles.length === 0))
   const effectif = tailleRaid ? Math.max(0, tailleRaid - manque) : 0
   const dureeTotale = new Date(a.expires_at) - new Date(a.created_at)
   const peutRenouveler = !a.debut && partRestante(a) < 0.5
@@ -1157,11 +1212,19 @@ function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietai
           {a.activite === 'raid' && (
             <li className="chip fort">{RAIDS.find((r) => r.nom === a.cible)?.taille ?? ''} joueurs</li>
           )}
+          {!joueur && acceptes > 0 && (
+            <li className="chip fort">
+              {a.activite === 'donjon' ? `${acceptes} / 4 acceptés` : `${acceptes} accepté${acceptes > 1 ? 's' : ''}`}
+            </li>
+          )}
           {a.debut && (
             <li className="chip depart">
               <Icone nom="horloge" taille={14} />
               Départ {departTexte(a.debut)}
             </li>
+          )}
+          {a.debut && repetition && (
+            <li className="chip">Chaque {new Date(a.debut).toLocaleDateString('fr-CA', { weekday: 'long' })}</li>
           )}
           {a.activite !== 'pvp' && a.ruleset && a.ruleset !== 'normal' && (
             <li className="chip">{RULESETS.find((r) => r.id === a.ruleset)?.carte ?? a.ruleset}</li>
@@ -1171,14 +1234,14 @@ function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietai
           {a.langue && <li className="chip">{a.langue === 'en' ? 'English' : 'Français'}</li>}
         </ul>
 
-        {a.roles.length > 0 && (
+        {rolesVisibles.length > 0 && (
           <p className="roles">
             <span>{joueur ? 'Joue' : 'Cherche'}</span>
-            {ROLES.filter((r) => a.roles.includes(r.id)).map((r) => (
+            {rolesVisibles.map((r) => (
               <span key={r.id} className={`role ${r.id}`}>
                 <Icone nom={r.id} taille={15} />
                 {r.nom}
-                {composition?.[r.id] > 0 && <span className="role-nombre">×{composition[r.id]}</span>}
+                {composition?.[r.id] > 0 && <span className="role-nombre">×{restant(r.id)}</span>}
               </span>
             ))}
           </p>
@@ -1195,7 +1258,7 @@ function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietai
           </div>
         )}
 
-        {!joueur && a.activite !== 'pvp' && a.roles.length === 0 && (
+        {groupeComplet && (
           <p className="roles"><span className="role complet">Groupe complet</span></p>
         )}
 
@@ -1238,6 +1301,7 @@ function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietai
           demande={demande}
           conv={conv}
           disponible={messagerie}
+          complet={groupeComplet}
           ouvrirDemande={ouvrirDemande}
           ouvrirChat={ouvrirChat}
           apres={apres}
@@ -1262,6 +1326,17 @@ function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietai
             <button type="button" className="bouton petit danger" onClick={() => gerer(() => retirerAnnonce(a.id))}>
               {joueur ? "J'ai trouvé un groupe" : "Retirer l'annonce"}
             </button>
+            {a.debut && !joueur && (
+              repetition ? (
+                <button type="button" className="bouton petit" onClick={() => gerer(() => arreterRecurrence(repetition.id))}>
+                  Arrêter la répétition
+                </button>
+              ) : (
+                <button type="button" className="bouton petit" onClick={() => gerer(() => creerRecurrence(a.id))}>
+                  Répéter chaque semaine
+                </button>
+              )
+            )}
             {a.debut && (
               <button type="button" className="lien signaler" onClick={() => telechargerIcs(a)}>
                 Ajouter à mon calendrier
@@ -1322,6 +1397,7 @@ const FORMULAIRE_VIDE = {
   quand: 'maintenant',
   debut: '',
   heures: 3,
+  repeter: false,
 }
 
 const totalNombres = (nb) => ROLES.reduce((n, r) => n + (nb?.[r.id] ?? 0), 0)
@@ -1329,6 +1405,27 @@ const totalNombres = (nb) => ROLES.reduce((n, r) => n + (nb?.[r.id] ?? 0), 0)
 // Ce qui est gardé dans le navigateur d'une annonce à l'autre.
 const CHAMPS_DU_PROFIL = ['perso', 'classe', 'contact', 'faction', 'region', 'langue']
 const versProfil = (champs) => Object.fromEntries(CHAMPS_DU_PROFIL.map((cle) => [cle, champs[cle]]))
+
+// La dernière annonce publiée, pour la reprendre en un clic (gardée seulement dans ce navigateur).
+const CLE_DERNIERE = 'forever-derniere-annonce'
+const CHAMPS_DERNIERE = ['genre', 'activite', 'cible', 'faction', 'style', 'langue', 'classe', 'region', 'niveau_min', 'niveau_max', 'roles', 'roles_nb', 'perso', 'contact', 'note', 'heures']
+
+function lireDerniere(id) {
+  try {
+    const brut = JSON.parse(localStorage.getItem(CLE_DERNIERE) || 'null')
+    return brut && brut.uid === id && brut.champs ? brut.champs : null
+  } catch {
+    return null
+  }
+}
+
+function ecrireDerniere(id, champs) {
+  try {
+    localStorage.setItem(CLE_DERNIERE, JSON.stringify({ uid: id, champs: Object.fromEntries(CHAMPS_DERNIERE.map((c) => [c, champs[c]])) }))
+  } catch {
+    // navigation privée: la reprise n'est simplement pas offerte
+  }
+}
 
 const CHOIX_GENRE = [
   ['groupe', 'Un groupe', 'On cherche des joueurs.'],
@@ -1351,6 +1448,7 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
     return { ...FORMULAIRE_VIDE, faction: factionParDefaut, ...garde }
   })
   const [erreurs, setErreurs] = useState({})
+  const [derniere, setDerniere] = useState(null)
   const [envoi, setEnvoi] = useState(false)
   const [erreurServeur, setErreurServeur] = useState('')
   const raids = raidsOuverts()
@@ -1360,6 +1458,7 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
     const d = dialogue.current
     if (!d) return
     if (ouvert && !d.open) {
+      setDerniere(lireDerniere(utilisateur?.id))
       // Le personnage de l'annonce est celui du profil (modifiable pour cette annonce seulement).
       if (profil) {
         setChamps((c) => ({
@@ -1475,6 +1574,12 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
     setErreurs((e) => (e.roles ? { ...e, roles: undefined } : e))
   }
 
+  const reprendre = () => {
+    setChamps((c) => ({ ...c, ...derniere, quand: 'maintenant', debut: '' }))
+    setErreurs({})
+    setDerniere(null)
+  }
+
   const valider = () => {
     const e = {}
     const joueur = champs.genre === 'joueur'
@@ -1513,7 +1618,7 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
     setErreurServeur('')
     try {
       const joueur = champs.genre === 'joueur'
-      await creerAnnonce(
+      const publiee = await creerAnnonce(
         {
           genre: champs.genre,
           activite: champs.activite,
@@ -1538,10 +1643,20 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
         },
         Number(champs.heures),
       )
+      let note = ''
+      if (champs.repeter && champs.quand === 'plus_tard' && !joueur) {
+        try {
+          await creerRecurrence(publiee.id)
+          note = 'Elle se répétera chaque semaine.'
+        } catch {
+          note = 'La répétition n’a pas pu être activée.'
+        }
+      }
       ecrireProfil(versProfil(champs))
+      ecrireDerniere(utilisateur?.id, champs)
       setChamps((c) => ({ ...FORMULAIRE_VIDE, ...versProfil(c) }))
       setErreurs({})
-      await apresPublication()
+      await apresPublication(note)
     } catch (e) {
       setErreurServeur(compteSuspendu(e) ? MESSAGE_COMPTE_SUSPENDU : "L'annonce n'a pas été publiée. Réessaie dans un instant.")
     } finally {
@@ -1586,6 +1701,16 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
             <h2 id="titre-formulaire">Publier une annonce</h2>
             <button type="button" className="bouton petit" onClick={fermer}>Fermer</button>
           </div>
+
+          {derniere && (
+            <div className="reprise">
+              <button type="button" className="bouton petit" onClick={reprendre}>Reprendre ma dernière annonce</button>
+              <span className="aide">
+                {derniere.genre === 'joueur' ? 'Joueur seul' : NOMS_ACTIVITE[derniere.activite]}: {derniere.cible}
+                {derniere.niveau_min === derniere.niveau_max ? `, niveau ${derniere.niveau_min}` : `, niveaux ${derniere.niveau_min} à ${derniere.niveau_max}`}
+              </span>
+            </div>
+          )}
 
           <fieldset className="groupe">
             <legend>Tu publies pour</legend>
@@ -1816,6 +1941,13 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
               />
               {erreur('debut')}
               <small className="aide">L'annonce reste affichée jusqu'à 1 heure après le départ.</small>
+            </label>
+          )}
+
+          {champs.quand === 'plus_tard' && !joueur && (
+            <label className="case">
+              <input type="checkbox" checked={champs.repeter} onChange={(e) => maj('repeter', e.target.checked)} />
+              <span>Répéter chaque semaine, à la même heure (publiée 24 h avant le départ)</span>
             </label>
           )}
 
