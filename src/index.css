@@ -3551,3 +3551,28 @@ h2 {
     vertical-align: middle;
   }
 }
+
+/* ---------- Dons et badge « Supporter » ---------- */
+.badge-supporter {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  vertical-align: middle;
+  white-space: nowrap;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--gold) 28%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gold) 55%, transparent);
+}
+.badge-supporter svg { color: #b4372f; fill: currentColor; }
+.pied .soutien {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.pied .soutien .bouton { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }

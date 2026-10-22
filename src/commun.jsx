@@ -1,4 +1,4 @@
-import { createContext, useState } from 'react'
+import { createContext, useContext, useState } from 'react'
 import { CLASSES, LANCEMENT_LE, MOTIFS_JOUEUR, MOTIFS_SIGNALEMENT, RAIDS_OUVERTS_LE, nomSpecialisation } from './data.js'
 import { signaler } from './store.js'
 import { LangueJeu, commandeInviter, useLangueJeu } from './langue.jsx'
@@ -17,6 +17,7 @@ export const CHEMINS = {
   joueur: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0',
   guilde: 'M5 3h14v10c0 4-3 6-7 8-4-2-7-4-7-8V3zM9 8h6M9 12h6',
   cloche: 'M6 8a6 6 0 1112 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 003.4 0',
+  coeur: 'M12 21l-1.4-1.3C5.4 15 2 11.9 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.4-3.4 6.5-8.6 11.2L12 21z',
   discussion: 'M5 4h14a2 2 0 012 2v9a2 2 0 01-2 2h-7l-5 4v-4H5a2 2 0 01-2-2V6a2 2 0 012-2zM8 10h.01M12 10h.01M16 10h.01',
   livre: 'M4 4h7a2 2 0 012 2v14a2 2 0 00-2-2H4V4zM20 4h-7a2 2 0 00-2 2v14a2 2 0 012-2h7V4z',
   ami: 'M10 12a4 4 0 100-8 4 4 0 000 8zM2 21a8 8 0 0116 0M19 8v6M16 11h6',
@@ -26,6 +27,20 @@ export const CHEMINS = {
 }
 // Permet à n'importe quelle carte de joueur d'ouvrir le chat avec un ami: ouvrirAmi(idDeLAmi).
 export const OuvrirChat = createContext({ ouvrirAmi: null })
+
+// Ensemble des comptes « Supporter » (voir supabase/ameliorations9.sql). Vide pour un visiteur ou si la base n'est pas à jour.
+export const Supporters = createContext(new Set())
+
+export function BadgeSupporter({ id }) {
+  const ensemble = useContext(Supporters)
+  if (!id || !ensemble.has(id)) return null
+  return (
+    <span className="badge-supporter" title="Supporter du site: merci!">
+      <Icone nom="coeur" taille={12} />
+      Supporter
+    </span>
+  )
+}
 
 export const NOMS_ACTIVITE = { donjon: 'Donjon', raid: 'Raid', pvp: 'PvP' }
 

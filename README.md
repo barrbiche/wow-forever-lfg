@@ -34,6 +34,8 @@ Sans configuration, le site tourne en **mode démo**: les annonces restent dans 
 
 12. SQL Editor > New query: colle aussi `supabase/ameliorations8.sql`, puis Run (demandes pour rejoindre, chat de groupe, chat entre amis, messages signalés). Il se roule **après** `ameliorations7.sql` (il refuse de rouler sans les tables d'amis et de modération). **Attention:** il retire le droit de lire la colonne `contact` des annonces aux joueurs connectés (les visiteurs ne l'avaient déjà pas): le contact ne passe plus que par le chat du groupe. Le site mis à jour marche avec les deux états de la base; tant que ce fichier n'est pas roulé, les cartes disent « Les demandes pour rejoindre arrivent bientôt » et l'onglet Messages dit « pas encore activée ». On peut le relancer sans problème.
 
+13. (Facultatif, pour le badge « Supporter ») SQL Editor > New query: colle `supabase/ameliorations9.sql`, puis Run. Voir la section « Dons et badge » plus bas. Sans ce fichier, le site marche pareil: il n'y a juste pas de badge.
+
 ## Connexion par courriel
 
 Elle marche dès que le projet Supabase existe (le fournisseur « Email » est activé par défaut).
@@ -109,6 +111,12 @@ Ancienne installation (gardée pour mémoire): `supabase/discord.sql` créait l'
 - Le contact d'une annonce (BattleTag) n'est visible ni des visiteurs ni des autres joueurs connectés: depuis `ameliorations8.sql`, la colonne `annonces.contact` n'est lisible que par la base elle-même. Le chef et les joueurs qu'il accepte le reçoivent dans le chat du groupe (copie dans `groupes.contact`); les modérateurs le voient dans la file de modération. Seul le BattleTag que quelqu'un écrit lui-même dans son profil reste visible de toutes les personnes connectées. Le contact des guildes reste visible des gens connectés.
 - Chaque personne connectée peut signaler une annonce, une guilde ou un joueur (une fois chacun). Après 3 signalements de comptes différents, elle est masquée automatiquement. Des faux comptes pourraient abuser de ça: surveille le canal de modération.
 - Les guildes restent affichées 7, 14 ou 30 jours; 2 inscriptions actives par joueur.
+
+## Dons et badge « Supporter »
+
+- Le bouton « Soutenir le site » (en bas de page) n'apparaît que si la variable `VITE_LIEN_DONS` est définie dans Netlify (Site configuration > Environment variables), avec une adresse qui commence par `https://` (ta page Ko-fi, Buy Me a Coffee, etc.). Après l'avoir ajoutée, relance un déploiement (Deploys > Trigger deploy).
+- Pour le badge: colle `supabase/ameliorations9.sql` dans le SQL Editor (étape 13), puis, pour chaque personne qui donne, Table Editor > `supporters` > Insert row avec son `user_id` (Authentication > Users > User UID). Supprime la ligne pour retirer le badge. Seuls les gens connectés voient le badge.
+- Rien n'est vérifié automatiquement: c'est toi qui décides qui reçoit le badge.
 
 ## Demandes pour rejoindre, chat de groupe et chat d'amis
 

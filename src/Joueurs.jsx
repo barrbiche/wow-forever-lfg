@@ -23,7 +23,7 @@ import {
   normaliserBattleTag,
   specialisationsDe,
 } from './data.js'
-import { BoutonLienSite, ChipClasse, Icone, LigneCopie, Signalement, vuTexte } from './commun.jsx'
+import { BadgeSupporter, BoutonLienSite, ChipClasse, Icone, LigneCopie, Signalement, vuTexte } from './commun.jsx'
 import { LangueJeu, commandeInviter, useLangueJeu } from './langue.jsx'
 import { BoutonsAmi, SectionAmis } from './Amis.jsx'
 
@@ -317,7 +317,10 @@ function CarteJoueur({ joueur: j, commande, enLigne, lien, apresAmis, utilisateu
       <div className="carte-corps">
         <div className="carte-haut">
           <div className="carte-titre">
-            <h2>{j.perso}</h2>
+            <h2>
+              {j.perso}
+              <BadgeSupporter id={j.user_id} />
+            </h2>
             <span className={`faction ${j.faction}`}>{nomDe(FACTIONS, j.faction)}</span>
           </div>
           {enLigne ? (

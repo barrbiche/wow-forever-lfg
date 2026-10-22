@@ -11,6 +11,10 @@ export const modeDemo = !(url && cle)
 // La connexion Google s'affiche seulement une fois configurée (VITE_GOOGLE_ACTIF=1 dans Netlify): le bouton reste
 // caché tant que Google n'est pas branché dans Supabase. Sans cette variable (et en mode démo), c'est le courriel.
 export const googleActif = import.meta.env.VITE_GOOGLE_ACTIF === '1'
+
+// Lien pour soutenir le site (Ko-fi, Buy Me a Coffee, etc.): VITE_LIEN_DONS dans Netlify. Sans lien valide, rien ne s'affiche.
+const lienBrut = (import.meta.env.VITE_LIEN_DONS || '').trim()
+export const lienDons = /^https:\/\/[^\s]+$/i.test(lienBrut) ? lienBrut : ''
 export const supabase = modeDemo ? null : createClient(url, cle)
 
 const CLE_DEMO = 'forever-demo-annonces'
@@ -532,6 +536,19 @@ export async function lireJoueurs() {
   const { data, error } = await supabase.rpc('lister_joueurs')
   if (error) throw error
   return data
+}
+
+// Comptes « Supporter » (liste tenue à la main dans Supabase, table « supporters »). Retourne un Set vide si on ne peut pas la lire.
+export async function lireSupporters() {
+  if (!(await estConnecte())) return new Set()
+  if (modeDemo) return new Set(['demo-j-mirabelle', 'demo-j-lyra'])
+  try {
+    const { data, error } = await supabase.rpc('lister_supporters')
+    if (error) return new Set()
+    return new Set((data ?? []).map((x) => (typeof x === 'string' ? x : x.lister_supporters ?? x.user_id)))
+  } catch {
+    return new Set()
+  }
 }
 
 export async function enregistrerProfil(champs) {

@@ -6,6 +6,8 @@ import {
   deconnecter,
   envoyerLienCourriel,
   googleActif,
+  lienDons,
+  lireSupporters,
   ecrireProfil,
   estModerateur,
   lireAnnonces,
@@ -49,6 +51,8 @@ import {
   CommandeAnnonce,
   Icone,
   OuvrirChat,
+  Supporters,
+  BadgeSupporter,
   LienDirect,
   NOMS_ACTIVITE,
   Signalement,
@@ -226,6 +230,7 @@ export default function App() {
   const [lienTraite, setLienTraite] = useState(false)
   const [ciblee, setCiblee] = useState(null) // { type: 'annonce' | 'guilde', id }
   const [guideCible, setGuideCible] = useState(null) // { valeur: id ou nom du donjon, n }
+  const [supporters, setSupporters] = useState(() => new Set())
   const [joueurs, setJoueurs] = useState([]) // null: pas encore disponibles (ex.: base pas à jour)
   const [enLigne, setEnLigne] = useState(() => new Set())
   const [amis, setAmis] = useState([]) // null: pas encore disponibles (ameliorations6.sql pas roulé)
@@ -368,6 +373,7 @@ export default function App() {
     } catch {
       setJoueurs(null)
     }
+    setSupporters(await lireSupporters())
     await chargerAmis()
     await chargerMessagerie()
   }, [detecterNouvelles, chargerAmis, chargerMessagerie])
@@ -634,6 +640,7 @@ export default function App() {
 
   return (
     <OuvrirChat.Provider value={contexteChat}>
+    <Supporters.Provider value={supporters}>
       <Ruban
         connecte={!!utilisateur}
         onClick={() => (utilisateur ? setProfilOuvert(true) : ouvrirConnexion())}
@@ -1005,6 +1012,15 @@ export default function App() {
               Comment ça marche, règles et données personnelles
             </button>
           </p>
+          {lienDons && (
+            <p className="soutien">
+              <a className="bouton petit" href={lienDons} target="_blank" rel="noopener noreferrer">
+                <Icone nom="coeur" taille={15} />
+                Soutenir le site
+              </a>
+              <span className="aide">Le site est gratuit et sans pub. Un don aide à le garder en ligne. Les supporters reçoivent un badge.</span>
+            </p>
+          )}
           <p className="avis">
             Babillard Forever est un site de fans, sans lien avec Blizzard Entertainment. World of Warcraft est une
             marque de Blizzard Entertainment, Inc.
@@ -1079,6 +1095,7 @@ export default function App() {
       )}
 
       {message && <div className="toast" role="status">{message}</div>}
+    </Supporters.Provider>
     </OuvrirChat.Provider>
   )
 }
@@ -1196,6 +1213,7 @@ function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietai
             <div className="auteur-texte">
               <span className="auteur-nom">
                 <strong>{a.perso}</strong>
+                <BadgeSupporter id={a.user_id} />
                 {profil && !profil.en_revision && profil.pouces > 0 && (
                   <span className="respect-mini" title={`Respect: ${profil.pouces} ${profil.pouces > 1 ? 'pouces' : 'pouce'}`}>
                     <Icone nom="pouce" taille={13} />

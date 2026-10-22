@@ -171,6 +171,17 @@ export default function Aide({ ouvert, fermer }) {
         </section>
 
         <section>
+          <h3>Soutenir le site</h3>
+          <ul className="puces">
+            <li>
+              Le site est gratuit et sans pub, et il va le rester. Si tu veux aider à le garder en ligne, un don est
+              possible (bouton « Soutenir le site » en bas de la page, quand il est activé). Les gens qui donnent peuvent
+              recevoir un badge « Supporter » à côté du nom de leur personnage. Ça ne donne aucun avantage dans les groupes.
+            </li>
+          </ul>
+        </section>
+
+        <section>
           <h3>Les règles</h3>
           <ul className="puces">
             <li>Sois respectueux. Pas d'insultes ni de harcèlement.</li>

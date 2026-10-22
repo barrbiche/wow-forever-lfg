@@ -24,6 +24,11 @@ export function SectionDonnees() {
           tu acceptes dans ton groupe, dans le chat du groupe. Une annonce n'est plus affichée une fois son temps écoulé.
         </li>
         <li>
+          <strong>Le badge « Supporter ».</strong> Si tu fais un don et que la personne qui gère le site te donne le
+          badge, ton identifiant de compte est ajouté à une liste. Les gens connectés voient le badge à côté du nom de
+          ton personnage. Le montant du don n'est pas gardé sur le site. Demande-lui de retirer le badge quand tu veux.
+        </li>
+        <li>
           <strong>Ton profil de joueur.</strong> Il doit être complet pour publier une annonce: le nom de ton
           personnage, ta classe, ta spécialisation, ton niveau et au moins un rôle. Quand tu cliques sur « Publier une
           annonce » sans profil complet, le site ouvre d'abord « Mon profil », puis le formulaire d'annonce. Le profil
