@@ -8,9 +8,8 @@ const url = import.meta.env.VITE_SUPABASE_URL
 const cle = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 export const modeDemo = !(url && cle)
-// La connexion Discord s'affiche seulement une fois configurée (VITE_DISCORD_ACTIF=1 dans Netlify).
-export const discordActif = import.meta.env.VITE_DISCORD_ACTIF === '1'
-// Idem pour Google (VITE_GOOGLE_ACTIF=1): le bouton reste caché tant que Google n'est pas branché dans Supabase.
+// La connexion Google s'affiche seulement une fois configurée (VITE_GOOGLE_ACTIF=1 dans Netlify): le bouton reste
+// caché tant que Google n'est pas branché dans Supabase. Sans cette variable (et en mode démo), c'est le courriel.
 export const googleActif = import.meta.env.VITE_GOOGLE_ACTIF === '1'
 const supabase = modeDemo ? null : createClient(url, cle)
 
@@ -154,7 +153,7 @@ export async function creerAnnonce(champs, heures) {
 // ---------- Connexion ----------
 
 // Un compte Google donne le vrai nom complet de la personne. On ne le préremplit jamais comme contact (il se
-// retrouverait publié par erreur) et on n'affiche que le prénom. Discord donne un nom d'utilisateur: pas de souci.
+// retrouverait publié par erreur) et on n'affiche que le prénom. Les anciens comptes Discord gardent leur nom d'utilisateur.
 function nomVientDeGoogle(u, m) {
   if (String(m.iss ?? '').includes('google')) return true
   const fournisseurs = [u.app_metadata?.provider, ...(u.app_metadata?.providers ?? []), ...(u.identities ?? []).map((i) => i.provider)]
@@ -202,8 +201,8 @@ export function suivreUtilisateur(rappel) {
   return () => data.subscription.unsubscribe()
 }
 
-// `fournisseur`: 'discord' (par défaut) ou 'google'. En mode démo, la connexion est simulée.
-export async function connecter(fournisseur = 'discord') {
+// Connexion avec Google. En mode démo, la connexion est simulée.
+export async function connecter() {
   if (modeDemo) {
     try {
       localStorage.setItem(CLE_CONNEXION_DEMO, '1')
@@ -214,7 +213,7 @@ export async function connecter(fournisseur = 'discord') {
     return
   }
   const { error } = await supabase.auth.signInWithOAuth({
-    provider: fournisseur === 'google' ? 'google' : 'discord',
+    provider: 'google',
     options: { redirectTo: window.location.origin },
   })
   if (error) throw error

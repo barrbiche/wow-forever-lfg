@@ -4,7 +4,6 @@ import {
   compteSuspendu,
   creerAnnonce,
   deconnecter,
-  discordActif,
   envoyerLienCourriel,
   googleActif,
   ecrireProfil,
@@ -1363,7 +1362,7 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
       else if (max < min) e.niveau_max = 'Doit être au moins égal au niveau minimum.'
     }
     if (!champs.perso.trim()) e.perso = 'Écris le nom de ton personnage.'
-    if (!champs.contact.trim()) e.contact = 'Écris ton BattleTag (ou ton Discord) pour que les gens te trouvent.'
+    if (!champs.contact.trim()) e.contact = 'Écris ton BattleTag pour que les gens te trouvent.'
     if (champs.activite !== 'pvp' && champs.roles.length === 0) {
       e.roles = joueur
         ? 'Choisis au moins un rôle que tu joues.'
@@ -1640,7 +1639,7 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
               {erreur('perso')}
             </label>
             <label className="champ">
-              <span>Contact (BattleTag, ou Discord si tu préfères)</span>
+              <span>Contact (BattleTag)</span>
               <input type="text" maxLength={48} autoComplete="off" value={champs.contact} onChange={(e) => maj('contact', e.target.value)} aria-invalid={!!erreurs.contact} placeholder="Ex.: Nom#1234" />
               {erreur('contact')}
             </label>
@@ -1770,10 +1769,10 @@ function PanneauConnexion({ fermer }) {
   const [problemeCompte, setProblemeCompte] = useState('')
   const integre = googleActif && dansNavigateurIntegre()
 
-  const continuerAvec = (fournisseur) => {
+  const continuerAvecGoogle = () => {
     setProblemeCompte('')
-    connecter(fournisseur).catch(() => {
-      setProblemeCompte(`La connexion avec ${fournisseur === 'google' ? 'Google' : 'Discord'} n'a pas marché. Réessaie, ou utilise ton courriel.`)
+    connecter().catch(() => {
+      setProblemeCompte("La connexion avec Google n'a pas marché. Réessaie dans quelques minutes.")
     })
   }
 
@@ -1813,7 +1812,7 @@ function PanneauConnexion({ fermer }) {
             complet.
           </p>
           {googleActif && (
-            <button type="button" className="bouton-google large" onClick={() => continuerAvec('google')}>
+            <button type="button" className="bouton-google large" onClick={continuerAvecGoogle}>
               <LogoGoogle />
               <span>Continuer avec Google</span>
             </button>
@@ -1821,15 +1820,11 @@ function PanneauConnexion({ fermer }) {
           {integre && (
             <p className="astuce" role="note">
               Tu es dans le navigateur d'une autre appli (Messenger, Facebook, Instagram…). Google risque de refuser ici:
-              ouvre le site dans ton navigateur habituel (Chrome, Safari…), ou reçois un lien par courriel plus bas.
+              ouvre le site dans ton navigateur habituel (Chrome, Safari…) et réessaie.
             </p>
           )}
-          {discordActif && (
-            <button type="button" className={`bouton large${googleActif ? '' : ' principal'}`} onClick={() => continuerAvec('discord')}>
-              Se connecter avec Discord
-            </button>
-          )}
           {problemeCompte && <p className="erreur" role="alert">{problemeCompte}</p>}
+          {!googleActif && (
           <form className="formulaire-courriel" onSubmit={envoyer} noValidate>
             <label className="champ">
               <span>Ou reçois un lien par courriel, sans mot de passe</span>
@@ -1842,11 +1837,12 @@ function PanneauConnexion({ fermer }) {
               />
               {probleme && <span className="msg-erreur" role="alert">{probleme}</span>}
             </label>
-            <button type="submit" className={`bouton large${discordActif || googleActif ? '' : ' principal'}`} disabled={etat === 'envoi'}>
+            <button type="submit" className="bouton large principal" disabled={etat === 'envoi'}>
               {etat === 'envoi' ? 'Envoi…' : 'Recevoir un lien de connexion'}
             </button>
           </form>
-          <p className="petit-texte">Ton courriel n'est jamais affiché sur le site.</p>
+          )}
+          <p className="petit-texte">Ton nom et ton courriel ne sont jamais affichés sur le site.</p>
         </>
       )}
     </div>

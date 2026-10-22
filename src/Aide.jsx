@@ -35,8 +35,8 @@ export default function Aide({ ouvert, fermer }) {
               Amérique et Europe.
             </li>
             <li>
-              <strong>Connecte-toi pour contacter ou publier.</strong> Avec Google, avec Discord, ou avec un lien envoyé par courriel.
-              Il n'y a pas de mot de passe. Les contacts (BattleTag, Discord) ne sont montrés qu'aux gens connectés.
+              <strong>Connecte-toi pour contacter ou publier.</strong> Avec ton compte Google.
+              Il n'y a pas de mot de passe. Les contacts (BattleTag, liens de guilde) ne sont montrés qu'aux gens connectés.
             </li>
             <li>
               <strong>Publie ton annonce.</strong> Un groupe qui cherche des joueurs, ou un joueur seul qui cherche un

@@ -61,13 +61,11 @@ Google est la connexion la plus simple pour la plupart des gens, et elle ne dép
 - Google refuse la connexion dans le navigateur intégré d'autres applications (Messenger, Facebook, Instagram…, erreur `disallowed_useragent`). Le site détecte la plupart de ces cas et suggère d'ouvrir le site dans le navigateur ou d'utiliser le courriel.
 - Si le bouton Google mène à une page d'erreur de Supabase (« provider is not enabled »), l'étape 6 n'est pas faite ou pas sauvegardée.
 
-## Connexion Discord (facultative)
+## Connexion: Google seulement
 
-1. discord.com/developers/applications > New Application.
-2. OAuth2: copie le Client ID et le Client Secret.
-3. Supabase > Authentication > Sign In / Providers > Discord: active-le, colle le Client ID et le Client Secret, et copie la « Callback URL ».
-4. Discord > OAuth2 > Redirects: colle cette adresse et sauvegarde.
-5. Netlify > Environment variables: ajoute `VITE_DISCORD_ACTIF` = `1`, puis redéploie. Le bouton Discord apparaît alors dans la fenêtre de connexion.
+La connexion se fait avec Google (voir plus haut). Il n'y a plus de connexion Discord ni de lien par courriel quand `VITE_GOOGLE_ACTIF` = `1`. Sans cette variable (et en mode démo), le site retombe sur le lien par courriel, pour pouvoir l'essayer sans configuration.
+
+Les variables Netlify `VITE_DISCORD_ACTIF` et `VITE_DISCORD_INVITE` ne servent plus: tu peux les supprimer. Les comptes créés avec Discord avant restent dans la base.
 
 12. SQL Editor > New query: colle aussi `supabase/ameliorations7.sql`, puis Run (arrête l'envoi des annonces et des guildes dans Discord; voir plus bas). Il se roule **après** `ameliorations6.sql`. On peut le relancer sans problème.
 
@@ -75,12 +73,24 @@ Pour tout rouler d'un coup (4, 5, 6 et 7), il existe aussi un seul fichier « mi
 
 Sans Supabase, la connexion est simulée (mode démo).
 
+### Donner l'accès « Modération » à un compte Google
+
+Le lien « Modération » apparaît pour les comptes listés dans la table `moderateurs`. Dans le SQL Editor du projet du Babillard (pas celui d'un autre projet), remplace le courriel par celui du compte Google:
+
+```sql
+insert into public.moderateurs (user_id)
+select id from auth.users where email = 'ton.courriel@gmail.com'
+on conflict do nothing;
+
+-- vérification: la liste des modérateurs avec leur courriel
+select m.user_id, u.email from public.moderateurs m join auth.users u on u.id = m.user_id;
+```
+
 ## Discord: ce qui reste
 
 Le site ne renvoie plus les gens vers un Discord: plus de bouton « Rejoindre le Discord », et les nouvelles annonces et guildes ne sont plus envoyées dans un canal (`ameliorations7.sql` supprime les envois et efface les réglages `discord_webhook`, `discord_webhook_donjon`, `_raid`, `_pvp`, `_guilde` et `discord_role_*`). La variable Netlify `VITE_DISCORD_INVITE` ne sert plus: tu peux la supprimer.
 
 Ce qui reste volontairement:
-- La connexion avec Discord (voir plus haut), à côté de Google et du courriel.
 - L'alerte **privée** de signalement: si le réglage `discord_webhook_moderation` est rangé dans `reglages`, chaque signalement y est envoyé (« Signalement 2/3 »; à 3, l'annonce, la guilde ou la réputation est masquée). Pour l'arrêter aussi: `delete from public.reglages where cle = 'discord_webhook_moderation';`.
 - Les joueurs peuvent écrire leur BattleTag (ou leur nom Discord) comme contact. Une guilde peut mettre une invitation Discord, un site, une page Facebook ou un BattleTag: les adresses https deviennent des liens cliquables (jamais un autre protocole).
 
@@ -160,7 +170,7 @@ Tout ça vit dans deux fichiers: `src/textures.css` (les textures, en SVG dans l
 
 ## Limites de la version 1
 
-- Connexion obligatoire pour publier, par Google, Discord (chacun activé par une variable Netlify) ou par courriel (5 annonces actives par joueur au maximum). La connexion Battle.net avec import du personnage viendra après, une fois qu'on aura confirmé que l'API de Blizzard voit les personnages de Forever.
+- Connexion obligatoire pour publier, par Google (activé par une variable Netlify; sans elle, par courriel) (5 annonces actives par joueur au maximum). La connexion Battle.net avec import du personnage viendra après, une fois qu'on aura confirmé que l'API de Blizzard voit les personnages de Forever.
 - Les annonces expirent automatiquement (1 à 6 heures, ou 1 heure après le départ pour une annonce planifiée, dans les 3 prochains jours). Le joueur peut retirer son annonce ou marquer un rôle comme trouvé; le renouvellement est la seule autre modification.
 - Donjons et raids demandent les mêmes règles de jeu (Normal, PvP, Jeu de rôle); les champs de bataille peuvent les mélanger. Le style de jeu reprend les quatre choix de l'outil de groupe du jeu.
 - Pas de champ « royaume » pour l'instant: on l'ajoutera quand la liste des royaumes de Forever sera connue.

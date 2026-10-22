@@ -13,10 +13,10 @@ export function SectionDonnees() {
       <ul className="puces">
         <li>
           <strong>Ton compte.</strong> Avec Google, le site reçoit ton nom, ton adresse courriel et l'adresse de ta
-          photo de profil. Avec Discord, il reçoit ton nom d'utilisateur, ton identifiant et, selon tes réglages
-          Discord, ton courriel. Avec le courriel, il reçoit ton adresse pour t'envoyer le lien de connexion. Il ne
-          reçoit aucun mot de passe. Ton nom et ton courriel ne sont jamais montrés aux autres joueurs: seul ce que tu
-          écris toi-même dans une annonce ou un profil est publié.
+          photo de profil. Il ne reçoit aucun mot de passe. Les comptes créés avant avec Discord ou avec un courriel
+          gardent ce que ces services avaient donné (nom d'utilisateur et identifiant Discord, adresse courriel). Ton nom
+          et ton courriel ne sont jamais montrés aux autres joueurs: seul ce que tu écris toi-même dans une annonce ou un
+          profil est publié.
         </li>
         <li>
           <strong>Tes annonces.</strong> Ce que tu écris (personnage, contact, message) est enregistré dans la base du
