@@ -72,6 +72,7 @@ import {
 } from './commun.jsx'
 import { telechargerIcs } from './calendrier.js'
 import Achalandage from './Achalandage.jsx'
+import { BandeauPubs, ChoixPubs, Pub, pubsActives } from './Pub.jsx'
 import { rafraichirPush, retirerAlertesAppareil } from './push.js'
 import {
   Alerte,
@@ -1047,6 +1048,7 @@ export default function App() {
                 ))}
               </ul>
             )}
+            <Pub masquer={!!utilisateur && supporters.has(utilisateur.id)} />
           </>
         )}
 
@@ -1061,13 +1063,18 @@ export default function App() {
               Comment ça marche, règles et données personnelles
             </button>
           </p>
+          <ChoixPubs />
           {lienDons && (
             <p className="soutien">
               <a className="bouton petit" href={lienDons} target="_blank" rel="noopener noreferrer">
                 <Icone nom="coeur" taille={15} />
                 Soutenir le site
               </a>
-              <span className="aide">Le site est gratuit et sans pub. Un don aide à le garder en ligne. Les supporters reçoivent un badge.</span>
+              <span className="aide">
+                {pubsActives
+                  ? 'Le site est gratuit. Un don aide à le garder en ligne. Les supporters reçoivent un badge et ne voient pas la pub.'
+                  : 'Le site est gratuit et sans pub. Un don aide à le garder en ligne. Les supporters reçoivent un badge.'}
+              </span>
             </p>
           )}
           <p className="avis">
@@ -1085,6 +1092,7 @@ export default function App() {
       )}
 
       <Aide ouvert={aideOuverte} fermer={() => setAideOuverte(false)} />
+      <BandeauPubs />
 
       <DialogueDemande
         annonce={demandeAnnonce}

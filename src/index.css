@@ -3654,3 +3654,38 @@ h2 {
   background: var(--field);
 }
 .msg-alertes .bouton { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---------- Publicité et choix de publicité ---------- */
+.pub {
+  margin: 20px 0 0;
+  padding: 10px;
+  min-height: 100px;
+  background: var(--surface);
+  border: 1px dashed var(--line, color-mix(in srgb, var(--ink) 25%, transparent));
+  border-radius: 8px;
+  overflow: hidden;
+}
+.pub-etiquette {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.75rem;
+  color: var(--ink-soft, color-mix(in srgb, var(--ink) 65%, transparent));
+}
+.bandeau-pubs {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 40;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 14px 16px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.35);
+}
+.bandeau-pubs p { margin: 0 0 12px; font-size: 0.92rem; line-height: 1.45; }
+.bandeau-pubs-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.bandeau-pubs-actions .bouton { flex: 1 1 120px; }

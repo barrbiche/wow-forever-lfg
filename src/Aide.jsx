@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { SectionDonnees } from './Confidentialite.jsx'
+import { pubsActives } from './Pub.jsx'
 
 // Fenêtre « Comment ça marche »: les étapes, les règles du site et ce qu'il fait des données.
-// Le texte décrit ce que le site fait vraiment (à mettre à jour si le site change, par exemple quand il aura des pubs).
+// Le texte décrit ce que le site fait vraiment (à mettre à jour si le site change).
 export default function Aide({ ouvert, fermer }) {
   const dialogue = useRef(null)
 
@@ -207,9 +208,12 @@ export default function Aide({ ouvert, fermer }) {
           <h3>Soutenir le site</h3>
           <ul className="puces">
             <li>
-              Le site est gratuit et sans pub, et il va le rester. Si tu veux aider à le garder en ligne, un don est
+              {pubsActives
+                ? "Le site est gratuit. Une pub peut s'afficher en bas de la liste des groupes si tu l'acceptes (tu peux la refuser, et changer d'idée en bas de la page). Si tu veux aider"
+                : 'Le site est gratuit et sans pub, et il va le rester. Si tu veux aider'}{' '}
+               à le garder en ligne, un don est
               possible (bouton « Soutenir le site » en bas de la page, quand il est activé). Les gens qui donnent peuvent
-              recevoir un badge « Supporter » à côté du nom de leur personnage. Ça ne donne aucun avantage dans les groupes.
+              recevoir un badge « Supporter » à côté du nom de leur personnage{pubsActives ? ' et ne voient pas la pub' : ''}. Ça ne donne aucun avantage dans les groupes.
             </li>
           </ul>
         </section>

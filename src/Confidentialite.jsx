@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { pubsActives } from './Pub.jsx'
 
 // Courriel de contact pour les questions de vie privée. Il n'est pas écrit dans le code: il se règle dans Netlify
 // (variable VITE_COURRIEL_CONTACT) pour que la personne qui gère le site choisisse ce qu'elle rend public.
@@ -82,8 +83,22 @@ export function SectionDonnees() {
         <li>
           <strong>Dans ton navigateur.</strong> Le site garde chez toi le style que tu as choisi, la langue de ton jeu,
           ton alerte de nouvelles annonces, ton personnage et ton contact (pour préremplir tes prochaines annonces) et
-          ta connexion. Il n'y a ni publicité, ni témoin de suivi, ni outil de statistiques.
+          ta connexion. {pubsActives
+            ? "Il n'y a pas d'outil de statistiques. Les témoins de publicité ne sont posés que si tu acceptes la publicité (voir plus bas)."
+            : "Il n'y a ni publicité, ni témoin de suivi, ni outil de statistiques."}
         </li>
+        {pubsActives && (
+          <li>
+            <strong>Publicité.</strong> Une publicité Google (AdSense) peut s'afficher en bas de la liste des groupes.
+            Au premier passage, le site te demande ton choix. Si tu refuses, aucune pub ne s'affiche et rien n'est chargé
+            depuis Google. Si tu acceptes, Google peut utiliser des témoins (cookies) et des identifiants pour choisir
+            la pub et mesurer son affichage; tes messages, tes demandes et tes profils ne lui sont jamais envoyés. Tu
+            peux changer d'avis en tout temps avec « Choix de publicité » en bas de la page; refuser après avoir accepté
+            recharge la page. Tu peux aussi gérer les pubs de Google sur{' '}
+            <a className="lien" href="https://myadcenter.google.com" target="_blank" rel="noopener noreferrer">myadcenter.google.com</a>.
+            Les supporters ne voient pas la publicité.
+          </li>
+        )}
         <li>
           <strong>Les services utilisés.</strong> Le site est hébergé par Netlify, et sa base de données et la
           connexion passent par Supabase. Les polices sont sur le site même: aucune requête vers Google.
@@ -147,7 +162,7 @@ export default function Confidentialite() {
               pas à remplir tes annonces.
             </li>
             <li>
-              <strong>Avec qui.</strong> Ces données ne sont ni vendues, ni utilisées pour de la publicité ou du profilage, ni
+              <strong>Avec qui.</strong> Ces données ne sont ni vendues, ni utilisées pour du profilage, ni envoyées à des annonceurs, ni
               données à d'autres personnes. Elles sont enregistrées chez Supabase, le service qui gère la base de données et la
               connexion du site, et lisibles par la personne qui gère le site.
             </li>

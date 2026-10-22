@@ -120,6 +120,15 @@ Ancienne installation (gardée pour mémoire): `supabase/discord.sql` créait l'
 - Pour le badge: colle `supabase/ameliorations9.sql` dans le SQL Editor (étape 13), puis, pour chaque personne qui donne, Table Editor > `supporters` > Insert row avec son `user_id` (Authentication > Users > User UID). Supprime la ligne pour retirer le badge. Seuls les gens connectés voient le badge.
 - Rien n'est vérifié automatiquement: c'est toi qui décides qui reçoit le badge.
 
+## Publicité (Google AdSense)
+
+- La balise de vérification (`<meta name="google-adsense-account">` dans `index.html`) et `public/ads.txt` sont déjà en place. Elles ne chargent rien de Google.
+- Rien ne s'affiche tant que ces deux variables ne sont pas réglées dans Netlify (puis redéployer): `VITE_ADSENSE_CLIENT` = `ca-pub-8930239787504104` et `VITE_ADSENSE_SLOT` = le numéro de l'unité d'annonce, créée dans AdSense (Annonces > Par unité d'annonce > Display) une fois le site approuvé.
+- Avec ces variables, le site demande son choix à chaque visiteur (bandeau, « Refuser » aussi facile qu'« Accepter »). Google n'est chargé qu'après un « Accepter ». Le choix se change dans le pied de page.
+- Une seule pub, en bas de la liste des groupes. Jamais dans Messages. Les supporters ne la voient pas.
+- Les textes d'aide et de confidentialité changent tout seuls quand les variables sont réglées.
+- Pour les visiteurs de l'Europe, Google exige son propre outil de consentement certifié: ils verront peu ou pas de pub. Rien à faire.
+
 ## Groupe complet, statistiques, annonces qui se répètent (`ameliorations10.sql`)
 
 - **Groupe complet** (partie 1): `groupes.complet`. Un donjon (chef + 4) ou un raid avec composition se ferme tout seul quand le dernier joueur est accepté, et se rouvre si quelqu'un part. Le chef peut fermer ou rouvrir à la main. Quand c'est complet, `demander_rejoindre` refuse (erreur `55000`) et la carte dit « Groupe complet ». `places_groupes()` donne aux cartes les nombres d'acceptés par rôle (aucun nom; lisible même sans compte).
