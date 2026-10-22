@@ -10,6 +10,7 @@ import {
   deconnecter,
   envoyerLienCourriel,
   googleActif,
+  courrielActif,
   lienDons,
   lireSupporters,
   ecrireProfil,
@@ -2093,10 +2094,10 @@ function PanneauConnexion({ fermer }) {
             </p>
           )}
           {problemeCompte && <p className="erreur" role="alert">{problemeCompte}</p>}
-          {!googleActif && (
+          {courrielActif && (
           <form className="formulaire-courriel" onSubmit={envoyer} noValidate>
             <label className="champ">
-              <span>Ou reçois un lien par courriel, sans mot de passe</span>
+              <span>{googleActif ? 'Ou reçois un lien par courriel, sans mot de passe' : 'Reçois un lien par courriel, sans mot de passe'}</span>
               <input
                 type="email"
                 autoComplete="email"

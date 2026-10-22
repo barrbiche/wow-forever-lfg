@@ -11,6 +11,9 @@ export const modeDemo = !(url && cle)
 // La connexion Google s'affiche seulement une fois configurée (VITE_GOOGLE_ACTIF=1 dans Netlify): le bouton reste
 // caché tant que Google n'est pas branché dans Supabase. Sans cette variable (et en mode démo), c'est le courriel.
 export const googleActif = import.meta.env.VITE_GOOGLE_ACTIF === '1'
+// Le lien par courriel s'ajoute à Google seulement une fois l'envoi de courriels branché dans Supabase (SMTP):
+// VITE_COURRIEL_ACTIF=1 dans Netlify. Sans Google, le courriel reste toujours affiché.
+export const courrielActif = !googleActif || import.meta.env.VITE_COURRIEL_ACTIF === '1'
 
 // Lien pour soutenir le site (Ko-fi, Buy Me a Coffee, etc.): VITE_LIEN_DONS dans Netlify. Sans lien valide, rien ne s'affiche.
 const lienBrut = (import.meta.env.VITE_LIEN_DONS || '').trim()

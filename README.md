@@ -120,6 +120,12 @@ Ancienne installation (gardée pour mémoire): `supabase/discord.sql` créait l'
 - Pour le badge: colle `supabase/ameliorations9.sql` dans le SQL Editor (étape 13), puis, pour chaque personne qui donne, Table Editor > `supporters` > Insert row avec son `user_id` (Authentication > Users > User UID). Supprime la ligne pour retirer le badge. Seuls les gens connectés voient le badge.
 - Rien n'est vérifié automatiquement: c'est toi qui décides qui reçoit le badge.
 
+## Connexion par courriel (en plus de Google)
+
+- Le formulaire « Recevoir un lien de connexion » existe déjà. Avec Google activé, il reste caché tant que `VITE_COURRIEL_ACTIF=1` n'est pas réglé dans Netlify (puis redéployer).
+- **À faire avant de l'activer:** brancher un vrai service d'envoi de courriels dans Supabase (Authentication > Emails > SMTP Settings > Custom SMTP). Le service intégré de Supabase est limité à quelques courriels par heure et n'envoie qu'aux membres de l'équipe: il ne marche pas pour le public.
+- Il faut aussi que `https://babillard-forever.com/**` soit dans Authentication > URL Configuration > Redirect URLs (déjà fait).
+
 ## Publicité (Google AdSense)
 
 - La balise de vérification (`<meta name="google-adsense-account">` dans `index.html`) et `public/ads.txt` sont déjà en place. Elles ne chargent rien de Google.
