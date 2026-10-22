@@ -254,6 +254,14 @@ export const MOTIFS_JOUEUR = [
   { id: 'autre', nom: 'Autre' },
 ]
 
+// Motifs pour signaler un message de chat (supabase/ameliorations8.sql).
+export const MOTIFS_MESSAGE = [
+  { id: 'harcelement', nom: 'Insultes ou harcèlement' },
+  { id: 'spam', nom: 'Spam ou publicité' },
+  { id: 'inapproprie', nom: 'Contenu inapproprié' },
+  { id: 'autre', nom: 'Autre' },
+]
+
 export const FOCUS_GUILDE = [
   { id: 'donjon', nom: 'Donjons' },
   { id: 'raid', nom: 'Raids' },

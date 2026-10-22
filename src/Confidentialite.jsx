@@ -20,9 +20,8 @@ export function SectionDonnees() {
         </li>
         <li>
           <strong>Tes annonces.</strong> Ce que tu écris (personnage, contact, message) est enregistré dans la base du
-          site. Le contact n'est montré qu'aux gens connectés.
-          {' '}
-          Une annonce n'est plus affichée une fois son temps écoulé.
+          site. Ton contact (BattleTag) n'est jamais montré dans la liste des annonces: il n'est donné qu'aux joueurs que
+          tu acceptes dans ton groupe, dans le chat du groupe. Une annonce n'est plus affichée une fois son temps écoulé.
         </li>
         <li>
           <strong>Ton profil de joueur.</strong> Il doit être complet pour publier une annonce: le nom de ton
@@ -34,10 +33,20 @@ export function SectionDonnees() {
           cacher de la liste ou supprimer ton profil (tu devras alors le refaire pour publier).
         </li>
         <li>
+          <strong>Demandes pour rejoindre et chat.</strong> Quand tu demandes à rejoindre un groupe, le chef voit ton
+          personnage (nom, classe, niveau, rôle, guilde, petit mot), jamais ton courriel ni ton nom Google. Les messages
+          d'un groupe ne sont lisibles que par le chef et les joueurs acceptés, et sont effacés 24 heures après la fin de
+          l'annonce (expirée ou retirée). Les messages entre amis ne sont lisibles que par vous deux et sont effacés après
+          30 jours. Tu peux effacer tes propres messages. Un message signalé est copié, avec les quelques messages qui le
+          précèdent, pour que les personnes qui gèrent le site puissent décider; cette copie est effacée après 30 jours.
+          Ces personnes peuvent aussi lire les messages dans la base de données. N'écris pas de mot de passe ni de
+          renseignement sensible dans un chat.
+        </li>
+        <li>
           <strong>Tes amis.</strong> Ta liste d'amis, tes demandes et les personnes que tu as bloquées ne sont visibles
           que par toi: personne ne voit qui t'a refusé ou bloqué. Une personne à qui tu envoies une demande voit ton
           personnage (nom, classe, niveau, etc.), jamais ton contact ni ton BattleTag. Supprimer ton profil efface tes
-          amitiés, tes demandes et tes blocages. Les personnes qui gèrent le site peuvent les lire dans la base de
+          amitiés, tes demandes (d'ami et pour rejoindre) et tes blocages. Les personnes qui gèrent le site peuvent les lire dans la base de
           données.
         </li>
         <li>
@@ -86,7 +95,7 @@ export default function Confidentialite() {
           <a className="lien" href="/">← Retour au Babillard Forever</a>
         </p>
         <h1>Politique de confidentialité</h1>
-        <p className="aide">Dernière mise à jour: 21 octobre 2026</p>
+        <p className="aide">Dernière mise à jour: 22 octobre 2026</p>
 
         <section>
           <h3>Qui gère le site</h3>

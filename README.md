@@ -32,6 +32,8 @@ Sans configuration, le site tourne en **mode démo**: les annonces restent dans 
 
 11. SQL Editor > New query: colle aussi `supabase/ameliorations6.sql`, puis Run (amis: demandes, liste, blocage). Il se roule **après** `ameliorations5.sql` (il refuse de rouler sans lui, avec un message clair). Tant qu'il n'est pas roulé, les boutons d'amis n'apparaissent pas et « Mes amis » dit « pas encore disponibles »; le reste du site marche. On peut le relancer sans problème.
 
+12. SQL Editor > New query: colle aussi `supabase/ameliorations8.sql`, puis Run (demandes pour rejoindre, chat de groupe, chat entre amis, messages signalés). Il se roule **après** `ameliorations7.sql` (il refuse de rouler sans les tables d'amis et de modération). **Attention:** il retire le droit de lire la colonne `contact` des annonces aux joueurs connectés (les visiteurs ne l'avaient déjà pas): le contact ne passe plus que par le chat du groupe. Le site mis à jour marche avec les deux états de la base; tant que ce fichier n'est pas roulé, les cartes disent « Les demandes pour rejoindre arrivent bientôt » et l'onglet Messages dit « pas encore activée ». On peut le relancer sans problème.
+
 ## Connexion par courriel
 
 Elle marche dès que le projet Supabase existe (le fournisseur « Email » est activé par défaut).
@@ -104,9 +106,18 @@ Ancienne installation (gardée pour mémoire): `supabase/discord.sql` créait l'
 
 ## Contacts, signalements et modération
 
-- Les contacts (BattleTag, Discord) ne sont visibles que pour les gens connectés: la base refuse de les donner aux visiteurs anonymes. Ça freine le moissonnage en masse, mais tout compte inscrit peut les lire.
+- Le contact d'une annonce (BattleTag) n'est visible ni des visiteurs ni des autres joueurs connectés: depuis `ameliorations8.sql`, la colonne `annonces.contact` n'est lisible que par la base elle-même. Le chef et les joueurs qu'il accepte le reçoivent dans le chat du groupe (copie dans `groupes.contact`); les modérateurs le voient dans la file de modération. Seul le BattleTag que quelqu'un écrit lui-même dans son profil reste visible de toutes les personnes connectées. Le contact des guildes reste visible des gens connectés.
 - Chaque personne connectée peut signaler une annonce, une guilde ou un joueur (une fois chacun). Après 3 signalements de comptes différents, elle est masquée automatiquement. Des faux comptes pourraient abuser de ça: surveille le canal de modération.
 - Les guildes restent affichées 7, 14 ou 30 jours; 2 inscriptions actives par joueur.
+
+## Demandes pour rejoindre, chat de groupe et chat d'amis
+
+- Sur une annonce, « Demander à rejoindre » (ou « Proposer un groupe » pour un joueur seul) envoie le personnage du joueur, son rôle et un mot de 140 caractères au chef. Il faut un profil. Le chef accepte, refuse ou retire quelqu'un depuis l'onglet **Messages** (bouton « Demandes » sur sa carte), avec des filtres par état, rôle et classe. Un refus n'avertit personne et la demande ne peut pas être refaite; quitter ou annuler permet de redemander.
+- Un groupe est créé automatiquement pour chaque annonce (table `groupes`, par un déclencheur). Une annonce retirée par son chef garde son groupe; une annonce retirée par la modération (ou par 3 signalements, ou un compte suspendu) **ferme** son groupe (lecture seule). Le chat est effacé **24 h après la fin de l'annonce**; le nettoyage se fait à chaque nouvelle annonce, demande ou message, et les lectures refusent déjà ce qui est périmé. Messages d'amis: effacés après 30 jours. Messages signalés (copie + 4 messages d'avant): effacés après 30 jours.
+- Limites voulues (erreur `54000`): 10 demandes en attente et 20 par 24 h; 40 joueurs par groupe; 15 messages par 30 s et 1000 par jour; 500 caractères par message; 1500 messages par groupe, 2000 par paire d'amis. Un compte suspendu ne peut rien écrire. Les blocages sont respectés (impossible de demander à quelqu'un qui t'a bloqué; on ne lit pas les messages de quelqu'un qu'on a bloqué).
+- Un message signalé par 3 personnes différentes est masqué (colonne `masque`). La page « Modération » liste les messages signalés avec les messages d'avant, et permet de garder, d'effacer ou de suspendre l'auteur (`mod_messages_signales`, `mod_message_ecarter`, `mod_message_effacer`). Les modérateurs peuvent lire tous les messages dans Table Editor.
+- Les tables ne sont pas lisibles directement: tout passe par des fonctions (`demander_rejoindre`, `agir_demande`, `lister_demandes`, `mes_demandes`, `mes_conversations`, `lire_groupe`, `ecrire_groupe`, `lire_ami`, `ecrire_ami`, `effacer_message`, `signaler_message`, `membres_groupe`). Le site relit les conversations toutes les 10 secondes et le chat ouvert toutes les 4 secondes (pas de temps réel Supabase: plus simple, sans réglage). Le code est dans `src/messagerie.js`, `src/Messages.jsx`; le mode démo simule de faux joueurs qui répondent.
+- Les adresses écrites dans le chat ne sont pas cliquables (moins d'hameçonnage). Limite connue: le chat est du texte seulement, sans notification quand le site est fermé.
 
 ## Partage de liens
 
@@ -164,7 +175,7 @@ Ancienne installation (gardée pour mémoire): `supabase/discord.sql` créait l'
 
 ## Look « babillard d'auberge »
 
-Les annonces sont des papiers épinglés sur un tableau: liège pour le style Neutre (bois sombre en mode sombre), feutre matelassé avec boutons de laiton pour Alliance, plaques de fer rivetées pour Horde. L'en-tête et la barre de navigation sont en bois, l'onglet actif est une plaque de laiton, et chaque annonce porte la bannière de sa faction. Sur cellulaire, les quatre onglets passent dans une barre en bas de l'écran (sous le pouce) avec un bouton « Publier » flottant; sur ordinateur, la barre reste collée en haut quand on défile.
+Les annonces sont des papiers épinglés sur un tableau: liège pour le style Neutre (bois sombre en mode sombre), feutre matelassé avec boutons de laiton pour Alliance, plaques de fer rivetées pour Horde. L'en-tête et la barre de navigation sont en bois, l'onglet actif est une plaque de laiton, et chaque annonce porte la bannière de sa faction. Sur cellulaire, les cinq onglets passent dans une barre en bas de l'écran (sous le pouce) avec un bouton « Publier » flottant; sur ordinateur, la barre reste collée en haut quand on défile.
 
 Tout ça vit dans deux fichiers: `src/textures.css` (les textures, en SVG dans le CSS, aucune image à télécharger) et `src/babillard.css` (couleurs et habillage). `src/index.css` garde la structure. Pour revenir au look sobre, retire les imports de `textures.css` et `babillard.css` dans `src/main.jsx`.
 

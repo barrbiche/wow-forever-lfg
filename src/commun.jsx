@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { createContext, useState } from 'react'
 import { CLASSES, LANCEMENT_LE, MOTIFS_JOUEUR, MOTIFS_SIGNALEMENT, RAIDS_OUVERTS_LE, nomSpecialisation } from './data.js'
 import { signaler } from './store.js'
 import { LangueJeu, commandeInviter, useLangueJeu } from './langue.jsx'
@@ -24,6 +24,9 @@ export const CHEMINS = {
   coche: 'M5 12.5l4.5 4.5L19 7',
   pouce: 'M3 11h4v10H3zM7 12l4-8c1.7 0 2.7 1.1 2.7 2.6V10h5.2c1.4 0 2.4 1.3 2.1 2.6l-1.4 6.2c-.2 1.2-1.2 2-2.4 2H7',
 }
+// Permet à n'importe quelle carte de joueur d'ouvrir le chat avec un ami: ouvrirAmi(idDeLAmi).
+export const OuvrirChat = createContext({ ouvrirAmi: null })
+
 export const NOMS_ACTIVITE = { donjon: 'Donjon', raid: 'Raid', pvp: 'PvP' }
 
 // La classe d'un personnage, avec sa spécialisation quand on la connaît (« Mage Givre »). Les noms de spécialisations

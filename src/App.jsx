@@ -47,8 +47,8 @@ import {
 import {
   ChipClasse,
   CommandeAnnonce,
-  Contact,
   Icone,
+  OuvrirChat,
   LienDirect,
   NOMS_ACTIVITE,
   Signalement,
@@ -74,6 +74,8 @@ import {
   texteNouvelleAnnonce,
 } from './alertes.jsx'
 import Aide from './Aide.jsx'
+import { DialogueDemande, SectionMessages, ZoneRejoindre } from './Messages.jsx'
+import { lireConversations, lireMesDemandes, messagerieAbsente } from './messagerie.js'
 import SectionGuildes from './Guildes.jsx'
 import SectionJoueurs, { ProfilJoueur } from './Joueurs.jsx'
 
@@ -237,6 +239,13 @@ export default function App() {
   const lectureRef = useRef(0)
   const [moderateur, setModerateur] = useState(false)
   const [moderationOuverte, setModerationOuverte] = useState(false)
+  // Messagerie (ameliorations8.sql): groupes, chat entre amis, et l'état de mes demandes pour rejoindre.
+  const [conversations, setConversations] = useState([]) // null: pas activée (le SQL n'est pas roulé)
+  const [mesDemandes, setMesDemandes] = useState([])
+  const [chatCible, setChatCible] = useState(null) // { type: 'groupe' | 'ami', id, panneau, n }
+  const [demandeAnnonce, setDemandeAnnonce] = useState(null) // l'annonce à laquelle on demande à rejoindre
+  const totauxChatRef = useRef(null)
+  const vueRef = useRef('groupes')
 
   // Alertes de nouvelles annonces: voir alertes.jsx. `vues` retient les annonces déjà connues (la première lecture
   // n'est jamais « nouvelle »); les refs permettent à `charger` de rester stable.
@@ -306,6 +315,32 @@ export default function App() {
     }
   }, [])
 
+  // Les demandes à traiter et les messages non lus. Une nouvelle demande ou un nouveau message est annoncé une fois
+  // quand on n'est pas dans l'onglet Messages.
+  const chargerMessagerie = useCallback(async () => {
+    try {
+      const [conv, dem] = await Promise.all([lireConversations(), lireMesDemandes()])
+      setConversations(conv)
+      setMesDemandes(dem)
+      const demandes = conv.reduce((n, c) => n + (c.nb_en_attente || 0), 0)
+      const messages = conv.reduce((n, c) => n + (c.non_lus || 0), 0)
+      const avant = totauxChatRef.current
+      totauxChatRef.current = { demandes, messages }
+      if (avant && vueRef.current !== 'messages') {
+        if (demandes > avant.demandes) {
+          setMessage(demandes - avant.demandes > 1 ? 'Nouvelles demandes pour rejoindre ton groupe.' : 'Nouvelle demande pour rejoindre ton groupe.')
+        } else if (messages > avant.messages) {
+          setMessage('Nouveau message.')
+        }
+      }
+    } catch (e) {
+      if (messagerieAbsente(e)) {
+        setConversations(null)
+        setMesDemandes([])
+      }
+    }
+  }, [])
+
   const charger = useCallback(async () => {
     // Une lecture plus récente (par exemple après une connexion) remplace une plus ancienne qui finit en retard.
     const lecture = ++lectureRef.current
@@ -334,7 +369,8 @@ export default function App() {
       setJoueurs(null)
     }
     await chargerAmis()
-  }, [detecterNouvelles, chargerAmis])
+    await chargerMessagerie()
+  }, [detecterNouvelles, chargerAmis, chargerMessagerie])
 
   useEffect(() => {
     const minuterie = setInterval(charger, 30000)
@@ -342,6 +378,17 @@ export default function App() {
   }, [charger])
 
   useEffect(() => suivreUtilisateur(setUtilisateur), [])
+
+  useEffect(() => {
+    vueRef.current = vue
+  }, [vue])
+
+  // Les demandes et les messages sont relus plus souvent que le reste (toutes les 10 secondes).
+  useEffect(() => {
+    if (!utilisateur) return undefined
+    const minuterie = setInterval(() => !document.hidden && chargerMessagerie(), 10000)
+    return () => clearInterval(minuterie)
+  }, [utilisateur?.id, chargerMessagerie]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Adresse directe (?annonce=... ou ?guilde=...): une fois la liste chargée, on montre la bonne section,
   // on enlève les filtres, puis on défile jusqu'à la carte et on la met en évidence un instant.
@@ -426,6 +473,8 @@ export default function App() {
   // Connexion ou déconnexion: on recharge, car les contacts ne sont envoyés qu'aux gens connectés.
   useEffect(() => {
     demandesVuesRef.current = null // la première lecture des demandes d'un compte n'est pas « nouvelle »
+    totauxChatRef.current = null
+    setChatCible(null)
     setVueJoueurs('tous')
     setJoueursPrets(false)
     setPublierApresProfil(false)
@@ -518,6 +567,17 @@ export default function App() {
   const joueursParId = useMemo(() => new Map((joueurs ?? []).map((j) => [j.user_id, j])), [joueurs])
   const liensAmis = useMemo(() => new Map((amis ?? []).map((a) => [a.user_id, a.lien])), [amis])
   const nbDemandesAmis = (amis ?? []).filter((a) => a.lien === 'recue').length
+  const demandesParAnnonce = useMemo(() => new Map((mesDemandes ?? []).map((d) => [d.annonce_id, d])), [mesDemandes])
+  const groupesParAnnonce = useMemo(
+    () => new Map((conversations ?? []).filter((c) => c.type === 'groupe' && c.annonce_id).map((c) => [c.annonce_id, c])),
+    [conversations],
+  )
+  const nbMessagerie = (conversations ?? []).reduce((n, c) => n + (c.nb_en_attente || 0) + (c.non_lus || 0), 0)
+  const ouvrirChat = useCallback((type, id, panneau) => {
+    setVue('messages')
+    setChatCible({ type, id, panneau, n: Date.now() })
+  }, [])
+  const contexteChat = useMemo(() => ({ ouvrirAmi: (id) => ouvrirChat('ami', id) }), [ouvrirChat])
   // Depuis une annonce: aller au profil de son auteur, dans l'onglet Joueurs.
   const voirProfil = (id) => {
     setVue('joueurs')
@@ -573,7 +633,7 @@ export default function App() {
   const autoriserNotifications = async () => setEtatNotif(await demanderNotifications())
 
   return (
-    <>
+    <OuvrirChat.Provider value={contexteChat}>
       <Ruban
         connecte={!!utilisateur}
         onClick={() => (utilisateur ? setProfilOuvert(true) : ouvrirConnexion())}
@@ -691,13 +751,22 @@ export default function App() {
                 </span>
               )}
             </button>
+            <button type="button" className="onglet" aria-pressed={vue === 'messages'} onClick={() => setVue('messages')}>
+              <Icone nom="discussion" taille={22} />
+              <span className="onglet-nom">Messages</span>
+              {utilisateur && nbMessagerie > 0 && (
+                <span className="onglet-alerte en-ligne" role="img" aria-label={`${nbMessagerie} à voir dans les messages`}>
+                  {nbMessagerie}
+                </span>
+              )}
+            </button>
             <button type="button" className="onglet" aria-pressed={vue === 'guides'} onClick={() => setVue('guides')}>
               <Icone nom="livre" taille={22} />
               <span className="onglet-nom">Guides</span>
             </button>
           </div>
 
-          {vue !== 'guides' && (
+          {vue !== 'guides' && vue !== 'messages' && (
             <div className="factions" role="group" aria-label="Filtrer par faction">
               {FACTIONS.map((f) => (
                 <button
@@ -719,6 +788,17 @@ export default function App() {
           <Suspense fallback={<p className="aide" role="status">Chargement des guides…</p>}>
             <Guides cible={guideCible} />
           </Suspense>
+        ) : vue === 'messages' ? (
+          <SectionMessages
+            utilisateur={utilisateur}
+            onConnexion={ouvrirConnexion}
+            conversations={conversations}
+            demandes={mesDemandes}
+            amis={amis}
+            cible={chatCible}
+            apres={chargerMessagerie}
+            annoncer={setMessage}
+          />
         ) : vue === 'joueurs' ? (
           <SectionJoueurs
             joueurs={joueurs}
@@ -900,6 +980,12 @@ export default function App() {
                         utilisateur={utilisateur}
                         onConnexion={ouvrirConnexion}
                         apres={charger}
+                        demande={demandesParAnnonce.get(a.id)}
+                        conv={groupesParAnnonce.get(a.id)}
+                        messagerie={conversations !== null}
+                        ouvrirDemande={setDemandeAnnonce}
+                        ouvrirChat={ouvrirChat}
+                        annoncer={setMessage}
                       />
                     </li>
                   </Fragment>
@@ -926,7 +1012,7 @@ export default function App() {
         </footer>
       </main>
 
-      {vue !== 'guides' && (
+      {vue !== 'guides' && vue !== 'messages' && (
         <button type="button" className="fab" onClick={ouvrirPublication}>
           <Icone nom="plus" taille={22} />
           Publier
@@ -934,6 +1020,15 @@ export default function App() {
       )}
 
       <Aide ouvert={aideOuverte} fermer={() => setAideOuverte(false)} />
+
+      <DialogueDemande
+        annonce={demandeAnnonce}
+        fermer={() => setDemandeAnnonce(null)}
+        profil={monProfil}
+        ouvrirProfil={() => setProfilOuvert(true)}
+        apres={charger}
+        annoncer={setMessage}
+      />
 
       {moderateur && moderationOuverte && (
         <Suspense fallback={null}>
@@ -984,13 +1079,13 @@ export default function App() {
       )}
 
       {message && <div className="toast" role="status">{message}</div>}
-    </>
+    </OuvrirChat.Provider>
   )
 }
 
 // ---------- Carte d'annonce ----------
 
-function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietaire, utilisateur, onConnexion, apres }) {
+function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietaire, utilisateur, onConnexion, apres, demande, conv, messagerie, ouvrirDemande, ouvrirChat, annoncer }) {
   const [probleme, setProbleme] = useState('')
   const joueur = a.genre === 'joueur'
   const classe = CLASSES.find((c) => c.id === a.classe)
@@ -1115,8 +1210,21 @@ function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietai
               </span>
             </div>
           </div>
-          <Contact contact={a.contact} onConnexion={onConnexion} />
         </div>
+
+        <ZoneRejoindre
+          annonce={a}
+          proprietaire={proprietaire}
+          utilisateur={utilisateur}
+          onConnexion={onConnexion}
+          demande={demande}
+          conv={conv}
+          disponible={messagerie}
+          ouvrirDemande={ouvrirDemande}
+          ouvrirChat={ouvrirChat}
+          apres={apres}
+          annoncer={annoncer}
+        />
 
         {!proprietaire && <CommandeAnnonce annonce={a} />}
 
@@ -1644,7 +1752,10 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
               {erreur('contact')}
             </label>
           </div>
-          <p className="aide">Ton contact n'est visible que pour les gens connectés. Il est gardé pour ta prochaine annonce.</p>
+          <p className="aide">
+            Ton contact reste caché. Les joueurs demandent à rejoindre ton groupe, tu acceptes ou refuses, et seuls ceux que
+            tu acceptes le reçoivent dans le chat du groupe. Il est gardé pour ta prochaine annonce.
+          </p>
 
           <label className="champ">
             <span>Message (facultatif)</span>

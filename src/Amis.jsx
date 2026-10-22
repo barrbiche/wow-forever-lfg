@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 import { MESSAGE_COMPTE_SUSPENDU, agirAmi, compteSuspendu } from './store.js'
 import { FACTIONS, LANGUES, ROLES, STYLES, nomDe } from './data.js'
-import { ChipClasse, Icone, LigneCopie, depuis, vuTexte } from './commun.jsx'
+import { ChipClasse, Icone, LigneCopie, OuvrirChat, depuis, vuTexte } from './commun.jsx'
 
 // ---------- Amis: demandes, liste, blocage (ameliorations6.sql) ----------
 // Le serveur décide de tout (limites, blocage, qui voit quoi). Ici on affiche les boutons et les messages.
@@ -56,6 +56,7 @@ function useActionAmi({ apres, annoncer }) {
 
 export function BoutonsAmi({ joueur: j, lien, aProfil, ouvrirProfil, apres, annoncer }) {
   const { occupe, probleme, lancer } = useActionAmi({ apres, annoncer })
+  const { ouvrirAmi } = useContext(OuvrirChat)
   const [besoinProfil, setBesoinProfil] = useState(false)
 
   const demander = () => {
@@ -79,10 +80,18 @@ export function BoutonsAmi({ joueur: j, lien, aProfil, ouvrirProfil, apres, anno
       )}
       <div className="ami-actions">
         {lien === 'ami' && (
-          <span className="ami-etat">
-            <Icone nom="coche" taille={15} />
-            Ami
-          </span>
+          <>
+            <span className="ami-etat">
+              <Icone nom="coche" taille={15} />
+              Ami
+            </span>
+            {ouvrirAmi && (
+              <button type="button" className="bouton petit" onClick={() => ouvrirAmi(j.user_id)}>
+                <Icone nom="discussion" taille={15} />
+                Écrire
+              </button>
+            )}
+          </>
         )}
         {lien === 'envoyee' && (
           <>
@@ -200,6 +209,7 @@ function CarteDemande({ a, apres, annoncer }) {
 
 function CarteAmi({ a, enLigne, commande, apres, annoncer }) {
   const { occupe, probleme, lancer } = useActionAmi({ apres, annoncer })
+  const { ouvrirAmi } = useContext(OuvrirChat)
   const [confirmer, setConfirmer] = useState(false)
   return (
     <article className={`carte joueur ${a.faction}`} id={`ami-${a.user_id}`} tabIndex={-1}>
@@ -239,6 +249,12 @@ function CarteAmi({ a, enLigne, commande, apres, annoncer }) {
           </div>
         ) : (
           <div className="joueur-actions">
+            {ouvrirAmi && (
+              <button type="button" className="bouton petit principal" onClick={() => ouvrirAmi(a.user_id)}>
+                <Icone nom="discussion" taille={15} />
+                Écrire
+              </button>
+            )}
             <button type="button" className="bouton petit" onClick={() => setConfirmer(true)}>
               Retirer de mes amis
             </button>

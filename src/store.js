@@ -11,14 +11,14 @@ export const modeDemo = !(url && cle)
 // La connexion Google s'affiche seulement une fois configurée (VITE_GOOGLE_ACTIF=1 dans Netlify): le bouton reste
 // caché tant que Google n'est pas branché dans Supabase. Sans cette variable (et en mode démo), c'est le courriel.
 export const googleActif = import.meta.env.VITE_GOOGLE_ACTIF === '1'
-const supabase = modeDemo ? null : createClient(url, cle)
+export const supabase = modeDemo ? null : createClient(url, cle)
 
 const CLE_DEMO = 'forever-demo-annonces'
 const CLE_CONNEXION_DEMO = 'forever-demo-connecte'
 const EVENEMENT_DEMO = 'forever-demo-connexion'
 const CLE_GUILDES_DEMO = 'forever-demo-guildes'
 const CLE_PROFIL = 'forever-profil'
-const UTILISATEUR_DEMO = { id: 'demo', nom: 'Joueur démo', contact: 'ton_discord' }
+export const UTILISATEUR_DEMO = { id: 'demo', nom: 'Joueur démo', contact: 'ton_discord' }
 
 function connexionDemo() {
   try {
@@ -28,7 +28,7 @@ function connexionDemo() {
   }
 }
 
-function minutes(n) {
+export function minutes(n) {
   return new Date(Date.now() - n * 60000).toISOString()
 }
 function dansHeures(h) {
@@ -72,7 +72,7 @@ function annoncesDemo() {
   ].map((a) => ({ ...a, roles: [...new Set(a.roles)] }))
 }
 
-function lireDemo() {
+export function lireDemo() {
   try {
     const brut = localStorage.getItem(CLE_DEMO)
     const liste = brut ? JSON.parse(brut) : annoncesDemo()
@@ -93,24 +93,22 @@ const COLONNES_ANNONCES_ANCIENNES =
 const COLONNES_GUILDES =
   'id,user_id,created_at,expires_at,nom,faction,region,ruleset,langue,focus,style,roles,niveau_min,description,perso'
 
-async function estConnecte() {
+export async function estConnecte() {
   if (modeDemo) return connexionDemo()
   const { data } = await supabase.auth.getSession()
   return !!data.session
 }
 
 export async function lireAnnonces() {
-  const connecte = await estConnecte()
   if (modeDemo) {
     const maintenant = Date.now()
     return lireDemo()
       .filter((a) => new Date(a.expires_at).getTime() > maintenant)
-      .map((a) => (connecte ? a : { ...a, contact: null }))
+      .map((a) => ({ ...a, contact: null }))
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   }
-  const essais = connecte
-    ? ['*']
-    : [COLONNES_ANNONCES, COLONNES_ANNONCES_SANS_COMPOSITION, COLONNES_ANNONCES_ANCIENNES, '*']
+  // Depuis ameliorations8.sql, personne ne reçoit le contact d'une annonce ici: il passe par le chat du groupe.
+  const essais = [COLONNES_ANNONCES, COLONNES_ANNONCES_SANS_COMPOSITION, COLONNES_ANNONCES_ANCIENNES, '*']
   let derniereErreur = null
   for (const colonnes of essais) {
     const { data, error } = await supabase
@@ -145,7 +143,7 @@ export async function creerAnnonce(champs, heures) {
     }
     return complete
   }
-  const { data, error } = await supabase.from('annonces').insert(annonce).select().single()
+  const { data, error } = await supabase.from('annonces').insert(annonce).select('id,user_id,created_at,expires_at').single()
   if (error) throw error
   return data
 }
@@ -475,7 +473,7 @@ function joueursDemo() {
   ]
 }
 
-function lireJoueursDemo() {
+export function lireJoueursDemo() {
   try {
     const brut = localStorage.getItem(CLE_JOUEURS_DEMO)
     const liste = brut ? JSON.parse(brut) : joueursDemo()
@@ -649,7 +647,7 @@ function amisDemoInitiaux() {
   }
 }
 
-function lireAmisDemo() {
+export function lireAmisDemo() {
   try {
     const brut = localStorage.getItem(CLE_AMIS_DEMO)
     if (brut) return JSON.parse(brut) ?? {}

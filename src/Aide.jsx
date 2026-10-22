@@ -35,8 +35,8 @@ export default function Aide({ ouvert, fermer }) {
               Amérique et Europe.
             </li>
             <li>
-              <strong>Connecte-toi pour contacter ou publier.</strong> Avec ton compte Google.
-              Il n'y a pas de mot de passe. Les contacts (BattleTag, liens de guilde) ne sont montrés qu'aux gens connectés.
+              <strong>Connecte-toi pour rejoindre ou publier.</strong> Avec ton compte Google.
+              Il n'y a pas de mot de passe. Les liens de guilde ne sont montrés qu'aux gens connectés.
             </li>
             <li>
               <strong>Publie ton annonce.</strong> Un groupe qui cherche des joueurs, ou un joueur seul qui cherche un
@@ -44,11 +44,45 @@ export default function Aide({ ouvert, fermer }) {
               Les guildes restent de 7 à 30 jours. Tu peux avoir 5 annonces et 2 guildes à la fois.
             </li>
             <li>
+              <strong>Réponds aux demandes.</strong> Les joueurs demandent à rejoindre ton groupe: tu vois leur
+              personnage et leur rôle, tu acceptes ou tu refuses. Ton BattleTag n'est donné qu'à ceux que tu acceptes.
+            </li>
+            <li>
               <strong>Relance-la si besoin.</strong> Le bouton « Renouveler » apparaît sur ton annonce quand il lui reste
               moins de la moitié de son temps. Quand tu as trouvé quelqu'un, utilise « Tank trouvé », « Heal trouvé » ou
               « DPS trouvé ». Pour un raid, ça enlève un joueur à la fois.
             </li>
           </ol>
+        </section>
+
+        <section>
+          <h3>Rejoindre un groupe et discuter</h3>
+          <ul className="puces">
+            <li>
+              Sur une annonce, « Demander à rejoindre » envoie ton personnage (nom, classe, niveau), le rôle que tu veux
+              jouer et un petit mot au chef du groupe. Il faut avoir créé ton profil. Pour une annonce de joueur seul,
+              le bouton est « Proposer un groupe ».
+            </li>
+            <li>
+              Le chef regarde les demandes, les filtre par rôle ou par classe, puis accepte ou refuse (personne n'est
+              averti d'un refus). Il peut aussi retirer quelqu'un du groupe. Un groupe compte 40 joueurs au plus.
+            </li>
+            <li>
+              Une fois accepté, tu as accès au chat du groupe (onglet Messages) et tu reçois le contact du chef. Seuls
+              le chef et les joueurs acceptés lisent le chat. Il est effacé 24 heures après la fin de l'annonce
+              (expirée ou retirée).
+            </li>
+            <li>
+              Tu peux aussi écrire à tes amis: « Écrire » sur leur carte, dans l'onglet Joueurs. Ces messages-là sont
+              gardés 30 jours. Tu peux effacer tes propres messages, et signaler ceux des autres: trois signalements de
+              personnes différentes masquent un message, et les personnes qui modèrent le site peuvent le lire pour
+              décider.
+            </li>
+            <li>
+              Pour éviter le spam: 10 demandes en attente et 20 par jour, 15 messages par 30 secondes, 500 caractères par
+              message. Les adresses écrites dans le chat ne sont pas cliquables.
+            </li>
+          </ul>
         </section>
 
         <section>
@@ -141,7 +175,7 @@ export default function Aide({ ouvert, fermer }) {
           <ul className="puces">
             <li>Sois respectueux. Pas d'insultes ni de harcèlement.</li>
             <li>Pas de spam ni de publicité: une annonce, c'est un vrai groupe ou un vrai joueur.</li>
-            <li>Écris un vrai contact. Un faux contact fait perdre du temps à tout le monde.</li>
+            <li>Écris un vrai BattleTag. Un faux contact fait perdre du temps à tout le monde.</li>
             <li>Pas de vente d'or, de comptes ou de services payants.</li>
             <li>Dans Forever, l'Alliance et la Horde ne se mélangent pas: une annonce est pour un seul camp.</li>
             <li>
@@ -155,8 +189,8 @@ export default function Aide({ ouvert, fermer }) {
             </li>
             <li>
               Les personnes qui modèrent le site examinent les signalements. Elles peuvent écarter un signalement, retirer
-              une annonce, une guilde ou un profil, ou suspendre un compte qui abuse (il ne peut plus publier). Elles voient
-              alors le contact de l'annonce signalée.
+              une annonce, une guilde, un profil ou un message, ou suspendre un compte qui abuse (il ne peut plus publier ni
+              écrire). Elles voient alors le contact de l'annonce signalée, ou le message signalé et ceux d'avant.
             </li>
           </ul>
         </section>

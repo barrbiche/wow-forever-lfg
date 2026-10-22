@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { MOTIFS_JOUEUR, MOTIFS_SIGNALEMENT } from './data.js'
+import { MOTIFS_JOUEUR, MOTIFS_MESSAGE, MOTIFS_SIGNALEMENT } from './data.js'
 import { actionModeration, lireModeration } from './store.js'
+import { actionMessageModeration, lireMessagesSignales } from './messagerie.js'
 import { depuis } from './commun.jsx'
 
 // Page réservée aux modérateurs (le lien « Modération » n'apparaît que pour eux, et chaque action est revérifiée par
 // le serveur: voir supabase/ameliorations5.sql). Elle liste ce qui a été signalé, avec le contact que les visiteurs
 // ne voient pas, et permet d'écarter, retirer, remettre en ligne ou suspendre un compte.
 
-const NOM_MOTIF = Object.fromEntries([...MOTIFS_SIGNALEMENT, ...MOTIFS_JOUEUR].map((m) => [m.id, m.nom.split(' ou ')[0]]))
+const NOM_MOTIF = Object.fromEntries([...MOTIFS_SIGNALEMENT, ...MOTIFS_JOUEUR, ...MOTIFS_MESSAGE].map((m) => [m.id, m.nom.split(' ou ')[0]]))
 const NOM_TYPE = { annonce: 'Annonce', guilde: 'Guilde', joueur: 'Joueur' }
 
 function ilYA(iso) {
@@ -99,16 +100,71 @@ function Fiche({ element: x, occupe, suspension, ouvrirSuspension, fermerSuspens
   )
 }
 
+// Un message de chat signalé: le texte, les quelques messages d'avant, et trois choix.
+function FicheMessage({ element: x, occupe, agir, suspendre }) {
+  const [enSuspension, setEnSuspension] = useState(false)
+  const [raison, setRaison] = useState('')
+  return (
+    <article className="mod-fiche" aria-label={`Message de ${x.auteur_perso}`}>
+      <div className="mod-fiche-haut">
+        <span className="chip mod-type joueur">Message</span>
+        <strong className="mod-titre">{x.lieu}</strong>
+        {x.masque && <span className="chip mod-etat">Masqué</span>}
+        {x.suspendu && <span className="chip mod-etat danger">Compte suspendu</span>}
+      </div>
+      <p className="mod-meta">
+        <strong>{x.nb}</strong> {x.nb > 1 ? 'signalements' : 'signalement'}
+        {x.motifs?.length ? `: ${x.motifs.map((m) => NOM_MOTIF[m] ?? m).join(', ').toLowerCase()}` : ''} · {ilYA(x.dernier)} · écrit par{' '}
+        <strong>{x.auteur_perso}</strong>
+      </p>
+      <p className="mod-detail">« {x.texte} »</p>
+      {x.contexte && (
+        <details className="mod-contexte">
+          <summary>Messages d’avant</summary>
+          <pre>{x.contexte}</pre>
+        </details>
+      )}
+      {enSuspension ? (
+        <div className="mod-suspension">
+          <label className="champ">
+            <span>Raison (facultatif, gardée dans le journal)</span>
+            <input type="text" maxLength={200} autoComplete="off" value={raison} onChange={(e) => setRaison(e.target.value)} placeholder="Ex.: insultes répétées" />
+          </label>
+          <div className="mod-actions">
+            <button type="button" className="bouton petit danger" disabled={!!occupe} onClick={() => suspendre(x, raison)}>Suspendre ce compte</button>
+            <button type="button" className="bouton petit" onClick={() => setEnSuspension(false)}>Annuler</button>
+          </div>
+        </div>
+      ) : (
+        <div className="mod-actions">
+          <button type="button" className="bouton petit" disabled={!!occupe} onClick={() => agir('ecarter', x)}>Garder le message</button>
+          <button type="button" className="bouton petit danger" disabled={!!occupe} onClick={() => agir('effacer', x)}>Effacer le message</button>
+          {x.suspendu ? null : (
+            <button type="button" className="bouton petit danger" disabled={!!occupe} onClick={() => setEnSuspension(true)}>Suspendre le compte…</button>
+          )}
+        </div>
+      )}
+    </article>
+  )
+}
+
 export function Moderation({ ouvert, fermer, apres, annoncer }) {
   const dialogue = useRef(null)
   const [donnees, setDonnees] = useState(null)
   const [erreur, setErreur] = useState('')
   const [occupe, setOccupe] = useState(false)
   const [suspension, setSuspension] = useState(null)
+  const [messages, setMessages] = useState([])
 
   const charger = useCallback(async () => {
     try {
       setDonnees(await lireModeration())
+      // Les messages signalés viennent d'ameliorations8.sql: si la base n'est pas à jour, on montre juste le reste.
+      try {
+        setMessages(await lireMessagesSignales())
+      } catch {
+        setMessages([])
+      }
       setErreur('')
     } catch {
       setErreur("Impossible de charger la file de modération. Vérifie ta connexion, puis réessaie.")
@@ -146,6 +202,33 @@ export function Moderation({ ouvert, fermer, apres, annoncer }) {
       await Promise.all([charger(), apres()])
     } catch {
       setErreur("L'action n'a pas été faite. Réessaie dans un instant (ton accès de modérateur est revérifié à chaque fois).")
+    } finally {
+      setOccupe(false)
+    }
+  }
+
+  const agirMessage = async (action, x) => {
+    setOccupe(true)
+    setErreur('')
+    try {
+      await actionMessageModeration(action, x.type, x.message_id)
+      annoncer(action === 'effacer' ? 'Message effacé.' : 'Signalements écartés.')
+      await charger()
+    } catch {
+      setErreur("L'action n'a pas été faite. Réessaie dans un instant.")
+    } finally {
+      setOccupe(false)
+    }
+  }
+  const suspendreMessage = async (x, raison) => {
+    setOccupe(true)
+    setErreur('')
+    try {
+      await actionModeration('suspendre', 'joueur', x.auteur, raison.trim())
+      annoncer('Compte suspendu.')
+      await Promise.all([charger(), apres()])
+    } catch {
+      setErreur("L'action n'a pas été faite. Réessaie dans un instant.")
     } finally {
       setOccupe(false)
     }
@@ -193,6 +276,21 @@ export function Moderation({ ouvert, fermer, apres, annoncer }) {
                 ))}
               </div>
             )}
+          </section>
+        )}
+
+        {donnees && messages.length > 0 && (
+          <section aria-label="Messages signalés">
+            <h3 className="mod-sous-titre">Messages signalés <span className="onglet-nombre">{messages.length}</span></h3>
+            <p className="aide">
+              Trois personnes différentes qui signalent un message le masquent d’elles-mêmes. Tu vois ici le message et ceux
+              d’avant, pour décider.
+            </p>
+            <div className="mod-liste">
+              {messages.map((x) => (
+                <FicheMessage key={`${x.type}:${x.message_id}`} element={x} occupe={occupe} agir={agirMessage} suspendre={suspendreMessage} />
+              ))}
+            </div>
           </section>
         )}
 

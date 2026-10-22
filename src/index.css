@@ -1465,9 +1465,10 @@ h2 {
 
 .signaler-ligne {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 16px;
+  gap: 0 16px;
   margin: -6px 0 0;
 }
 
@@ -3040,4 +3041,513 @@ h2 {
 
 .page-legale section p + p {
   margin-top: 10px;
+}
+
+/* ---------- Demandes pour rejoindre, chat de groupe, chat entre amis ---------- */
+
+.rejoindre {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+
+.rejoindre .bouton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rejoindre-note {
+  flex: 1 1 220px;
+  margin: 0;
+}
+
+.pastille-nombre {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-family: var(--texte);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--gold-ink);
+  background: var(--gold-light);
+}
+
+.groupe-choix {
+  border: 0;
+  margin: 0 0 14px;
+  padding: 0;
+}
+
+.groupe-choix legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.dialogue-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.compteur {
+  display: block;
+  margin-top: 4px;
+  text-align: right;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+/* La messagerie: liste à gauche, conversation à droite (une seule des deux sur téléphone). */
+.messagerie {
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.msg-colonne,
+.msg-fil {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-papier, 8px);
+  box-shadow: var(--shadow);
+}
+
+.msg-colonne {
+  padding: 8px 10px 12px;
+}
+
+.messagerie .vide {
+  margin: 8px 0;
+}
+
+.messagerie:not(.ouverte) .msg-detail,
+.messagerie.ouverte .msg-colonne {
+  display: none;
+}
+
+.msg-choisir {
+  margin: 0;
+  padding: 24px 0;
+  text-align: center;
+}
+
+.msg-sous-titre {
+  margin: 12px 4px 6px;
+  font-size: 1.02rem;
+}
+
+.msg-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.msg-conv {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  font: inherit;
+  text-align: left;
+  color: var(--ink);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.msg-conv:hover {
+  background: var(--field);
+}
+
+.msg-conv[aria-pressed='true'] {
+  border-color: var(--gold-line);
+  background: color-mix(in srgb, var(--gold) 14%, var(--surface));
+}
+
+.msg-conv-haut,
+.msg-conv-bas {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.msg-conv-haut strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msg-conv-bas {
+  align-items: center;
+}
+
+.msg-extrait {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.msg-nouveau {
+  margin-top: 12px;
+}
+
+.msg-nouveau summary {
+  cursor: pointer;
+  padding: 6px 4px;
+  font-weight: 700;
+}
+
+.msg-fil {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  min-width: 0;
+}
+
+.msg-fil-haut {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.msg-fil-titre {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.msg-fil-titre h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  overflow-wrap: anywhere;
+}
+
+.msg-fil-titre .aide,
+.msg-fil-titre .infos {
+  margin: 2px 0 0;
+}
+
+.msg-fil-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.msg-fil-actions .bouton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.msg-fil-actions .bouton[aria-pressed='true'] {
+  border-color: var(--gold-line);
+  background: color-mix(in srgb, var(--gold) 17%, var(--surface));
+}
+
+.msg-contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 0.92rem;
+  background: var(--field);
+  border-radius: 8px;
+}
+
+.msg-contact code {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.msg-duree {
+  margin: 0;
+}
+
+.msg-panneau {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  max-height: 340px;
+  overflow: auto;
+}
+
+.msg-panneau-haut h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.msg-filtres {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.champ-court select {
+  min-height: 36px;
+  padding-block: 4px;
+}
+
+.msg-demandes,
+.msg-membres {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.msg-demande {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.msg-demande-haut,
+.msg-membres li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.msg-demande-infos {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.msg-demande .note {
+  margin: 0;
+}
+
+.msg-demande .depuis {
+  margin-left: auto;
+}
+
+.msg-fil-corps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.msg-defil {
+  height: min(52vh, 460px);
+  min-height: 260px;
+  overflow-y: auto;
+  padding: 10px;
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overscroll-behavior: contain;
+}
+
+.msg-liste-messages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.msg {
+  justify-self: start;
+  max-width: min(86%, 560px);
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px 10px 10px 2px;
+}
+
+.msg.moi {
+  justify-self: end;
+  border-radius: 10px 10px 2px 10px;
+  background: color-mix(in srgb, var(--gold) 16%, var(--surface));
+  border-color: color-mix(in srgb, var(--gold-line) 50%, var(--line));
+}
+
+.msg-entete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.85rem;
+}
+
+.msg-auteur {
+  padding-left: 8px;
+  border-left: 4px solid var(--anneau, var(--gold-line));
+}
+
+.msg-entete time {
+  color: var(--muted);
+}
+
+.msg-texte {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.msg.masque .msg-texte {
+  font-style: italic;
+  color: var(--muted);
+}
+
+.msg-outils {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+.msg .signalement {
+  margin-top: 8px;
+}
+
+.msg-systeme {
+  justify-self: center;
+  text-align: center;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.msg-vide {
+  margin: 16px 0;
+  text-align: center;
+}
+
+.msg-composer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.msg-composer textarea {
+  width: 100%;
+  min-height: 48px;
+  max-height: 140px;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  resize: vertical;
+}
+
+.msg-composer textarea:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 1px;
+}
+
+.msg-composer .compteur,
+.msg-composer .msg-erreur {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.msg-ferme {
+  margin: 0;
+}
+
+.msg-retour {
+  align-self: flex-start;
+}
+
+@media (min-width: 860px) {
+  .messagerie {
+    grid-template-columns: minmax(250px, 320px) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .messagerie:not(.ouverte) .msg-detail,
+  .messagerie.ouverte .msg-colonne {
+    display: block;
+  }
+
+  .msg-retour {
+    display: none;
+  }
+
+  .msg-defil {
+    height: min(58vh, 520px);
+  }
+}
+
+@media (max-width: 859px) {
+  .msg-defil {
+    height: min(50vh, 420px);
+  }
+
+  .msg {
+    max-width: 92%;
+  }
+}
+
+.mod-contexte {
+  margin: 4px 0 8px;
+  font-size: 0.9rem;
+}
+
+.mod-contexte summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.mod-contexte pre {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  background: var(--field);
+  border-radius: 8px;
+}
+
+.msg-demande-haut .infos,
+.msg-membres .infos {
+  margin: 0;
+  padding: 0;
+}
+
+/* Sur grand écran, la pastille de l'onglet Messages se place après le mot au lieu de recouvrir son coin. */
+@media (min-width: 760px) {
+  .onglet-alerte.en-ligne {
+    position: static;
+    display: inline-grid;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
 }
