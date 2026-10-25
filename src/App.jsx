@@ -9,6 +9,13 @@ import {
   genererRecurrences,
   deconnecter,
   envoyerLienCourriel,
+  connecterParMotDePasse,
+  creerCompte,
+  demanderNouveauMotDePasse,
+  suivreRecuperation,
+  changerMotDePasse,
+  messageConnexion,
+  MOT_DE_PASSE_MIN,
   googleActif,
   courrielActif,
   lienDons,
@@ -223,6 +230,7 @@ export default function App() {
   const [filtres, setFiltres] = useState(FILTRES_VIDES)
   const [formulaireOuvert, setFormulaireOuvert] = useState(false)
   const [message, setMessage] = useState('')
+  const [nouveauMdp, setNouveauMdp] = useState(false)
   const [utilisateur, setUtilisateur] = useState(null)
   const [styleSite, setStyleSite] = useState(styleEnregistre)
 
@@ -432,6 +440,7 @@ export default function App() {
   }, [charger])
 
   useEffect(() => suivreUtilisateur(setUtilisateur), [])
+  useEffect(() => suivreRecuperation(() => setNouveauMdp(true)), [])
 
   useEffect(() => {
     vueRef.current = vue
@@ -1094,6 +1103,7 @@ export default function App() {
 
       <Aide ouvert={aideOuverte} fermer={() => setAideOuverte(false)} />
       <BandeauPubs />
+      {nouveauMdp && <NouveauMotDePasse fermer={() => setNouveauMdp(false)} annoncer={setMessage} />}
 
       <DialogueDemande
         annonce={demandeAnnonce}
@@ -2034,10 +2044,16 @@ function dansNavigateurIntegre() {
 
 function PanneauConnexion({ fermer }) {
   const [courriel, setCourriel] = useState('')
+  const [motDePasse, setMotDePasse] = useState('')
+  const [voir, setVoir] = useState(false)
+  const [mode, setMode] = useState('connexion') // 'connexion' | 'creation' | 'oubli'
   const [etat, setEtat] = useState('attente')
   const [probleme, setProbleme] = useState('')
+  const [problemeMdp, setProblemeMdp] = useState('')
   const [problemeCompte, setProblemeCompte] = useState('')
   const integre = googleActif && dansNavigateurIntegre()
+  // En démo, le courriel simule un lien (aucun vrai courriel); sur le vrai site, c'est un mot de passe.
+  const avecMotDePasse = !modeDemo
 
   const continuerAvecGoogle = () => {
     setProblemeCompte('')
@@ -2046,35 +2062,97 @@ function PanneauConnexion({ fermer }) {
     })
   }
 
+  const changerMode = (m) => {
+    setMode(m)
+    setEtat('attente')
+    setProbleme('')
+    setProblemeMdp('')
+    setProblemeCompte('')
+  }
+
   const envoyer = async (e) => {
     e.preventDefault()
+    setProblemeCompte('')
     if (!/^\S+@\S+\.\S+$/.test(courriel.trim())) {
       setProbleme('Écris une adresse courriel valide.')
       return
     }
-    setEtat('envoi')
     setProbleme('')
+    if (!avecMotDePasse) {
+      setEtat('envoi')
+      try {
+        const resultat = await envoyerLienCourriel(courriel.trim())
+        setEtat(resultat === 'envoye' ? 'envoye' : 'attente')
+      } catch {
+        setEtat('attente')
+        setProbleme("Le courriel n'a pas été envoyé. Réessaie dans quelques minutes.")
+      }
+      return
+    }
+    if (mode !== 'oubli') {
+      if (!motDePasse) {
+        setProblemeMdp('Écris ton mot de passe.')
+        return
+      }
+      if (mode === 'creation' && motDePasse.length < MOT_DE_PASSE_MIN) {
+        setProblemeMdp(`Mets au moins ${MOT_DE_PASSE_MIN} caractères.`)
+        return
+      }
+    }
+    setProblemeMdp('')
+    setEtat('envoi')
     try {
-      const resultat = await envoyerLienCourriel(courriel.trim())
-      setEtat(resultat === 'envoye' ? 'envoye' : 'attente')
-    } catch {
+      if (mode === 'connexion') {
+        await connecterParMotDePasse(courriel.trim(), motDePasse)
+        setEtat('attente') // la connexion change l'écran toute seule
+      } else if (mode === 'creation') {
+        const r = await creerCompte(courriel.trim(), motDePasse)
+        setEtat(r === 'envoye' ? 'envoye' : 'attente')
+      } else {
+        await demanderNouveauMotDePasse(courriel.trim())
+        setEtat('envoye')
+      }
+    } catch (err) {
       setEtat('attente')
-      setProbleme("Le courriel n'a pas été envoyé. Réessaie dans quelques minutes.")
+      setProblemeCompte(messageConnexion(err))
     }
   }
+
+  const titre = avecMotDePasse && mode === 'creation' ? 'Créer un compte' : avecMotDePasse && mode === 'oubli' ? 'Mot de passe oublié' : 'Se connecter'
+  const verbe = !avecMotDePasse ? 'Recevoir un lien de connexion' : mode === 'creation' ? 'Créer mon compte' : mode === 'oubli' ? 'Recevoir un lien' : 'Se connecter'
 
   return (
     <div className="dialogue-connexion">
       <div className="dialogue-haut">
-        <h2 id="titre-formulaire">Se connecter</h2>
+        <h2 id="titre-formulaire">{titre}</h2>
         <button type="button" className="bouton petit" onClick={fermer}>Fermer</button>
       </div>
 
       {etat === 'envoye' ? (
-        <p role="status">
-          Courriel envoyé à <strong>{courriel.trim()}</strong>. Clique sur le lien dans le message pour te
-          connecter. Regarde aussi dans tes pourriels.
-        </p>
+        <>
+          {!avecMotDePasse ? (
+            <p role="status">
+              Courriel envoyé à <strong>{courriel.trim()}</strong>. Clique sur le lien dans le message pour te
+              connecter. Regarde aussi dans tes pourriels.
+            </p>
+          ) : mode === 'creation' ? (
+            <p role="status">
+              Presque fini! Si <strong>{courriel.trim()}</strong> n'a pas déjà un compte, on vient de t'envoyer un
+              courriel de confirmation. Clique sur le lien dedans, puis tu seras connecté. Regarde aussi dans tes
+              pourriels. Si tu as déjà un compte, connecte-toi, ou utilise « Mot de passe oublié ».
+            </p>
+          ) : (
+            <p role="status">
+              Si un compte existe avec <strong>{courriel.trim()}</strong>, un courriel vient de partir. Clique sur le lien
+              dedans pour choisir un nouveau mot de passe. Regarde aussi dans tes pourriels.
+            </p>
+          )}
+          {avecMotDePasse && (
+            <p>
+              <button type="button" className="lien" onClick={() => changerMode('connexion')}>Retour à la connexion</button>
+            </p>
+          )}
+        </>
       ) : (
         <>
           <p>
@@ -2097,7 +2175,11 @@ function PanneauConnexion({ fermer }) {
           {courrielActif && (
           <form className="formulaire-courriel" onSubmit={envoyer} noValidate>
             <label className="champ">
-              <span>{googleActif ? 'Ou reçois un lien par courriel, sans mot de passe' : 'Reçois un lien par courriel, sans mot de passe'}</span>
+              <span>
+                {!avecMotDePasse
+                  ? googleActif ? 'Ou reçois un lien par courriel, sans mot de passe' : 'Reçois un lien par courriel, sans mot de passe'
+                  : googleActif ? 'Ou avec ton courriel' : 'Courriel'}
+              </span>
               <input
                 type="email"
                 autoComplete="email"
@@ -2107,14 +2189,120 @@ function PanneauConnexion({ fermer }) {
               />
               {probleme && <span className="msg-erreur" role="alert">{probleme}</span>}
             </label>
+            {avecMotDePasse && mode !== 'oubli' && (
+              <label className="champ">
+                <span>Mot de passe</span>
+                <span className="champ-mdp">
+                  <input
+                    type={voir ? 'text' : 'password'}
+                    autoComplete={mode === 'creation' ? 'new-password' : 'current-password'}
+                    value={motDePasse}
+                    onChange={(e) => setMotDePasse(e.target.value)}
+                    aria-invalid={!!problemeMdp}
+                  />
+                  <button type="button" className="bouton petit" onClick={() => setVoir((v) => !v)} aria-pressed={voir}>
+                    {voir ? 'Cacher' : 'Voir'}
+                  </button>
+                </span>
+                {mode === 'creation' && !problemeMdp && (
+                  <small className="aide">Au moins {MOT_DE_PASSE_MIN} caractères. On t'envoie un courriel pour confirmer ton adresse.</small>
+                )}
+                {problemeMdp && <span className="msg-erreur" role="alert">{problemeMdp}</span>}
+              </label>
+            )}
             <button type="submit" className="bouton large principal" disabled={etat === 'envoi'}>
-              {etat === 'envoi' ? 'Envoi…' : 'Recevoir un lien de connexion'}
+              {etat === 'envoi' ? 'Un instant…' : verbe}
             </button>
+            {avecMotDePasse && (
+              <p className="liens-connexion">
+                {mode === 'connexion' && (
+                  <>
+                    <button type="button" className="lien" onClick={() => changerMode('creation')}>Créer un compte</button>
+                    <button type="button" className="lien" onClick={() => changerMode('oubli')}>Mot de passe oublié?</button>
+                  </>
+                )}
+                {mode === 'creation' && (
+                  <button type="button" className="lien" onClick={() => changerMode('connexion')}>J'ai déjà un compte</button>
+                )}
+                {mode === 'oubli' && (
+                  <button type="button" className="lien" onClick={() => changerMode('connexion')}>Retour à la connexion</button>
+                )}
+              </p>
+            )}
           </form>
           )}
           <p className="petit-texte">Ton nom et ton courriel ne sont jamais affichés sur le site.</p>
         </>
       )}
     </div>
+  )
+}
+
+// Fenêtre « choisis ton nouveau mot de passe », ouverte par le lien du courriel « mot de passe oublié ».
+function NouveauMotDePasse({ fermer, annoncer }) {
+  const dialogue = useRef(null)
+  const [mdp, setMdp] = useState('')
+  const [confirmation, setConfirmation] = useState('')
+  const [voir, setVoir] = useState(false)
+  const [probleme, setProbleme] = useState('')
+  const [envoi, setEnvoi] = useState(false)
+
+  useEffect(() => {
+    const d = dialogue.current
+    if (d && !d.open) d.showModal()
+  }, [])
+
+  const enregistrer = async (e) => {
+    e.preventDefault()
+    if (mdp.length < MOT_DE_PASSE_MIN) {
+      setProbleme(`Mets au moins ${MOT_DE_PASSE_MIN} caractères.`)
+      return
+    }
+    if (mdp !== confirmation) {
+      setProbleme('Les deux mots de passe ne sont pas pareils.')
+      return
+    }
+    setProbleme('')
+    setEnvoi(true)
+    try {
+      await changerMotDePasse(mdp)
+      annoncer('Mot de passe changé. Tu es connecté.')
+      fermer()
+    } catch (err) {
+      setProbleme(messageConnexion(err))
+    } finally {
+      setEnvoi(false)
+    }
+  }
+
+  return (
+    <dialog ref={dialogue} className="dialogue" onClose={fermer} aria-labelledby="titre-nouveau-mdp">
+      <div className="dialogue-connexion">
+        <div className="dialogue-haut">
+          <h2 id="titre-nouveau-mdp">Choisis ton nouveau mot de passe</h2>
+          <button type="button" className="bouton petit" onClick={fermer}>Plus tard</button>
+        </div>
+        <form className="formulaire-courriel" onSubmit={enregistrer} noValidate>
+          <label className="champ">
+            <span>Nouveau mot de passe</span>
+            <span className="champ-mdp">
+              <input type={voir ? 'text' : 'password'} autoComplete="new-password" value={mdp} onChange={(e) => setMdp(e.target.value)} />
+              <button type="button" className="bouton petit" onClick={() => setVoir((v) => !v)} aria-pressed={voir}>
+                {voir ? 'Cacher' : 'Voir'}
+              </button>
+            </span>
+            <small className="aide">Au moins {MOT_DE_PASSE_MIN} caractères.</small>
+          </label>
+          <label className="champ">
+            <span>Écris-le encore une fois</span>
+            <input type={voir ? 'text' : 'password'} autoComplete="new-password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} />
+          </label>
+          {probleme && <p className="erreur" role="alert">{probleme}</p>}
+          <button type="submit" className="bouton large principal" disabled={envoi}>
+            {envoi ? 'Un instant…' : 'Enregistrer'}
+          </button>
+        </form>
+      </div>
+    </dialog>
   )
 }

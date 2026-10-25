@@ -120,11 +120,13 @@ Ancienne installation (gardée pour mémoire): `supabase/discord.sql` créait l'
 - Pour le badge: colle `supabase/ameliorations9.sql` dans le SQL Editor (étape 13), puis, pour chaque personne qui donne, Table Editor > `supporters` > Insert row avec son `user_id` (Authentication > Users > User UID). Supprime la ligne pour retirer le badge. Seuls les gens connectés voient le badge.
 - Rien n'est vérifié automatiquement: c'est toi qui décides qui reçoit le badge.
 
-## Connexion par courriel (en plus de Google)
+## Connexion par courriel et mot de passe (en plus de Google)
 
-- Le formulaire « Recevoir un lien de connexion » existe déjà. Avec Google activé, il reste caché tant que `VITE_COURRIEL_ACTIF=1` n'est pas réglé dans Netlify (puis redéployer).
-- **À faire avant de l'activer:** brancher un vrai service d'envoi de courriels dans Supabase (Authentication > Emails > SMTP Settings > Custom SMTP). Le service intégré de Supabase est limité à quelques courriels par heure et n'envoie qu'aux membres de l'équipe: il ne marche pas pour le public.
-- Il faut aussi que `https://babillard-forever.com/**` soit dans Authentication > URL Configuration > Redirect URLs (déjà fait).
+- Sur le vrai site, `VITE_COURRIEL_ACTIF=1` (Netlify, puis redéployer) ajoute sous le bouton Google un formulaire courriel + mot de passe: se connecter, créer un compte, « mot de passe oublié ». Se connecter n'envoie aucun courriel; seuls la création du compte (confirmation) et le mot de passe oublié en envoient. En démo, le formulaire garde son lien simulé.
+- **Réglages Supabase** (Authentication): Sign In / Providers > Email avec « Confirm email » activé et longueur minimale du mot de passe à 8. Emails > SMTP Settings: Resend (smtp.resend.com, port 465, utilisateur `resend`, mot de passe = clé API Resend, expéditeur `no-reply@babillard-forever.com`). Emails > Templates: « Confirm sign up » et « Reset Password » en français (modèles dans le dépôt de la conversation, couleurs du site).
+- URL Configuration: `https://babillard-forever.com` comme Site URL et `https://babillard-forever.com/**` dans les Redirect URLs.
+- Un compte créé avec Google peut aussi se choisir un mot de passe avec « Mot de passe oublié » (même adresse courriel).
+- Pour éviter les faux comptes en série, on peut plus tard activer un CAPTCHA (Authentication > Attack Protection).
 
 ## Publicité (Google AdSense)
 

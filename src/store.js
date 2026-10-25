@@ -404,6 +404,65 @@ export async function envoyerLienCourriel(courriel) {
   return 'envoye'
 }
 
+// Connexion par courriel et mot de passe (vrai site seulement; en démo, le formulaire garde le lien simulé).
+// Se connecter n'envoie aucun courriel: seuls la création du compte et « mot de passe oublié » en envoient.
+export const MOT_DE_PASSE_MIN = 8
+
+export async function connecterParMotDePasse(courriel, motDePasse) {
+  const { error } = await supabase.auth.signInWithPassword({ email: courriel, password: motDePasse })
+  if (error) throw error
+}
+
+// Retourne 'envoye' (courriel de confirmation parti) ou 'connecte' (si Supabase ne demande pas de confirmation).
+export async function creerCompte(courriel, motDePasse) {
+  const { data, error } = await supabase.auth.signUp({
+    email: courriel,
+    password: motDePasse,
+    options: { emailRedirectTo: window.location.origin },
+  })
+  if (error) throw error
+  return data.session ? 'connecte' : 'envoye'
+}
+
+export async function demanderNouveauMotDePasse(courriel) {
+  const { error } = await supabase.auth.resetPasswordForEmail(courriel, { redirectTo: window.location.origin })
+  if (error) throw error
+}
+
+// Appelé quand la personne arrive avec le lien « mot de passe oublié »: elle doit alors choisir un nouveau mot de passe.
+export function suivreRecuperation(rappel) {
+  if (modeDemo) return () => {}
+  const { data } = supabase.auth.onAuthStateChange((evenement) => {
+    if (evenement === 'PASSWORD_RECOVERY') rappel()
+  })
+  return () => data.subscription.unsubscribe()
+}
+
+export async function changerMotDePasse(motDePasse) {
+  const { error } = await supabase.auth.updateUser({ password: motDePasse })
+  if (error) throw error
+}
+
+// Texte clair pour une erreur de connexion (les codes viennent de Supabase).
+export function messageConnexion(e) {
+  const code = e?.code || ''
+  const texte = String(e?.message || '')
+  if (code === 'invalid_credentials' || /invalid login credentials/i.test(texte)) {
+    return "Courriel ou mot de passe incorrect. Si tu t'es connecté avec Google avant, utilise le bouton Google, ou « Mot de passe oublié » pour en choisir un."
+  }
+  if (code === 'email_not_confirmed' || /not confirmed/i.test(texte)) {
+    return "Ton courriel n'est pas encore confirmé. Clique sur le lien dans le courriel qu'on t'a envoyé (regarde aussi dans les pourriels)."
+  }
+  if (code === 'weak_password' || /password.*(weak|short|at least)/i.test(texte)) {
+    return `Mot de passe trop faible. Mets au moins ${MOT_DE_PASSE_MIN} caractères, avec des lettres et des chiffres.`
+  }
+  if (code === 'same_password') return "C'est déjà ton mot de passe actuel. Choises-en un autre."
+  if (e?.status === 429 || /rate limit|too many|seconds/i.test(texte) || code.includes('rate_limit')) {
+    return 'Trop d\'essais en peu de temps. Attends une minute et réessaie.'
+  }
+  return "Ça n'a pas marché. Vérifie ta connexion Internet et réessaie dans quelques minutes."
+}
+
 // ---------- Guildes qui recrutent ----------
 
 function guildesDemo() {

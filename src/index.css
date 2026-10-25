@@ -3689,3 +3689,8 @@ h2 {
 .bandeau-pubs p { margin: 0 0 12px; font-size: 0.92rem; line-height: 1.45; }
 .bandeau-pubs-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .bandeau-pubs-actions .bouton { flex: 1 1 120px; }
+
+/* ---------- Connexion par mot de passe ---------- */
+.champ-mdp { display: flex; gap: 8px; align-items: stretch; }
+.champ-mdp input { flex: 1; min-width: 0; }
+.liens-connexion { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; margin: 12px 0 0; }

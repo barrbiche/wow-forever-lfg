@@ -36,8 +36,9 @@ export default function Aide({ ouvert, fermer }) {
               Amérique et Europe.
             </li>
             <li>
-              <strong>Connecte-toi pour rejoindre ou publier.</strong> Avec ton compte Google.
-              Il n'y a pas de mot de passe. Les liens de guilde ne sont montrés qu'aux gens connectés.
+              <strong>Connecte-toi pour rejoindre ou publier.</strong> Avec ton compte Google, ou avec ton
+              courriel et un mot de passe (un courriel de confirmation est envoyé seulement à la création du compte). Les
+              liens de guilde ne sont montrés qu'aux gens connectés.
             </li>
             <li>
               <strong>Publie ton annonce.</strong> Un groupe qui cherche des joueurs, ou un joueur seul qui cherche un

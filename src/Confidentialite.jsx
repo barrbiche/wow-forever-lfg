@@ -14,7 +14,9 @@ export function SectionDonnees() {
       <ul className="puces">
         <li>
           <strong>Ton compte.</strong> Avec Google, le site reçoit ton nom, ton adresse courriel et l'adresse de ta
-          photo de profil. Il ne reçoit aucun mot de passe. Les comptes créés avant avec Discord ou avec un courriel
+          photo de profil, et aucun mot de passe. Si tu crées un compte avec un courriel, le site garde ton adresse et
+          ton mot de passe; le mot de passe est gardé brouillé par Supabase, la personne qui gère le site ne peut pas le
+          lire. Des courriels sont envoyés seulement pour confirmer ton adresse ou pour changer ton mot de passe. Les comptes créés avant avec Discord ou avec un courriel
           gardent ce que ces services avaient donné (nom d'utilisateur et identifiant Discord, adresse courriel). Ton nom
           et ton courriel ne sont jamais montrés aux autres joueurs: seul ce que tu écris toi-même dans une annonce ou un
           profil est publié.
