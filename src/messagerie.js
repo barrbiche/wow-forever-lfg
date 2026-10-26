@@ -41,13 +41,27 @@ function etatInitial() {
     lectures: { 'a:demo-j-thalyn': 2 },
     reponses: [],
     signalements: [],
+    salon: salonInitial(),
   }
+}
+
+// Quelques messages pour que la Taverne ne soit pas vide en démo.
+function salonInitial() {
+  return [
+    { id: 1, de: 'demo-j-thalyn', texte: 'Salut la gang! Quelqu’un a hâte au 4 novembre? 🔥', created_at: minutes(42), masque: false },
+    { id: 2, de: 'demo-j-grumash', texte: 'Moi! Je cherche encore un heal pour les Mines de la Mort.', created_at: minutes(38), masque: false },
+    { id: 3, de: 'demo-j-thalyn', texte: 'Regarde dans l’onglet Groupes, il y en a qui partent ce soir :)', created_at: minutes(35), masque: false },
+  ]
 }
 
 function lireEtat() {
   try {
     const brut = localStorage.getItem(CLE_CHAT_DEMO)
-    if (brut) return JSON.parse(brut)
+    if (brut) {
+      const etat = JSON.parse(brut)
+      if (!Array.isArray(etat.salon)) etat.salon = salonInitial()
+      return etat
+    }
   } catch {
     // navigation privée: on repart d'un état neuf
   }
@@ -171,7 +185,9 @@ function synchroniser(etat) {
     etat.reponses = etat.reponses.filter((r) => r.quand > maintenant)
     for (const r of dues) {
       const texte = REPONSES[r.n % REPONSES.length]
-      if (r.type === 'ami') {
+      if (r.type === 'salon') {
+        etat.salon.push({ id: nouveauId(etat), de: r.de, texte, created_at: new Date().toISOString(), masque: false })
+      } else if (r.type === 'ami') {
         etat.amisMessages.push({ id: nouveauId(etat), de: r.de, pour: MOI, texte, created_at: new Date().toISOString(), masque: false })
       } else if (etat.groupes[r.groupe_id]) {
         etat.messages.push({ id: nouveauId(etat), groupe_id: r.groupe_id, de: r.de, genre: 'texte', texte, created_at: new Date().toISOString(), masque: false })
@@ -558,11 +574,41 @@ export async function ecrireAmi(ami, texte) {
   return data
 }
 
+// ---------- La Taverne: le salon ouvert à tous (supabase/ameliorations12.sql) ----------
+
+export async function lireMessagesSalon(apres = 0) {
+  if (modeDemo) {
+    return avecEtat((etat) => etat.salon.filter((m) => m.id > apres).slice(-100).map((m) => versMessage(m, m.de)))
+  }
+  const { data, error } = await supabase.rpc('lire_salon', { p_apres: apres })
+  if (error) throw error
+  return data ?? []
+}
+
+export async function ecrireSalon(texte) {
+  const t = texteValide(texte)
+  if (modeDemo) {
+    return avecEtat((etat) => {
+      if (!lireJoueursDemo().some((j) => j.moi)) throw erreur('personnage requis', '22023')
+      if (etat.salon.filter((m) => m.de === MOI && Date.now() - new Date(m.created_at).getTime() < 10000).length >= 3) throw erreur('trop vite, attends un peu', '54000')
+      if (etat.salon.some((m) => m.de === MOI && m.texte === t && Date.now() - new Date(m.created_at).getTime() < 120000)) throw erreur('trop de messages identiques', '54000')
+      const id = nouveauId(etat)
+      etat.salon.push({ id, de: MOI, texte: t, created_at: new Date().toISOString(), masque: false })
+      planifierReponse(etat, 'salon', null, id % 2 ? 'demo-j-thalyn' : 'demo-j-grumash')
+      return id
+    })
+  }
+  const { data, error } = await supabase.rpc('ecrire_salon', { p_texte: t })
+  if (error) throw error
+  return data
+}
+
 // Efface un de mes messages.
 export async function effacerMessage(type, id) {
   if (modeDemo) {
     avecEtat((etat) => {
       if (type === 'groupe') etat.messages = etat.messages.filter((m) => !(m.id === id && m.de === MOI && m.genre === 'texte'))
+      else if (type === 'salon') etat.salon = etat.salon.filter((m) => !(m.id === id && m.de === MOI))
       else etat.amisMessages = etat.amisMessages.filter((m) => !(m.id === id && m.de === MOI))
     })
     return
@@ -575,14 +621,14 @@ export async function effacerMessage(type, id) {
 export async function signalerMessage(type, id, motif) {
   if (modeDemo) {
     avecEtat((etat) => {
-      const source = type === 'groupe' ? etat.messages : etat.amisMessages
+      const source = type === 'groupe' ? etat.messages : type === 'salon' ? etat.salon : etat.amisMessages
       const m = source.find((x) => x.id === id)
       if (!m || m.de === MOI) throw erreur('message introuvable', 'P0002')
       if (etat.signalements.some((s) => s.type === type && s.message_id === id)) return
       const g = type === 'groupe' ? etat.groupes[m.groupe_id] : null
       etat.signalements.push({
         type, message_id: id, nb: 1, motifs: [motif], dernier: new Date().toISOString(), auteur: m.de,
-        auteur_perso: persoDe(m.de), texte: m.texte, contexte: '', lieu: g ? `Groupe « ${g.titre} »` : 'Message privé entre amis',
+        auteur_perso: persoDe(m.de), texte: m.texte, contexte: '', lieu: g ? `Groupe « ${g.titre} »` : type === 'salon' ? 'Salon public « La Taverne »' : 'Message privé entre amis',
         masque: false, suspendu: false,
       })
     })
@@ -609,6 +655,7 @@ export async function actionMessageModeration(action, type, id) {
       etat.signalements = etat.signalements.filter((s) => !(s.type === type && s.message_id === id))
       if (action === 'effacer') {
         if (type === 'groupe') etat.messages = etat.messages.filter((m) => m.id !== id)
+        else if (type === 'salon') etat.salon = etat.salon.filter((m) => m.id !== id)
         else etat.amisMessages = etat.amisMessages.filter((m) => m.id !== id)
       }
     })

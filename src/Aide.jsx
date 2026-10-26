@@ -81,6 +81,12 @@ export default function Aide({ ouvert, fermer }) {
               décider.
             </li>
             <li>
+              « La Taverne » est un salon ouvert à tous les joueurs connectés, dans l'onglet Messages. Il faut avoir un
+              personnage dans « Mon profil » pour y écrire: ton nom et ta classe s'affichent à côté de tes messages. Les
+              messages sont effacés après 48 heures. Garde ça respectueux: les signalements et les suspensions de compte
+              s'appliquent là aussi.
+            </li>
+            <li>
               Un groupe de donjon (le chef et 4 joueurs) ou un raid avec composition devient « Groupe complet » tout seul
               quand le dernier joueur est accepté, et les demandes se ferment. Le chef peut aussi fermer ou rouvrir les
               demandes à la main (« Groupe complet » sur sa carte). Si quelqu'un part, le groupe se rouvre.

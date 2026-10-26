@@ -8,11 +8,14 @@ import {
   demanderRejoindre,
   ecrireAmi,
   ecrireGroupe,
+  ecrireSalon,
   effacerMessage,
   lireDemandesGroupe,
   lireMembres,
   lireMessagesAmi,
   lireMessagesGroupe,
+  lireMessagesSalon,
+  messagerieAbsente,
   reglerComplet,
   signalerMessage,
 } from './messagerie.js'
@@ -26,6 +29,7 @@ import { SelecteurEmojis, emoticones } from './Emojis.jsx'
 // Message pour l'écran, à partir de l'erreur du serveur.
 export function messageMessagerie(e) {
   if (compteSuspendu(e)) return MESSAGE_COMPTE_SUSPENDU
+  if (messagerieAbsente(e)) return 'Cette fonction n’est pas encore activée sur le site. Elle arrive bientôt.'
   const t = e?.message ?? ''
   if (e?.code === '54000' || /trop|limite|plein/i.test(t)) {
     if (/plein/i.test(t) && /groupe/i.test(t)) return 'Ce groupe est plein.'
@@ -37,6 +41,7 @@ export function messageMessagerie(e) {
   }
   if (e?.code === '55000' || /complet/i.test(t)) return 'Ce groupe est complet.'
   if (/refusée/i.test(t)) return 'Ta demande a été refusée: tu ne peux pas la refaire.'
+  if (/personnage requis/i.test(t)) return 'Crée ton personnage dans « Mon profil » pour jaser dans la Taverne.'
   if (/profil/i.test(t)) return 'Crée d’abord ton profil: le chef doit voir ton personnage.'
   if (/propre annonce/i.test(t)) return 'C’est ta propre annonce.'
   if (/fermé/i.test(t)) return 'Ce groupe est fermé.'
@@ -912,6 +917,41 @@ function ConversationAmi({ conv, retour, apres, annoncer }) {
   )
 }
 
+// ---------- La Taverne: le salon ouvert à tous ----------
+
+function ConversationSalon({ retour, apres, annoncer, aProfil, ouvrirProfil }) {
+  return (
+    <section className="msg-fil" aria-label="La Taverne, salon public">
+      <header className="msg-fil-haut">
+        <button type="button" className="bouton petit msg-retour" onClick={retour}>← Retour</button>
+        <div className="msg-fil-titre">
+          <h3>La Taverne</h3>
+          <ul className="infos"><li className="chip"><Icone nom="discussion" taille={13} />Salon public</li></ul>
+        </div>
+      </header>
+      <p className="aide msg-duree">
+        Tout le monde peut y jaser. Reste respectueux: trois signalements masquent un message. Les messages sont effacés
+        après 48 heures.
+      </p>
+      <Fil
+        type="salon"
+        cible="taverne"
+        lire={(apresId) => lireMessagesSalon(apresId)}
+        ecrire={(t) => ecrireSalon(t)}
+        peutEcrire={aProfil}
+        raison={
+          <>
+            Crée ton personnage dans « Mon profil » pour jaser. Ton nom et ta classe s’affichent à côté de tes messages.{' '}
+            <button type="button" className="lien" onClick={ouvrirProfil}>Créer mon profil</button>
+          </>
+        }
+        apresLecture={apres}
+        annoncer={annoncer}
+      />
+    </section>
+  )
+}
+
 // ---------- L'onglet « Messages » ----------
 
 // ---------- Alertes sur cet appareil (notifications push) ----------
@@ -977,7 +1017,7 @@ function AlertesAppareil({ utilisateur }) {
   )
 }
 
-export function SectionMessages({ utilisateur, onConnexion, conversations, demandes, amis, cible, apres, annoncer }) {
+export function SectionMessages({ utilisateur, onConnexion, conversations, demandes, amis, cible, apres, annoncer, aProfil, ouvrirProfil }) {
   const [choix, setChoix] = useState(null) // { type, id, panneau }
   const [ami, setAmi] = useState(null) // ami choisi sans conversation encore
 
@@ -1017,6 +1057,7 @@ export function SectionMessages({ utilisateur, onConnexion, conversations, deman
     const a = amisListe.find((x) => x.user_id === choix.id)
     if (a) courante = { type: 'ami', cible: a.user_id, titre: a.perso, classe: a.classe, non_lus: 0 }
   }
+  if (!courante && choix?.type === 'salon') courante = { type: 'salon', cible: 'taverne', titre: 'La Taverne', non_lus: 0 }
   const demandeCourante = courante?.type === 'groupe' ? demandes.find((d) => d.groupe_id === courante.cible && d.statut === 'acceptee') : null
 
   const ouvrir = (c) => {
@@ -1033,6 +1074,15 @@ export function SectionMessages({ utilisateur, onConnexion, conversations, deman
       <AlertesAppareil utilisateur={utilisateur} />
     <section className={`messagerie${courante ? ' ouverte' : ''}`} aria-label="Messages">
       <div className="msg-colonne">
+        <h3 className="msg-sous-titre">Salon public</h3>
+        <ul className="msg-liste">
+          <li>
+            <button type="button" className="msg-conv msg-taverne" aria-pressed={courante?.type === 'salon'} onClick={() => ouvrir({ type: 'salon', cible: 'taverne' })}>
+              <span className="msg-conv-haut"><strong>La Taverne</strong></span>
+              <span className="msg-conv-bas"><span className="msg-extrait">Tout le monde peut jaser ici</span></span>
+            </button>
+          </li>
+        </ul>
         {conversations.length === 0 && amisSansConv.length === 0 && (
           <div className="vide">
             <span className="vide-icone" aria-hidden="true"><Icone nom="discussion" taille={30} /></span>
@@ -1119,6 +1169,9 @@ export function SectionMessages({ utilisateur, onConnexion, conversations, deman
           />
         )}
         {courante?.type === 'ami' && <ConversationAmi conv={courante} retour={retour} apres={apres} annoncer={annoncer} />}
+        {courante?.type === 'salon' && (
+          <ConversationSalon retour={retour} apres={apres} annoncer={annoncer} aProfil={!!aProfil} ouvrirProfil={ouvrirProfil} />
+        )}
         {!courante && (
           <p className="aide msg-choisir">Choisis une conversation dans la liste.</p>
         )}

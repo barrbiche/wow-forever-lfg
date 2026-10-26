@@ -40,6 +40,8 @@ Sans configuration, le site tourne en **mode démo**: les annonces restent dans 
 
 15. SQL Editor > New query: colle `supabase/ameliorations11.sql`, puis Run (la boîte à messages « Un bogue ou une idée? »). Les messages arrivent dans Table Editor > `retours` (les plus récents en premier). Sans ce fichier, le formulaire s'affiche mais répond que la boîte n'est pas prête.
 
+16. SQL Editor > New query: colle `supabase/ameliorations12.sql`, puis Run (« La Taverne », le salon de discussion ouvert à tous). À rouler après `ameliorations8.sql` (le chat). Les messages du salon sont effacés après 48 h; les signalements passent par la fenêtre « Modération ». Sans ce fichier, la Taverne s'affiche mais dit qu'elle n'est pas encore activée.
+
 ## Connexion par courriel
 
 Elle marche dès que le projet Supabase existe (le fournisseur « Email » est activé par défaut).

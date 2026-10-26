@@ -3386,6 +3386,7 @@ h2 {
 }
 .msg-fil-corps[data-canal='ami'] { --canal: #ffa6ff; } /* chuchotement */
 .msg-fil-corps[data-canal='groupe'] { --canal: #b4beff; } /* groupe */
+.msg-fil-corps[data-canal='salon'] { --canal: #ffd9a0; } /* la Taverne */
 
 .msg-defil {
   height: min(52vh, 460px);

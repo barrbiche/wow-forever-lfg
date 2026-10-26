@@ -885,6 +885,8 @@ export default function App() {
             cible={chatCible}
             apres={chargerMessagerie}
             annoncer={setMessage}
+            aProfil={aProfil}
+            ouvrirProfil={() => setProfilOuvert(true)}
           />
         ) : vue === 'joueurs' ? (
           <SectionJoueurs

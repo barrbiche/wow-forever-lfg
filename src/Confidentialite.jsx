@@ -66,6 +66,12 @@ export function SectionDonnees() {
           renseignement sensible dans un chat.
         </li>
         <li>
+          <strong>La Taverne (salon public).</strong> Les messages que tu écris dans « La Taverne » sont visibles par
+          tous les joueurs connectés, avec le nom et la classe de ton personnage. Ils sont effacés après 48 heures. Un
+          message signalé est copié, avec les quelques messages qui le précèdent, pour que les personnes qui gèrent le
+          site puissent décider (30 jours).
+        </li>
+        <li>
           <strong>Tes amis.</strong> Ta liste d'amis, tes demandes et les personnes que tu as bloquées ne sont visibles
           que par toi: personne ne voit qui t'a refusé ou bloqué. Une personne à qui tu envoies une demande voit ton
           personnage (nom, classe, niveau, etc.), jamais ton contact ni ton BattleTag. Supprimer ton profil efface tes
