@@ -1078,7 +1078,7 @@ export function SectionMessages({ utilisateur, onConnexion, conversations, deman
       <AlertesAppareil utilisateur={utilisateur} />
     <section className={`messagerie${courante ? ' ouverte' : ''}`} aria-label="Messages">
       <div className="msg-colonne">
-        <h3 className="msg-sous-titre">Salon public</h3>
+        <h2 className="msg-sous-titre">Salon public</h2>
         <ul className="msg-liste">
           <li>
             <button type="button" className="msg-conv msg-taverne" aria-pressed={courante?.type === 'salon'} onClick={() => ouvrir({ type: 'salon', cible: 'taverne' })}>
@@ -1098,7 +1098,7 @@ export function SectionMessages({ utilisateur, onConnexion, conversations, deman
         )}
         {groupes.length > 0 && (
           <>
-            <h3 className="msg-sous-titre">Groupes</h3>
+            <h2 className="msg-sous-titre">Groupes</h2>
             <ul className="msg-liste">
               {groupes.map((c) => (
                 <li key={c.cible}>
@@ -1141,7 +1141,7 @@ export function SectionMessages({ utilisateur, onConnexion, conversations, deman
         )}
         {discussions.length > 0 && (
           <>
-            <h3 className="msg-sous-titre">Amis</h3>
+            <h2 className="msg-sous-titre">Amis</h2>
             <ul className="msg-liste">
               {discussions.map((c) => (
                 <li key={c.cible}>

@@ -2755,6 +2755,9 @@ h2 {
 .guides-pied {
   margin: 22px 0 0;
   max-width: 70ch;
+  padding: 12px 14px;
+  background: var(--surface);
+  border-radius: 8px;
 }
 
 @media (max-width: 480px) {
