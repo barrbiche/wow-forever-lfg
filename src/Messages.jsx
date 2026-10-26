@@ -1046,7 +1046,11 @@ export function SectionMessages({ utilisateur, onConnexion, conversations, deman
     )
   }
 
-  const groupes = conversations.filter((c) => c.type === 'groupe')
+  // Un groupe dont l'annonce est terminée (expirée ou retirée) quitte la liste principale: il passe dans « Groupes terminés ».
+  // Il reste lisible 24 heures, le temps de donner des pouces, puis le serveur l'efface.
+  const finie = (c) => !!c.fin_le && new Date(c.fin_le).getTime() <= Date.now()
+  const groupes = conversations.filter((c) => c.type === 'groupe' && !finie(c))
+  const groupesTermines = conversations.filter((c) => c.type === 'groupe' && finie(c))
   const discussions = conversations.filter((c) => c.type === 'ami')
   const amisListe = (amis ?? []).filter((a) => a.lien === 'ami')
   const amisSansConv = amisListe.filter((a) => !discussions.some((c) => c.cible === a.user_id))
@@ -1113,6 +1117,27 @@ export function SectionMessages({ utilisateur, onConnexion, conversations, deman
               ))}
             </ul>
           </>
+        )}
+        {groupesTermines.length > 0 && (
+          <details className="msg-nouveau msg-termines" open={!!courante && finie(courante)}>
+            <summary>Groupes terminés ({groupesTermines.length})</summary>
+            <ul className="msg-liste">
+              {groupesTermines.map((c) => (
+                <li key={c.cible}>
+                  <button type="button" className="msg-conv" aria-pressed={courante?.cible === c.cible} onClick={() => ouvrir(c)}>
+                    <span className="msg-conv-haut">
+                      <strong>{c.titre}</strong>
+                      {c.dernier_le && <span className="depuis">{depuis(c.dernier_le)}</span>}
+                    </span>
+                    <span className="msg-conv-bas">
+                      <span className="msg-extrait">{c.extrait || 'Annonce terminée'}</span>
+                      {c.non_lus > 0 && <span className="pastille-nombre" aria-label={`${c.non_lus} non lus`}>{c.non_lus}</span>}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </details>
         )}
         {discussions.length > 0 && (
           <>

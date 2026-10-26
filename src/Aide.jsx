@@ -71,8 +71,8 @@ export default function Aide({ ouvert, fermer }) {
             </li>
             <li>
               Une fois accepté, tu as accès au chat du groupe (onglet Messages) et tu reçois le contact du chef. Seuls
-              le chef et les joueurs acceptés lisent le chat. Il est effacé 24 heures après la fin de l'annonce
-              (expirée ou retirée).
+              le chef et les joueurs acceptés lisent le chat. Quand l'annonce se termine (expirée ou retirée), le chat
+              quitte ta liste de groupes et passe dans « Groupes terminés »; il est effacé 24 heures plus tard.
             </li>
             <li>
               Tu peux aussi écrire à tes amis: « Écrire » sur leur carte, dans l'onglet Joueurs. Ces messages-là sont
