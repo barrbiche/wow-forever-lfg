@@ -3756,3 +3756,29 @@ h2 {
 .champ-mdp { display: flex; gap: 8px; align-items: stretch; }
 .champ-mdp input { flex: 1; min-width: 0; }
 .liens-connexion { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; margin: 12px 0 0; }
+
+/* Étiquette « Bêta » et boîte à messages */
+.beta-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 10px 0 0;
+  max-width: 52ch;
+  font-size: 0.88rem;
+  color: var(--haut-doux);
+}
+
+.etiquette-beta {
+  padding: 1px 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #1c1405;
+  background: var(--gold-light);
+  border-radius: 999px;
+}
+
+.dialogue-connexion .champ select,
+.dialogue-connexion .champ textarea {
+  max-width: 100%;
+}

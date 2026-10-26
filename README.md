@@ -38,6 +38,8 @@ Sans configuration, le site tourne en **mode démo**: les annonces restent dans 
 
 14. SQL Editor > New query: colle `supabase/ameliorations10.sql`, puis Run (groupe complet, statistiques, annonces qui se répètent, alertes). À rouler après `ameliorations8.sql` (et 9 si tu l'as). Chaque partie du fichier a un titre « PARTIE n »; on peut le relancer sans problème (si tu relances `ameliorations8.sql`, relance `ameliorations10.sql` juste après). Le site marche avec ou sans ce fichier: tant qu'une partie manque, la fonction correspondante ne s'affiche tout simplement pas.
 
+15. SQL Editor > New query: colle `supabase/ameliorations11.sql`, puis Run (la boîte à messages « Un bogue ou une idée? »). Les messages arrivent dans Table Editor > `retours` (les plus récents en premier). Sans ce fichier, le formulaire s'affiche mais répond que la boîte n'est pas prête.
+
 ## Connexion par courriel
 
 Elle marche dès que le projet Supabase existe (le fournisseur « Email » est activé par défaut).

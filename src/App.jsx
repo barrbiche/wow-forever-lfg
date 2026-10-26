@@ -93,6 +93,7 @@ import {
   texteNouvelleAnnonce,
 } from './alertes.jsx'
 import Aide from './Aide.jsx'
+import DialogueRetour from './Retours.jsx'
 import { DialogueDemande, SectionMessages, ZoneRejoindre } from './Messages.jsx'
 import { lireConversations, lireMesDemandes, lirePlaces, messagerieAbsente } from './messagerie.js'
 import SectionGuildes from './Guildes.jsx'
@@ -242,6 +243,7 @@ export default function App() {
   const [guildes, setGuildes] = useState(null) // null: pas encore disponibles (ex.: base pas à jour)
   const [vue, setVue] = useState(() => (new URLSearchParams(window.location.search).get('vue') === 'messages' ? 'messages' : 'groupes'))
   const [aideOuverte, setAideOuverte] = useState(false)
+  const [retourOuvert, setRetourOuvert] = useState(false)
   const [lien] = useState(lireLienDirect)
   const [lienTraite, setLienTraite] = useState(false)
   const [ciblee, setCiblee] = useState(null) // { type: 'annonce' | 'guilde', id }
@@ -725,6 +727,11 @@ export default function App() {
               Trouve ton groupe pour les donjons{raids ? ', les raids' : ''} et le PvP. Pour le Québec et la
               francophonie.
             </p>
+            <p className="beta-note">
+              <span className="etiquette-beta">Bêta</span>
+              Le site est en test: des bogues sont possibles.
+              <button type="button" className="lien" onClick={() => setRetourOuvert(true)}>Écris-nous</button>
+            </p>
             <div className="actions">
               {utilisateur ? (
                 <p className="session">
@@ -1072,6 +1079,10 @@ export default function App() {
             <button type="button" className="lien" onClick={() => setAideOuverte(true)}>
               Comment ça marche, règles et données personnelles
             </button>
+            {' · '}
+            <button type="button" className="lien" onClick={() => setRetourOuvert(true)}>
+              Un bogue ou une idée?
+            </button>
           </p>
           <ChoixPubs />
           {lienDons && (
@@ -1102,6 +1113,14 @@ export default function App() {
       )}
 
       <Aide ouvert={aideOuverte} fermer={() => setAideOuverte(false)} />
+      {retourOuvert && (
+        <DialogueRetour
+          fermer={() => setRetourOuvert(false)}
+          utilisateur={utilisateur}
+          onConnexion={ouvrirConnexion}
+          annoncer={setMessage}
+        />
+      )}
       <BandeauPubs />
       {nouveauMdp && <NouveauMotDePasse fermer={() => setNouveauMdp(false)} annoncer={setMessage} />}
 

@@ -83,6 +83,11 @@ export function SectionDonnees() {
           de données. Tes signalements restent eux aussi privés.
         </li>
         <li>
+          <strong>Les messages « Bogue ou idée ».</strong> Si tu écris à la personne qui fait le site, ton message est
+          gardé avec le nom de ton personnage, ton type de navigateur et la date, jamais avec ton courriel. Seules les
+          personnes qui gèrent le site peuvent le lire.
+        </li>
+        <li>
           <strong>Dans ton navigateur.</strong> Le site garde chez toi le style que tu as choisi, la langue de ton jeu,
           ton alerte de nouvelles annonces, ton personnage et ton contact (pour préremplir tes prochaines annonces) et
           ta connexion. {pubsActives

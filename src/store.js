@@ -559,6 +559,18 @@ export async function signaler(type, id, motif) {
   if (error && error.code !== '23505') throw error
 }
 
+// ---------- Boîte à messages (bogue, idée) ----------
+
+export async function envoyerRetour(categorie, texte) {
+  if (modeDemo) return
+  const { error } = await supabase.rpc('envoyer_retour', {
+    p_categorie: categorie,
+    p_texte: texte,
+    p_navigateur: typeof navigator === 'undefined' ? null : navigator.userAgent,
+  })
+  if (error) throw error
+}
+
 // ---------- Profil gardé dans le navigateur (personnage, classe, contact...) ----------
 
 export function lireProfil() {
