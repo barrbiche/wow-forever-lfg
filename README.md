@@ -56,7 +56,7 @@ Google est la connexion la plus simple pour la plupart des gens, et elle ne dép
 3. Menu > **Google Auth Platform** > Get started (ou Branding): nom de l'application « Babillard Forever », ton courriel d'assistance, public (Audience) **External**, ton courriel de contact. Dans Branding, mets l'adresse du site comme page d'accueil.
 4. **Audience** > **Publish app** (« In production »). Sinon, seuls les comptes que tu ajoutes comme testeurs peuvent se connecter. Le site ne demande que les permissions de base (courriel et profil): d'après la doc de Supabase, seules les permissions sensibles demandent une vérification de Google.
 5. **Clients** > Create client > type **Web application**:
-   - Authorized JavaScript origins: l'adresse du site (`https://babillard-forever.netlify.app`).
+   - Authorized JavaScript origins: l'adresse du site (`https://babillard-forever.com`).
    - Authorized redirect URIs: la « Callback URL » copiée à l'étape 1.
    - Copie le **Client ID** et le **Client Secret**.
 6. Retourne dans Supabase, même page Google: active-le, colle le Client ID et le Client Secret, **Save**.
@@ -151,12 +151,12 @@ Ancienne installation (gardée pour mémoire): `supabase/discord.sql` créait l'
 
 Facultatif. Sans ces réglages, rien ne s'affiche et le reste du site marche pareil.
 
-1. **Netlify** (Site configuration > Environment variables), 5 variables: `VAPID_PUBLIC` (clé publique), `VAPID_PRIVE` (clé privée, à ne jamais partager), `VAPID_SUJET` (`https://babillard-forever.netlify.app`), `PUSH_SECRET` (mot de passe entre la base et le site) et `VITE_VAPID_PUBLIC` (la même valeur que `VAPID_PUBLIC`). Puis Deploys > Trigger deploy. Pour fabriquer de nouvelles clés: `npx web-push generate-vapid-keys`.
+1. **Netlify** (Site configuration > Environment variables), 5 variables: `VAPID_PUBLIC` (clé publique), `VAPID_PRIVE` (clé privée, à ne jamais partager), `VAPID_SUJET` (`https://babillard-forever.com`), `PUSH_SECRET` (mot de passe entre la base et le site) et `VITE_VAPID_PUBLIC` (la même valeur que `VAPID_PUBLIC`). Puis Deploys > Trigger deploy. Pour fabriquer de nouvelles clés: `npx web-push generate-vapid-keys`.
 2. **Supabase** (SQL Editor): roule `ameliorations10.sql`, puis ces deux lignes (avec ton adresse et le même `PUSH_SECRET`):
 
 ```sql
 insert into public.reglages (cle, valeur) values
-  ('push_url', 'https://babillard-forever.netlify.app/.netlify/functions/push'),
+  ('push_url', 'https://babillard-forever.com/.netlify/functions/push'),
   ('push_secret', 'LE_MEME_PUSH_SECRET')
 on conflict (cle) do update set valeur = excluded.valeur;
 ```

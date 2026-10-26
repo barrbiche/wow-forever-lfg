@@ -45,7 +45,7 @@ export async function traiter(requete, { env, envoyer }) {
 export default async (requete) => {
   const env = process.env
   if (env.VAPID_PUBLIC && env.VAPID_PRIVE) {
-    webpush.setVapidDetails(env.VAPID_SUJET || 'https://babillard-forever.netlify.app', env.VAPID_PUBLIC, env.VAPID_PRIVE)
+    webpush.setVapidDetails(env.VAPID_SUJET || 'https://babillard-forever.com', env.VAPID_PUBLIC, env.VAPID_PRIVE)
   }
   return traiter(requete, {
     env,
