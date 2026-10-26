@@ -1508,6 +1508,18 @@ h2 {
   color: var(--ink);
 }
 
+.jour-nombre {
+  min-width: 1.6em;
+  padding: 0 7px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.6;
+  text-align: center;
+  color: #1c1405;
+  background: var(--gold-light);
+  border-radius: 999px;
+}
+
 .chip.classe {
   display: inline-flex;
   align-items: center;

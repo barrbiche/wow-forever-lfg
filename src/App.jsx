@@ -581,6 +581,22 @@ export default function App() {
     return filtres.planifies ? [...liste].sort((a, b) => new Date(a.debut) - new Date(b.debut)) : liste
   }, [sansFaction, filtres.faction, filtres.planifies])
 
+  // « Ce soir »: les groupes planifiés qui commencent d'ici la fin de la soirée (4 h du matin), du plus proche départ au
+  // plus lointain. Ils passent en haut de la liste. Quand l'agenda (filtre « Planifiés ») est ouvert, il fait déjà ce travail.
+  const { ceSoir, autres } = useMemo(() => {
+    if (filtres.planifies) return { ceSoir: [], autres: visibles }
+    const maintenant = new Date()
+    const fin = new Date(maintenant)
+    fin.setHours(4, 0, 0, 0)
+    if (fin <= maintenant) fin.setDate(fin.getDate() + 1)
+    const soir = visibles
+      .filter((a) => a.debut && new Date(a.debut) < fin)
+      .sort((a, b) => new Date(a.debut) - new Date(b.debut))
+    const ids = new Set(soir.map((a) => a.id))
+    return { ceSoir: soir, autres: visibles.filter((a) => !ids.has(a.id)) }
+  }, [visibles, filtres.planifies])
+  const ordre = useMemo(() => (filtres.planifies ? visibles : [...ceSoir, ...autres]), [filtres.planifies, visibles, ceSoir, autres])
+
   const guildesSansFaction = useMemo(
     () => (guildes ?? []).filter((g) => !filtres.langue || g.langue === filtres.langue),
     [guildes, filtres.langue],
@@ -1035,10 +1051,22 @@ export default function App() {
               </div>
             ) : (
               <ul className="liste">
-                {visibles.map((a, i) => (
+                {ordre.map((a, i) => (
                   <Fragment key={a.id}>
-                    {filtres.planifies && (i === 0 || jourTexte(a.debut) !== jourTexte(visibles[i - 1].debut)) && (
+                    {filtres.planifies && (i === 0 || jourTexte(a.debut) !== jourTexte(ordre[i - 1].debut)) && (
                       <li className="jour"><h2>{jourTexte(a.debut)}</h2></li>
+                    )}
+                    {ceSoir.length > 0 && i === 0 && (
+                      <li className="jour jour-soir">
+                        <h2>
+                          <Icone nom="horloge" taille={18} />
+                          Ce soir
+                          <span className="jour-nombre">{ceSoir.length}</span>
+                        </h2>
+                      </li>
+                    )}
+                    {ceSoir.length > 0 && autres.length > 0 && i === ceSoir.length && (
+                      <li className="jour"><h2>Autres annonces</h2></li>
                     )}
                     <li>
                       <Carte
@@ -1385,7 +1413,7 @@ function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietai
                 Voir le guide
               </button>
             )}
-            <LienDirect type="annonce" id={a.id} />
+            <LienDirect type="annonce" id={a.id} invitation={!joueur} titre={a.cible} />
             {probleme && <p className="msg-erreur" role="alert">{probleme}</p>}
           </div>
         ) : (

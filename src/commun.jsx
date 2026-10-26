@@ -319,11 +319,20 @@ export function CommandeAnnonce({ annonce }) {
 }
 
 // Copie l'adresse directe d'une annonce ou d'une guilde (type: 'annonce' ou 'guilde').
-export function LienDirect({ type, id }) {
+export function LienDirect({ type, id, titre = '', invitation = false }) {
   const [copie, setCopie] = useState(false)
 
   const copier = async () => {
     const adresse = `${window.location.origin}/?${type}=${encodeURIComponent(id)}`
+    // Sur téléphone, « Inviter » ouvre le partage du téléphone (Messenger, texto...). Ailleurs, le lien est copié.
+    if (invitation && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: titre || 'Babillard Forever', text: titre ? `Rejoins mon groupe: ${titre}` : 'Rejoins mon groupe', url: adresse })
+        return
+      } catch (e) {
+        if (e?.name === 'AbortError') return
+      }
+    }
     try {
       await navigator.clipboard.writeText(adresse)
       setCopie(true)
@@ -334,6 +343,13 @@ export function LienDirect({ type, id }) {
     }
   }
 
+  if (invitation) {
+    return (
+      <button type="button" className="bouton petit" onClick={copier}>
+        {copie ? 'Lien copié' : 'Inviter des amis'}
+      </button>
+    )
+  }
   return (
     <button type="button" className="lien signaler" onClick={copier}>
       {copie ? 'Lien copié' : 'Copier le lien'}
