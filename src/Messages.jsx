@@ -475,7 +475,8 @@ function SignalerMessage({ type, id, fermer, annoncer }) {
 
 function Message({ m, type, supprimer, annoncer }) {
   const [signalement, setSignalement] = useState(false)
-  if (m.genre !== 'texte') {
+  // Les messages d'amis n'ont pas de « genre »: sans genre, c'est un message normal.
+  if (m.genre && m.genre !== 'texte') {
     return (
       <li className="msg-systeme">
         <strong>{m.perso}</strong> {TEXTE_SYSTEME[m.genre]}

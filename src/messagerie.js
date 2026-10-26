@@ -536,7 +536,7 @@ export async function lireMessagesAmi(ami, apres = 0) {
   }
   const { data, error } = await supabase.rpc('lire_ami', { p_ami: ami, p_apres: apres })
   if (error) throw error
-  return data ?? []
+  return (data ?? []).map((m) => ({ genre: 'texte', ...m }))
 }
 
 export async function ecrireAmi(ami, texte) {
