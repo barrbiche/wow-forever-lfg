@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { MESSAGE_COMPTE_SUSPENDU, compteSuspendu, recommander } from './store.js'
 import { activerPush, desactiverPush, etatPush, pushConfigure } from './push.js'
 import {
@@ -18,6 +18,7 @@ import {
 } from './messagerie.js'
 import { CLASSES, MOTIFS_MESSAGE, ROLES, STYLES, nomDe } from './data.js'
 import { ChipClasse, Icone, depuis, reste } from './commun.jsx'
+import { SelecteurEmojis, emoticones } from './Emojis.jsx'
 
 // Demandes pour rejoindre, chat de groupe et chat entre amis (supabase/ameliorations8.sql).
 // Le serveur décide de tout; ici on affiche, et on traduit les erreurs en phrases claires.
@@ -45,11 +46,6 @@ export function messageMessagerie(e) {
 }
 
 const heure = (iso) => new Date(iso).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' })
-function jourHeure(iso) {
-  const d = new Date(iso)
-  const aujourdhui = d.toDateString() === new Date().toDateString()
-  return aujourdhui ? heure(iso) : `${d.toLocaleDateString('fr-CA', { day: 'numeric', month: 'short' })} ${heure(iso)}`
-}
 const couleurClasse = (id) => CLASSES.find((c) => c.id === id)?.couleur
 
 // ---------- Sur la carte d'une annonce ----------
@@ -479,33 +475,46 @@ function Message({ m, type, supprimer, annoncer }) {
   if (m.genre && m.genre !== 'texte') {
     return (
       <li className="msg-systeme">
-        <strong>{m.perso}</strong> {TEXTE_SYSTEME[m.genre]}
+        <time className="msg-heure" dateTime={m.created_at}>{heure(m.created_at)}</time>
+        <span><strong>{m.perso}</strong> {TEXTE_SYSTEME[m.genre]}</span>
       </li>
     )
   }
   return (
     <li className={`msg${m.moi ? ' moi' : ''}${m.masque ? ' masque' : ''}`}>
-      <div className="msg-entete">
-        <strong style={{ '--anneau': couleurClasse(m.classe) }} className="msg-auteur">{m.moi ? 'Toi' : m.perso}</strong>
-        <time dateTime={m.created_at}>{jourHeure(m.created_at)}</time>
-      </div>
-      {m.masque ? (
-        <p className="msg-texte">Message masqué: il a été signalé et il est en vérification.</p>
-      ) : (
-        <p className="msg-texte">{m.texte}</p>
-      )}
+      <time className="msg-heure" dateTime={m.created_at}>{heure(m.created_at)}</time>
+      <span className="msg-ligne">
+        <strong style={{ '--classe': couleurClasse(m.classe) }} className="msg-auteur">{m.moi ? 'Toi' : m.perso}</strong>
+        <span aria-hidden="true">: </span>
+        {m.masque ? (
+          <span className="msg-texte">Message masqué: il a été signalé et il est en vérification.</span>
+        ) : (
+          <span className="msg-texte">{m.texte}</span>
+        )}
+      </span>
       {!m.masque && (
-        <div className="msg-outils">
+        <span className="msg-outils">
           {m.moi ? (
             <button type="button" className="lien signaler" onClick={() => supprimer(m)}>Effacer</button>
           ) : (
             !signalement && <button type="button" className="lien signaler" onClick={() => setSignalement(true)}>Signaler</button>
           )}
-        </div>
+        </span>
       )}
       {signalement && <SignalerMessage type={type} id={m.id} fermer={() => setSignalement(false)} annoncer={annoncer} />}
     </li>
   )
+}
+
+// Heure du message (« 16 h 20 ») et séparateur de jour (« Aujourd'hui », « Hier », « 24 octobre »).
+const cleJour = (iso) => new Date(iso).toLocaleDateString('fr-CA')
+function nomJour(iso) {
+  const d = new Date(iso)
+  const jour = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  const ecart = Math.round((jour(new Date()) - jour(d)) / 86400000)
+  if (ecart === 0) return "Aujourd'hui"
+  if (ecart === 1) return 'Hier'
+  return d.toLocaleDateString('fr-CA', { day: 'numeric', month: 'long' })
 }
 
 // ---------- Le fil de messages (groupe ou ami) ----------
@@ -519,6 +528,7 @@ function Fil({ type, cible, lire, ecrire, peutEcrire, raison, apresLecture, anno
   const [probleme, setProbleme] = useState('')
   const dernierRef = useRef(0)
   const defilRef = useRef(null)
+  const zoneRef = useRef(null)
   const toutBasRef = useRef(true)
   const tourRef = useRef(0)
   const lireRef = useRef(lire)
@@ -590,7 +600,7 @@ function Fil({ type, cible, lire, ecrire, peutEcrire, raison, apresLecture, anno
 
   const envoyer = async (e) => {
     e?.preventDefault()
-    const t = texte.trim()
+    const t = emoticones(texte.trim())
     if (!t || envoi) return
     setEnvoi(true)
     setProbleme('')
@@ -615,6 +625,21 @@ function Fil({ type, cible, lire, ecrire, peutEcrire, raison, apresLecture, anno
     }
   }
 
+  // Insère l'émoticône là où est le curseur, puis remet le curseur juste après.
+  const ajouterEmoji = (emoji) => {
+    const z = zoneRef.current
+    const debut = z ? z.selectionStart : texte.length
+    const fin = z ? z.selectionEnd : texte.length
+    const suite = (texte.slice(0, debut) + emoji + texte.slice(fin)).slice(0, LONGUEUR_MESSAGE)
+    setTexte(suite)
+    requestAnimationFrame(() => {
+      if (!z) return
+      z.focus()
+      const pos = Math.min(debut + emoji.length, suite.length)
+      z.setSelectionRange(pos, pos)
+    })
+  }
+
   const touche = (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
@@ -623,7 +648,7 @@ function Fil({ type, cible, lire, ecrire, peutEcrire, raison, apresLecture, anno
   }
 
   return (
-    <div className="msg-fil-corps">
+    <div className="msg-fil-corps" data-canal={type}>
       <div className="msg-defil" ref={defilRef} onScroll={suivreDefilement} tabIndex={0} aria-label="Messages" role="log" aria-live="polite">
         {chargement && <p className="aide" role="status">Chargement des messages…</p>}
         {erreur && <p className="msg-erreur" role="alert">{erreur}</p>}
@@ -631,8 +656,13 @@ function Fil({ type, cible, lire, ecrire, peutEcrire, raison, apresLecture, anno
           <p className="aide msg-vide">Aucun message pour l’instant. Dis bonjour!</p>
         )}
         <ul className="msg-liste-messages">
-          {messages.map((m) => (
-            <Message key={m.id} m={m} type={type} supprimer={supprimer} annoncer={annoncer} />
+          {messages.map((m, i) => (
+            <Fragment key={m.id}>
+              {(i === 0 || cleJour(m.created_at) !== cleJour(messages[i - 1].created_at)) && (
+                <li className="msg-jour" aria-hidden="true"><span>{nomJour(m.created_at)}</span></li>
+              )}
+              <Message m={m} type={type} supprimer={supprimer} annoncer={annoncer} />
+            </Fragment>
           ))}
         </ul>
       </div>
@@ -641,6 +671,7 @@ function Fil({ type, cible, lire, ecrire, peutEcrire, raison, apresLecture, anno
           <label className="sr" htmlFor="msg-texte">Ton message</label>
           <textarea
             id="msg-texte"
+            ref={zoneRef}
             rows={2}
             maxLength={LONGUEUR_MESSAGE}
             value={texte}
@@ -649,7 +680,10 @@ function Fil({ type, cible, lire, ecrire, peutEcrire, raison, apresLecture, anno
             placeholder="Écris ton message… (Entrée pour envoyer)"
             autoComplete="off"
           />
-          <button type="submit" className="bouton principal" disabled={envoi || !texte.trim()}>Envoyer</button>
+          <div className="msg-composer-actions">
+            <SelecteurEmojis choisir={ajouterEmoji} />
+            <button type="submit" className="bouton principal" disabled={envoi || !texte.trim()}>Envoyer</button>
+          </div>
           {texte.length > LONGUEUR_MESSAGE - 100 && <small className="compteur">{texte.length} / {LONGUEUR_MESSAGE}</small>}
           {probleme && <p className="msg-erreur" role="alert">{probleme}</p>}
         </form>
