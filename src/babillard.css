@@ -613,6 +613,11 @@ body::before {
     display: grid;
   }
 
+  /* Une annonce seule dans sa section prend toute la largeur. */
+  .liste > li.seule {
+    grid-column: 1 / -1;
+  }
+
   /* Les étiquettes de date (agenda) occupent toute la largeur. */
   .liste > .jour {
     grid-column: 1 / -1;
@@ -800,4 +805,43 @@ body::before {
   border-radius: var(--r-papier);
   border-color: color-mix(in srgb, var(--line) 80%, #000);
   box-shadow: 0 14px 40px rgb(0 0 0 / 0.4);
+}
+
+/* ---------- Pied de page en trois zones: infos, liens et soutien, avis légal ---------- */
+
+.pied-note {
+  margin: 0 0 14px;
+  max-width: 70ch;
+}
+
+.pied-zones {
+  display: grid;
+  gap: 14px 32px;
+  padding: 14px 0;
+  border-top: 1px dashed var(--line);
+  border-bottom: 1px dashed var(--line);
+  margin-bottom: 12px;
+}
+
+.pied-liens {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  justify-items: start;
+}
+
+.pied-soutien {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.pied-soutien > * {
+  margin: 0;
+}
+
+@media (min-width: 720px) {
+  .pied-zones {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  }
 }

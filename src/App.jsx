@@ -606,6 +606,9 @@ export default function App() {
     return { ceSoir: soir, autres: visibles.filter((a) => !ids.has(a.id)) }
   }, [visibles, filtres.planifies])
   const ordre = useMemo(() => (filtres.planifies ? visibles : [...ceSoir, ...autres]), [filtres.planifies, visibles, ceSoir, autres])
+  // Une annonce seule dans sa section (« Ce soir », « Autres annonces », un jour de l'agenda) prend toute la largeur: pas de trou à côté.
+  const sections = ordre.map((a, i) => (i < ceSoir.length ? 'soir' : filtres.planifies ? jourTexte(a.debut) : 'autres'))
+  const seule = (i) => sections[i - 1] !== sections[i] && sections[i + 1] !== sections[i]
 
   const guildesSansFaction = useMemo(
     () => (guildes ?? []).filter((g) => !filtres.langue || g.langue === filtres.langue),
@@ -975,7 +978,7 @@ export default function App() {
           <>
             <section className="filtres" aria-label="Filtres">
               <div className="filtres-ligne">
-                <div className="segments quatre" role="group" aria-label="Type d'activité">
+                <div className={`segments${raids ? ' quatre' : ''}`} role="group" aria-label="Type d'activité">
                   {[
                     ['tout', 'Tout'],
                     ['donjon', 'Donjons'],
@@ -1116,7 +1119,7 @@ export default function App() {
                     {ceSoir.length > 0 && autres.length > 0 && i === ceSoir.length && (
                       <li className="jour"><h2>Autres annonces</h2></li>
                     )}
-                    <li>
+                    <li className={seule(i) ? 'seule' : undefined}>
                       <Carte
                         annonce={a}
                         nouvelle={nouvelles.has(a.id)}
@@ -1146,33 +1149,36 @@ export default function App() {
 
         <footer className="pied">
           <Achalandage />
-          <p>
+          <p className="pied-note">
             Les annonces disparaissent toutes seules quand leur durée est écoulée. Dans Forever, les groupes
             Alliance et Horde ne se mélangent pas.
           </p>
-          <p>
-            <button type="button" className="lien" onClick={() => setAideOuverte(true)}>
-              Comment ça marche, règles et données personnelles
-            </button>
-            {' · '}
-            <button type="button" className="lien" onClick={() => setRetourOuvert(true)}>
-              Un bogue ou une idée?
-            </button>
-          </p>
-          <ChoixPubs />
-          {lienDons && (
-            <p className="soutien">
-              <a className="bouton petit" href={lienDons} target="_blank" rel="noopener noreferrer">
-                <Icone nom="coeur" taille={15} />
-                Soutenir le site
-              </a>
-              <span className="aide">
-                {pubsActives
-                  ? 'Le site est gratuit. Un don aide à le garder en ligne. Les supporters reçoivent un badge et ne voient pas la pub.'
-                  : 'Le site est gratuit et sans pub. Un don aide à le garder en ligne. Les supporters reçoivent un badge.'}
-              </span>
-            </p>
-          )}
+          <div className="pied-zones">
+            <nav className="pied-liens" aria-label="Aide et contact">
+              <button type="button" className="lien" onClick={() => setAideOuverte(true)}>
+                Comment ça marche, règles et données personnelles
+              </button>
+              <button type="button" className="lien" onClick={() => setRetourOuvert(true)}>
+                Un bogue ou une idée?
+              </button>
+            </nav>
+            <div className="pied-soutien">
+              <ChoixPubs />
+              {lienDons && (
+                <p className="soutien">
+                  <a className="bouton petit" href={lienDons} target="_blank" rel="noopener noreferrer">
+                    <Icone nom="coeur" taille={15} />
+                    Soutenir le site
+                  </a>
+                  <span className="aide">
+                    {pubsActives
+                      ? 'Le site est gratuit. Un don aide à le garder en ligne. Les supporters reçoivent un badge et ne voient pas la pub.'
+                      : 'Le site est gratuit et sans pub. Un don aide à le garder en ligne. Les supporters reçoivent un badge.'}
+                  </span>
+                </p>
+              )}
+            </div>
+          </div>
           <p className="avis">
             Babillard Forever est un site de fans, sans lien avec Blizzard Entertainment. World of Warcraft est une
             marque de Blizzard Entertainment, Inc.
