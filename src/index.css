@@ -350,13 +350,94 @@ h2 {
   margin: 0;
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px 12px;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 7px 10px 7px 7px;
+  border: 1px solid var(--haut-bord);
+  border-radius: 14px;
+  background: rgb(255 255 255 / 0.06);
   font-size: 0.92rem;
   color: var(--haut-doux);
 }
 
-.session strong {
+.session-id {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.session-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, var(--gold-light), var(--gold));
+  box-shadow: 0 0 0 2px rgb(0 0 0 / 0.35), 0 0 0 3px var(--gold-line);
+  color: var(--gold-ink);
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+
+.session-nom {
+  display: grid;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.session-nom small {
+  font-size: 0.74rem;
+  color: var(--haut-doux);
+}
+
+.session-nom strong {
+  color: var(--haut-ink);
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.session-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.session-bouton {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid var(--haut-bord);
+  border-radius: 9px;
+  background: rgb(255 255 255 / 0.08);
+  color: var(--haut-ink);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.session-bouton:hover {
+  background: rgb(255 255 255 / 0.17);
+}
+
+.session-bouton:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+}
+
+.session-bouton.discret {
+  border-color: transparent;
+  background: transparent;
+  color: var(--haut-doux);
+}
+
+.session-bouton.discret:hover {
+  background: rgb(255 255 255 / 0.1);
   color: var(--haut-ink);
 }
 

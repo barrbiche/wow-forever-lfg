@@ -767,14 +767,31 @@ export default function App() {
             </p>
             <div className="actions">
               {utilisateur ? (
-                <p className="session">
-                  <span>Connecté: <strong>{utilisateur.nom}</strong></span>
-                  <button type="button" className="lien" onClick={() => setProfilOuvert(true)}>Mon profil</button>
-                  {moderateur && (
-                    <button type="button" className="lien" onClick={() => setModerationOuverte(true)}>Modération</button>
-                  )}
-                  <button type="button" className="lien" onClick={async () => { await retirerAlertesAppareil(); await deconnecter() }}>Se déconnecter</button>
-                </p>
+                <div className="session">
+                  <span className="session-id">
+                    <span className="session-avatar" aria-hidden="true">{(utilisateur.nom || '?').trim().charAt(0).toUpperCase()}</span>
+                    <span className="session-nom">
+                      <small>Connecté</small>
+                      <strong>{utilisateur.nom}</strong>
+                    </span>
+                  </span>
+                  <span className="session-actions">
+                    <button type="button" className="session-bouton" onClick={() => setProfilOuvert(true)}>
+                      <Icone nom="joueur" taille={15} />
+                      Mon profil
+                    </button>
+                    {moderateur && (
+                      <button type="button" className="session-bouton" onClick={() => setModerationOuverte(true)}>
+                        <Icone nom="bouclier" taille={15} />
+                        Modération
+                      </button>
+                    )}
+                    <button type="button" className="session-bouton discret" onClick={async () => { await retirerAlertesAppareil(); await deconnecter() }}>
+                      <Icone nom="sortie" taille={15} />
+                      Se déconnecter
+                    </button>
+                  </span>
+                </div>
               ) : (
                 <button type="button" className="bouton" onClick={ouvrirConnexion}>
                   Se connecter
