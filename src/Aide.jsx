@@ -32,7 +32,7 @@ export default function Aide({ ouvert, fermer }) {
           <h3>En quatre étapes</h3>
           <ol className="etapes">
             <li>
-              <strong>Regarde les annonces.</strong> Tout se lit sans compte: donjons, raids et PvP, Alliance et Horde,
+              <strong>Regarde les annonces.</strong> Tout se lit sans compte: donjons, raids, PvP et quêtes (pour monter de niveau ensemble), Alliance et Horde,
               Amérique et Europe.
             </li>
             <li>
@@ -87,7 +87,7 @@ export default function Aide({ ouvert, fermer }) {
               s'appliquent là aussi.
             </li>
             <li>
-              Un groupe de donjon (le chef et 4 joueurs) ou un raid avec composition devient « Groupe complet » tout seul
+              Un groupe de donjon ou de quêtes (le chef et 4 joueurs) ou un raid avec composition devient « Groupe complet » tout seul
               quand le dernier joueur est accepté, et les demandes se ferment. Le chef peut aussi fermer ou rouvrir les
               demandes à la main (« Groupe complet » sur sa carte). Si quelqu'un part, le groupe se rouvre.
             </li>

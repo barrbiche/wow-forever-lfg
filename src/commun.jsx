@@ -12,6 +12,7 @@ export const CHEMINS = {
   heal: 'M12 5v14M5 12h14',
   plus: 'M12 5v14M5 12h14',
   dps: 'M6 18L18 6M13 6h5v5M6 14l4 4M4 20l3-3',
+  quete: 'M12 3.5v11M12 19v1',
   raid: 'M4 21V8h3v3h3V8h4v3h3V8h3v13M3 21h18M10 21v-4a2 2 0 014 0v4',
   horloge: 'M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18z',
   joueur: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0',
@@ -42,7 +43,10 @@ export function BadgeSupporter({ id }) {
   )
 }
 
-export const NOMS_ACTIVITE = { donjon: 'Donjon', raid: 'Raid', pvp: 'PvP' }
+export const NOMS_ACTIVITE = { donjon: 'Donjon', raid: 'Raid', pvp: 'PvP', quete: 'Quêtes' }
+
+// Activités sans rôles à choisir (tout le monde est le bienvenu).
+export const SANS_ROLES = new Set(['pvp', 'quete'])
 
 // La classe d'un personnage, avec sa spécialisation quand on la connaît (« Mage Givre »). Les noms de spécialisations
 // suivent la langue du jeu de la personne qui regarde.

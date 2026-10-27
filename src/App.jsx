@@ -49,6 +49,9 @@ import {
   NIVEAUX_DONJONS,
   NOMS_CHAMPS_PROFIL,
   PVP_PEU_IMPORTE,
+  QUETE_PEU_IMPORTE,
+  AUTRE_ZONE,
+  ZONES_QUETES,
   RAIDS,
   REGIONS,
   ROLES,
@@ -76,6 +79,7 @@ import {
   jourTexte,
   partRestante,
   reste,
+  SANS_ROLES,
   versChampDate,
 } from './commun.jsx'
 import { telechargerIcs } from './calendrier.js'
@@ -747,7 +751,7 @@ export default function App() {
               <span>Babillard</span> <span>Forever</span>
             </h1>
             <p className="sous-titre">
-              Trouve ton groupe pour les donjons{raids ? ', les raids' : ''} et le PvP. Pour le Québec et la
+              Trouve ton groupe pour les donjons{raids ? ', les raids' : ''}, le PvP et les quêtes. Pour le Québec et la
               francophonie.
             </p>
             <p className="beta-note">
@@ -942,12 +946,13 @@ export default function App() {
           <>
             <section className="filtres" aria-label="Filtres">
               <div className="filtres-ligne">
-                <div className={`segments${raids ? ' quatre' : ''}`} role="group" aria-label="Type d'activité">
+                <div className="segments quatre" role="group" aria-label="Type d'activité">
                   {[
                     ['tout', 'Tout'],
                     ['donjon', 'Donjons'],
                     ...(raids ? [['raid', 'Raids']] : []),
                     ['pvp', 'PvP'],
+                    ['quete', 'Quêtes'],
                   ].map(([id, nom]) => (
                     <button
                       key={id}
@@ -1243,7 +1248,7 @@ function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietai
   const restant = (r) => (composition ? Math.max(0, (composition[r] || 0) - (parRole[r] || 0)) : 0)
   const manque = composition ? ROLES.reduce((n, r) => n + restant(r.id), 0) : 0
   const rolesVisibles = ROLES.filter((r) => a.roles.includes(r.id) && !(composition?.[r.id] > 0 && restant(r.id) === 0))
-  const groupeComplet = !joueur && (!!places?.complet || (a.activite !== 'pvp' && a.roles.length === 0))
+  const groupeComplet = !joueur && (!!places?.complet || (!SANS_ROLES.has(a.activite) && a.roles.length === 0))
   const effectif = tailleRaid ? Math.max(0, tailleRaid - manque) : 0
   const dureeTotale = new Date(a.expires_at) - new Date(a.created_at)
   const peutRenouveler = !a.debut && partRestante(a) < 0.5
@@ -1293,7 +1298,7 @@ function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietai
           )}
           {!joueur && acceptes > 0 && (
             <li className="chip fort">
-              {a.activite === 'donjon' ? `${acceptes} / 4 acceptés` : `${acceptes} accepté${acceptes > 1 ? 's' : ''}`}
+              {a.activite === 'donjon' || a.activite === 'quete' ? `${acceptes} / 4 acceptés` : `${acceptes} accepté${acceptes > 1 ? 's' : ''}`}
             </li>
           )}
           {a.debut && (
@@ -1514,6 +1519,7 @@ const CHOIX_ACTIVITE = [
   ['donjon', 'Un donjon', 'Un donjon à faire.'],
   ['raid', 'Un raid', '10, 20 ou 40 joueurs.'],
   ['pvp', 'Du PvP', 'Champ de bataille ou monde ouvert.'],
+  ['quete', 'Des quêtes', 'Monter de niveau ensemble.'],
 ]
 
 function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublication, profil, manquants, completerProfil }) {
@@ -1574,7 +1580,7 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
   }
 
   const cibleParDefaut = (genre, activite) =>
-    activite === 'pvp' ? PVP_PEU_IMPORTE : genre === 'joueur' && activite === 'donjon' ? DONJON_PEU_IMPORTE : ''
+    activite === 'pvp' ? PVP_PEU_IMPORTE : activite === 'quete' ? QUETE_PEU_IMPORTE : genre === 'joueur' && activite === 'donjon' ? DONJON_PEU_IMPORTE : ''
 
   // Un joueur seul n'a qu'un niveau (le sien): on garde minimum et maximum identiques.
   const changerGenre = (genre) => {
@@ -1672,7 +1678,7 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
     }
     if (!champs.perso.trim()) e.perso = 'Écris le nom de ton personnage.'
     if (!champs.contact.trim()) e.contact = 'Écris ton BattleTag pour que les gens te trouvent.'
-    if (champs.activite !== 'pvp' && champs.roles.length === 0) {
+    if (!SANS_ROLES.has(champs.activite) && champs.roles.length === 0) {
       e.roles = joueur
         ? 'Choisis au moins un rôle que tu joues.'
         : champs.activite === 'raid'
@@ -1709,7 +1715,7 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
           region: champs.region,
           niveau_min: Number(champs.niveau_min),
           niveau_max: joueur ? Number(champs.niveau_min) : Number(champs.niveau_max),
-          roles: champs.activite === 'pvp' ? [] : champs.roles,
+          roles: SANS_ROLES.has(champs.activite) ? [] : champs.roles,
           // Seuls les raids envoient les nombres: un donjon continue de fonctionner même si la base n'est pas à jour.
           ...(champs.activite === 'raid' && !joueur
             ? { roles_nb: Object.fromEntries(ROLES.filter((r) => champs.roles_nb[r.id] > 0).map((r) => [r.id, champs.roles_nb[r.id]])) }
@@ -1744,6 +1750,8 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
 
   const erreur = (cle) => (erreurs[cle] ? <span className="msg-erreur">{erreurs[cle]}</span> : null)
   const pvp = champs.activite === 'pvp'
+  const quete = champs.activite === 'quete'
+  const sansRoles = SANS_ROLES.has(champs.activite)
   const raid = champs.activite === 'raid'
   const joueur = champs.genre === 'joueur'
 
@@ -1810,7 +1818,7 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
 
           <fieldset className="groupe">
             <legend>{joueur ? 'Tu veux faire' : 'Votre groupe va faire'}</legend>
-            <div className="choix-activite">
+            <div className="choix-activite quatre">
               {CHOIX_ACTIVITE.map(([id, titre, description]) => {
                 const ferme = id === 'raid' && !raids
                 return (
@@ -1832,12 +1840,18 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
           </fieldset>
 
           <label className="champ">
-            <span>{pvp ? 'Champ de bataille (facultatif)' : raid ? 'Raid' : 'Donjon'}</span>
+            <span>{pvp ? 'Champ de bataille (facultatif)' : quete ? 'Zone (facultatif)' : raid ? 'Raid' : 'Donjon'}</span>
             <select value={champs.cible} onChange={(e) => choisirCible(e.target.value)} aria-invalid={!!erreurs.cible}>
               {pvp ? (
                 <>
                   <option value={PVP_PEU_IMPORTE}>Peu importe</option>
                   {CHAMPS_DE_BATAILLE.map((d) => <option key={d}>{d}</option>)}
+                </>
+              ) : quete ? (
+                <>
+                  <option value={QUETE_PEU_IMPORTE}>Peu importe</option>
+                  {ZONES_QUETES.map((z) => <option key={z}>{z}</option>)}
+                  <option>{AUTRE_ZONE}</option>
                 </>
               ) : raid ? (
                 <>
@@ -1901,7 +1915,7 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
             </label>
           </div>
 
-          {!pvp && raid && !joueur && (
+          {!sansRoles && raid && !joueur && (
             <fieldset className="groupe">
               <legend>Joueurs recherchés</legend>
               <div className="nombres">
@@ -1945,7 +1959,7 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
             </fieldset>
           )}
 
-          {!pvp && !(raid && !joueur) && (
+          {!sansRoles && !(raid && !joueur) && (
             <fieldset className="groupe">
               <legend>{joueur ? 'Rôle(s) que tu joues' : 'Rôles recherchés'}</legend>
               <div className="cases">

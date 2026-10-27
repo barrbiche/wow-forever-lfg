@@ -220,7 +220,7 @@ function avecEtat(fn) {
 // Joueurs à accepter (sans le chef) pour que le groupe soit plein, ou null si on ne le sait pas (comme groupe_places_max en SQL).
 function placesMaxDemo(a) {
   if (!a) return null
-  if (a.activite === 'donjon') return 4
+  if (a.activite === 'donjon' || a.activite === 'quete') return 4
   if (a.activite === 'raid' && a.roles_nb) return Object.values(a.roles_nb).reduce((n, v) => n + (Number(v) > 0 ? Number(v) : 0), 0) || null
   return null
 }
@@ -312,6 +312,9 @@ export async function reglerComplet(groupe, complet) {
 // Groupes où je suis chef ou accepté + amis avec qui j'ai écrit. Chaque ligne:
 // { type: 'groupe'|'ami', cible, annonce_id, titre, sous_titre, classe, est_chef, contact, nb_membres, nb_en_attente,
 //   non_lus, dernier_le, dernier_genre, extrait, fin_le, ferme }
+// La base écrit le titre d'un groupe « quete: Westfall »: on l'affiche avec son accent.
+const titreJoli = (t) => String(t ?? '').replace(/^quete: /, 'Quêtes: ')
+
 export async function lireConversations() {
   if (!(await estConnecte())) return []
   if (modeDemo) {
@@ -327,7 +330,7 @@ export async function lireConversations() {
           lu === undefined && g.chef !== MOI ? 1 : 0,
         )
         lignes.push({
-          type: 'groupe', cible: g.id, annonce_id: g.annonce_id, titre: g.titre,
+          type: 'groupe', cible: g.id, annonce_id: g.annonce_id, titre: titreJoli(g.titre),
           sous_titre: g.chef === MOI ? 'Ton groupe' : `Chef: ${g.perso || '?'}`, classe: null, est_chef: g.chef === MOI,
           contact: g.contact ?? '', nb_membres: 1 + membresDemo(etat, g.id).length,
           nb_en_attente: g.chef === MOI ? etat.demandes.filter((d) => d.groupe_id === g.id && d.statut === 'en_attente').length : 0,
@@ -357,7 +360,7 @@ export async function lireConversations() {
   }
   const { data, error } = await supabase.rpc('mes_conversations')
   if (error) throw error
-  return data ?? []
+  return (data ?? []).map((c) => (c.type === 'groupe' ? { ...c, titre: titreJoli(c.titre) } : c))
 }
 
 // ---------- Demandes ----------

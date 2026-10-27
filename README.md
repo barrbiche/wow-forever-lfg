@@ -42,6 +42,8 @@ Sans configuration, le site tourne en **mode démo**: les annonces restent dans 
 
 16. SQL Editor > New query: colle `supabase/ameliorations12.sql`, puis Run (« La Taverne », le salon de discussion ouvert à tous). À rouler après `ameliorations8.sql` (le chat). Les messages du salon sont effacés après 48 h; les signalements passent par la fenêtre « Modération ». Sans ce fichier, la Taverne s'affiche mais dit qu'elle n'est pas encore activée.
 
+17. SQL Editor > New query: colle `supabase/ameliorations13.sql`, puis Run (nouveau type d'annonce « Quêtes » pour monter de niveau ensemble). **À rouler avant de pousser la mise à jour du site**: sans lui, publier une annonce de quêtes échoue. Les annonces de quêtes n'ont pas de rôles; un groupe de quêtes se remplit à 5 joueurs comme un donjon.
+
 ## Connexion par courriel
 
 Elle marche dès que le projet Supabase existe (le fournisseur « Email » est activé par défaut).

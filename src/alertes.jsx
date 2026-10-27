@@ -36,7 +36,7 @@ export function ecrireAlerte(alerte) {
 // « Donjons, Alliance, niveau 20, français »
 export function decrireFiltres(f) {
   const parties = []
-  if (f.activite && f.activite !== 'tout') parties.push({ donjon: 'Donjons', raid: 'Raids', pvp: 'PvP' }[f.activite])
+  if (f.activite && f.activite !== 'tout') parties.push({ donjon: 'Donjons', raid: 'Raids', pvp: 'PvP', quete: 'Quêtes' }[f.activite])
   if (f.genre === 'groupe') parties.push('groupes')
   if (f.genre === 'joueur') parties.push('joueurs seuls')
   if (f.planifies) parties.push('planifiés')

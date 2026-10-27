@@ -3,7 +3,7 @@
 // (un fichier de calendrier se partage facilement): seulement le nom du personnage et le lien de l'annonce.
 
 const DUREE_PREVUE_MS = 2 * 3600000 // le calendrier a besoin d'une fin: on réserve 2 h
-const ACTIVITES = { donjon: 'Donjon', raid: 'Raid', pvp: 'PvP' }
+const ACTIVITES = { donjon: 'Donjon', raid: 'Raid', pvp: 'PvP', quete: 'Quêtes' }
 const ROLES = { tank: 'tank', heal: 'heal', dps: 'DPS' }
 
 // Date au format iCalendar, en UTC: 20261104T200000Z

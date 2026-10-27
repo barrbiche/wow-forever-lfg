@@ -105,6 +105,19 @@ export const LANCEMENT_LE = new Date(2026, 10, 4)
 // Valeur par défaut du formulaire PvP: pas besoin de choisir un champ de bataille précis.
 export const PVP_PEU_IMPORTE = 'Groupe PvP'
 
+// Quêtes et leveling: un joueur ou un groupe qui cherche du monde pour monter de niveau ensemble.
+export const QUETE_PEU_IMPORTE = 'Quêtes, peu importe la zone'
+export const AUTRE_ZONE = 'Autre zone'
+export const ZONES_QUETES = [
+  'Elwynn Forest', 'Dun Morogh', 'Teldrassil', 'Durotar', 'Mulgore', 'Tirisfal Glades',
+  'Westfall', 'Loch Modan', 'Darkshore', 'Silverpine Forest', 'The Barrens', 'Redridge Mountains',
+  'Duskwood', 'Wetlands', 'Ashenvale', 'Stonetalon Mountains', 'Hillsbrad Foothills', 'Alterac Mountains',
+  'Arathi Highlands', 'Stranglethorn Vale', 'Desolace', 'Dustwallow Marsh', 'Thousand Needles', 'Badlands',
+  'Swamp of Sorrows', 'The Hinterlands', 'Tanaris', 'Feralas', 'Searing Gorge', 'Burning Steppes',
+  "Un'Goro Crater", 'Azshara', 'Felwood', 'Blasted Lands', 'Western Plaguelands', 'Eastern Plaguelands',
+  'Winterspring', 'Silithus',
+]
+
 export const CHAMPS_DE_BATAILLE = [
   'Warsong Gulch',
   'Arathi Basin',
