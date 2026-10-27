@@ -13,6 +13,8 @@ export const CHEMINS = {
   plus: 'M12 5v14M5 12h14',
   dps: 'M6 18L18 6M13 6h5v5M6 14l4 4M4 20l3-3',
   quete: 'M12 3.5v11M12 19v1',
+  son: 'M11 5L6 9H3v6h3l5 4V5zM15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13',
+  sonCoupe: 'M11 5L6 9H3v6h3l5 4V5zM16 9.5l5 5M21 9.5l-5 5',
   sortie: 'M10 4H5v16h5M15 8l4 4-4 4M19 12H9',
   bouclier: 'M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3zM9 12l2 2 4-4',
   raid: 'M4 21V8h3v3h3V8h4v3h3V8h3v13M3 21h18M10 21v-4a2 2 0 014 0v4',

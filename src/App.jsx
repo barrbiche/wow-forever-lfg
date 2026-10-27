@@ -87,6 +87,7 @@ import { telechargerIcs } from './calendrier.js'
 import Achalandage from './Achalandage.jsx'
 import { BandeauPubs, ChoixPubs, Pub, pubsActives } from './Pub.jsx'
 import { rafraichirPush, retirerAlertesAppareil } from './push.js'
+import { jouerSon, reglerSon, sonActif } from './sons.js'
 import {
   Alerte,
   demanderNotifications,
@@ -271,6 +272,7 @@ export default function App() {
   const [moderateur, setModerateur] = useState(false)
   const [moderationOuverte, setModerationOuverte] = useState(false)
   // Messagerie (ameliorations8.sql): groupes, chat entre amis, et l'état de mes demandes pour rejoindre.
+  const [son, setSon] = useState(sonActif)
   const [visites, setVisites] = useState(null) // visiteurs d'aujourd'hui (null: pas disponible)
   const [conversations, setConversations] = useState([]) // null: pas activée (le SQL n'est pas roulé)
   const [mesDemandes, setMesDemandes] = useState([])
@@ -332,9 +334,10 @@ export default function App() {
     if (autres.length === 0) return
     setNouvelles((avant) => new Set([...avant, ...autres.map((a) => a.id)]))
     const regle = alerteRef.current
-    if (!regle) return
-    const concernees = autres.filter((a) => correspond(a, { ...FILTRES_VIDES, ...regle.filtres }))
-    if (concernees.length === 0) return
+    // Un petit son pour une nouvelle annonce: avec une alerte, seulement pour celles qui t'intéressent.
+    const concernees = regle ? autres.filter((a) => correspond(a, { ...FILTRES_VIDES, ...regle.filtres })) : autres
+    if (concernees.length > 0) jouerSon('annonce')
+    if (!regle || concernees.length === 0) return
     const ids = concernees.map((a) => a.id)
     setAvis({
       ids,
@@ -389,6 +392,7 @@ export default function App() {
       const messages = conv.reduce((n, c) => n + (c.non_lus || 0), 0)
       const avant = totauxChatRef.current
       totauxChatRef.current = { demandes, messages }
+      if (avant && (demandes > avant.demandes || messages > avant.messages)) jouerSon('message')
       if (avant && vueRef.current !== 'messages') {
         if (demandes > avant.demandes) {
           setMessage(demandes - avant.demandes > 1 ? 'Nouvelles demandes pour rejoindre ton groupe.' : 'Nouvelle demande pour rejoindre ton groupe.')
@@ -828,6 +832,18 @@ export default function App() {
                   </span>
                 </p>
               )}
+              <button
+                type="button"
+                className="lien bouton-son"
+                aria-pressed={son}
+                onClick={() => {
+                  setSon(!son)
+                  reglerSon(!son)
+                }}
+              >
+                <Icone nom={son ? 'son' : 'sonCoupe'} taille={15} />
+                {son ? 'Sons: oui' : 'Sons: non'}
+              </button>
               <button type="button" className="lien aide-lien" onClick={() => setAideOuverte(true)}>
                 Comment ça marche?
               </button>

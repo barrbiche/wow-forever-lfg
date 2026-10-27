@@ -261,6 +261,15 @@ h2 {
   display: none;
 }
 
+.bouton-son {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--haut-ink);
+  opacity: 0.92;
+}
+
 .aide-lien {
   font-size: 0.9rem;
   color: var(--haut-ink);

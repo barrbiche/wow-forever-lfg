@@ -100,7 +100,7 @@ export function SectionDonnees() {
         </li>
         <li>
           <strong>Dans ton navigateur.</strong> Le site garde chez toi le style que tu as choisi, la langue de ton jeu,
-          ton alerte de nouvelles annonces, ton personnage et ton contact (pour préremplir tes prochaines annonces) et
+          ton alerte de nouvelles annonces, ton choix de sons, ton personnage et ton contact (pour préremplir tes prochaines annonces) et
           ta connexion. {pubsActives
             ? "Il n'y a pas d'outil de suivi. Les témoins de publicité ne sont posés que si tu acceptes la publicité (voir plus bas)."
             : "Il n'y a ni publicité, ni témoin de suivi."}

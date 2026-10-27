@@ -102,6 +102,11 @@ export default function Aide({ ouvert, fermer }) {
               peut les couper en tout temps. Sur iPhone, ajoute d'abord le site à l'écran d'accueil.
             </li>
             <li>
+              Le site joue un petit son quand une nouvelle annonce apparaît (seulement celles de ton alerte, si tu en as
+              une) et quand on t'écrit ou qu'une demande arrive pour ton groupe, tant que la page est ouverte. Le bouton « Sons »
+              en haut de la page le coupe ou le remet. Le navigateur n'autorise le son qu'après un premier clic sur la page.
+            </li>
+            <li>
               Pour éviter le spam: 10 demandes en attente et 20 par jour, 15 messages par 30 secondes, 500 caractères par
               message. Les adresses écrites dans le chat ne sont pas cliquables.
             </li>
