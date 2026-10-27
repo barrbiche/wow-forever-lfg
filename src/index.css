@@ -230,6 +230,32 @@ h2 {
   flex: 1;
 }
 
+/* Bouton « Taverne »: une bulle de chat (coin arrondi sauf le bas à gauche, là où se pointe la queue). */
+.actions .bouton.bouton-taverne {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 18px 18px 18px 5px;
+  border-color: var(--gold-line);
+  color: var(--gold-light);
+}
+
+.actions .bouton.bouton-taverne svg {
+  flex: none;
+}
+
+@media (max-width: 559px) {
+  .actions {
+    flex-wrap: wrap;
+  }
+
+  .actions .bouton.bouton-taverne {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+}
+
 .statut {
   display: flex;
   flex-wrap: wrap;
@@ -262,12 +288,63 @@ h2 {
 }
 
 .bouton-son {
+  font: inherit;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
   font-size: 0.9rem;
   color: var(--haut-ink);
-  opacity: 0.92;
+  opacity: 0.95;
+  cursor: pointer;
+}
+
+/* Interrupteur qui glisse: le rond va à droite quand les sons sont activés. */
+.interrupteur {
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid var(--haut-bord);
+  background: rgb(255 255 255 / 0.14);
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.interrupteur-bouton {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #f4efe2;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.45);
+  transition: transform 0.2s;
+}
+
+.bouton-son[aria-checked='true'] .interrupteur {
+  background: var(--gold);
+  border-color: var(--gold-line);
+}
+
+.bouton-son[aria-checked='true'] .interrupteur-bouton {
+  transform: translateX(18px);
+}
+
+.bouton-son:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .interrupteur,
+  .interrupteur-bouton {
+    transition: none;
+  }
 }
 
 .aide-lien {

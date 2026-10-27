@@ -807,6 +807,10 @@ export default function App() {
               <button type="button" className="bouton principal" onClick={ouvrirPublication}>
                 Publier une annonce
               </button>
+              <button type="button" className="bouton bouton-taverne" onClick={() => ouvrirChat('salon', 'taverne')}>
+                <Icone nom="discussion" taille={18} />
+                Taverne
+              </button>
             </div>
             <div className="statut">
               {!chargement && (
@@ -834,15 +838,20 @@ export default function App() {
               )}
               <button
                 type="button"
-                className="lien bouton-son"
-                aria-pressed={son}
+                role="switch"
+                className="bouton-son"
+                aria-checked={son}
+                aria-label="Sons de notification"
                 onClick={() => {
                   setSon(!son)
                   reglerSon(!son)
                 }}
               >
                 <Icone nom={son ? 'son' : 'sonCoupe'} taille={15} />
-                {son ? 'Sons: oui' : 'Sons: non'}
+                <span>Sons</span>
+                <span className="interrupteur" aria-hidden="true">
+                  <span className="interrupteur-bouton" />
+                </span>
               </button>
               <button type="button" className="lien aide-lien" onClick={() => setAideOuverte(true)}>
                 Comment ça marche?
