@@ -212,6 +212,7 @@ h2 {
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   margin-top: 18px;
@@ -245,14 +246,38 @@ h2 {
   flex: none;
 }
 
+/* Bouton « Soutenir le site »: à côté de la Taverne, même famille (contour doré), avec un cœur. */
+.actions .bouton.bouton-soutien {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-color: var(--gold-line);
+  color: var(--gold-light);
+  text-decoration: none;
+}
+
+.actions .bouton.bouton-soutien svg {
+  flex: none;
+  color: #ef6f6c;
+}
+
 @media (max-width: 559px) {
   .actions {
     flex-wrap: wrap;
   }
 
-  .actions .bouton.bouton-taverne {
-    flex: 1 1 100%;
+  .actions .bouton.bouton-taverne,
+  .actions .bouton.bouton-soutien {
+    flex: 1 1 40%;
     justify-content: center;
+  }
+}
+
+@media (max-width: 399px) {
+  .actions .bouton.bouton-taverne,
+  .actions .bouton.bouton-soutien {
+    flex-basis: 100%;
   }
 }
 

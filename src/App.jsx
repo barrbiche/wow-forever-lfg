@@ -843,6 +843,12 @@ export default function App() {
                 <Icone nom="discussion" taille={18} />
                 Taverne
               </button>
+              {lienDons && (
+                <a className="bouton bouton-soutien" href={lienDons} target="_blank" rel="noopener noreferrer">
+                  <Icone nom="coeur" taille={18} />
+                  Soutenir le site
+                </a>
+              )}
             </div>
             <div className="statut">
               {!chargement && (
