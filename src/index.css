@@ -3929,6 +3929,11 @@ h2 {
   border-radius: 8px;
   overflow: hidden;
 }
+/* Google marque l'emplacement « unfilled » quand il n'a aucune pub à envoyer: on cache alors toute la boîte
+   (étiquette comprise) pour ne pas laisser un grand rectangle vide. Elle revient dès qu'une pub est servie. */
+.pub:has(ins[data-ad-status='unfilled']) {
+  display: none;
+}
 .pub-etiquette {
   display: block;
   margin-bottom: 6px;
