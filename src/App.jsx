@@ -1,4 +1,5 @@
 import { Fragment, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { BoutonInstaller } from './installer.jsx'
 import {
   connecter,
   compteSuspendu,
@@ -9,6 +10,7 @@ import {
   genererRecurrences,
   deconnecter,
   compterVisite,
+  lireGroupesFormes,
   envoyerLienCourriel,
   connecterParMotDePasse,
   creerCompte,
@@ -274,6 +276,7 @@ export default function App() {
   // Messagerie (ameliorations8.sql): groupes, chat entre amis, et l'état de mes demandes pour rejoindre.
   const [son, setSon] = useState(sonActif)
   const [visites, setVisites] = useState(null) // visiteurs d'aujourd'hui (null: pas disponible)
+  const [formes, setFormes] = useState(null) // groupes formés aujourd'hui (null: pas disponible)
   const [conversations, setConversations] = useState([]) // null: pas activée (le SQL n'est pas roulé)
   const [mesDemandes, setMesDemandes] = useState([])
   const [chatCible, setChatCible] = useState(null) // { type: 'groupe' | 'ami', id, panneau, n }
@@ -295,6 +298,21 @@ export default function App() {
   // Une alerte sur l'appareil ouvre l'onglet Messages (ouverture du site ou clic sur une alerte quand le site est déjà ouvert).
   useEffect(() => {
     compterVisite().then(setVisites)
+  }, [])
+
+  // Groupes formés aujourd'hui: relu chaque minute tant que la page est visible.
+  useEffect(() => {
+    let actif = true
+    const lire = () => {
+      if (document.visibilityState === 'hidden') return
+      lireGroupesFormes().then((n) => actif && setFormes(n))
+    }
+    lire()
+    const minuterie = setInterval(lire, 60000)
+    return () => {
+      actif = false
+      clearInterval(minuterie)
+    }
   }, [])
 
   useEffect(() => {
@@ -835,6 +853,12 @@ export default function App() {
                     : `${annonces.length} ${annonces.length > 1 ? 'annonces actives' : 'annonce active'} en ce moment`}
                 </p>
               )}
+              {formes !== null && formes > 0 && (
+                <p className="compte formes">
+                  <Icone nom="donjon" taille={16} />
+                  <span>{formes} {formes > 1 ? 'groupes formés' : 'groupe formé'} aujourd'hui</span>
+                </p>
+              )}
               {visites !== null && (
                 <p className="compte visites">
                   <Icone nom="amis" taille={16} />
@@ -1200,6 +1224,7 @@ export default function App() {
               <button type="button" className="lien" onClick={() => setRetourOuvert(true)}>
                 Un bogue ou une idée?
               </button>
+              <BoutonInstaller />
             </nav>
             <div className="pied-soutien">
               <ChoixPubs />

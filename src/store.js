@@ -590,6 +590,19 @@ export async function compterVisite() {
   }
 }
 
+// Nombre de groupes formés aujourd'hui (le chef a accepté quelqu'un). Retourne null si l'info n'est pas disponible
+// (mode démo, ou ameliorations15.sql pas encore roulé).
+export async function lireGroupesFormes() {
+  if (modeDemo) return null
+  try {
+    const { data, error } = await supabase.rpc('groupes_formes_aujourdhui')
+    if (error || typeof data !== 'number') return null
+    return data
+  } catch {
+    return null
+  }
+}
+
 // ---------- Boîte à messages (bogue, idée) ----------
 
 export async function envoyerRetour(categorie, texte) {

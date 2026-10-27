@@ -46,6 +46,12 @@ Sans configuration, le site tourne en **mode démo**: les annonces restent dans 
 
 18. SQL Editor > New query: colle `supabase/ameliorations14.sql`, puis Run (compteur « N visiteurs aujourd'hui » dans l'en-tête). Une visite est comptée une fois par jour et par navigateur; la base ne garde qu'un nombre par jour (Table Editor > `visites_jour` pour l'historique). Sans ce fichier, le compteur est simplement caché.
 
+19. SQL Editor > New query: colle `supabase/ameliorations15.sql`, puis Run (compteur « N groupes formés aujourd'hui » dans l'en-tête). Un groupe compte comme formé quand son chef a accepté au moins une personne aujourd'hui (heure du Québec). La ligne n'apparaît que s'il y en a au moins un. Sans ce fichier, elle est simplement cachée.
+
+## Aperçu des liens (Discord, Facebook, Messenger)
+
+Quand on colle un lien `?annonce=...` ou `?guilde=...`, `netlify/edge-functions/apercu.mjs` écrit le titre et la description de l'annonce dans la page, pour que l'aperçu dise par exemple « Donjon: The Deadmines — Babillard Forever » et « Mirabelle forme un groupe · cherche DPS · niveaux 18-23 ». Elle lit la base avec la clé publique `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`. Si Netlify ne les donne pas aux fonctions (Site configuration > Environment variables: la portée doit inclure « Functions »), ou si l'annonce est expirée, la page normale est servie. Discord garde un aperçu en mémoire un moment: pour retester un lien, ajoute `&test=2` à la fin.
+
 ## Connexion par courriel
 
 Elle marche dès que le projet Supabase existe (le fournisseur « Email » est activé par défaut).
