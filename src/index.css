@@ -4003,3 +4003,20 @@ h2 {
 .decompte {
   font-variant-numeric: tabular-nums;
 }
+
+/* Le titre du site est un lien vers l'accueil: il garde son allure de titre. */
+.titre-lien {
+  display: inline-block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.titre-lien:hover {
+  filter: brightness(1.12);
+}
+
+.titre-lien:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 6px;
+  border-radius: 6px;
+}

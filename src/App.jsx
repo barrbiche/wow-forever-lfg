@@ -761,7 +761,21 @@ export default function App() {
         <div className="haut-contenu">
           <div className="titre-bloc">
             <h1>
-              <span>Babillard</span> <span>Forever</span>
+              <a
+                href="/"
+                className="titre-lien"
+                aria-label="Babillard Forever, retour à l'accueil"
+                onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return // ouvrir dans un nouvel onglet: comportement normal
+                  e.preventDefault()
+                  setVue('groupes')
+                  setChatCible(null)
+                  setCiblee(null)
+                  window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+                }}
+              >
+                <span>Babillard</span> <span>Forever</span>
+              </a>
             </h1>
             <p className="sous-titre">
               Trouve ton groupe pour les donjons{raids ? ', les raids' : ''}, le PvP et les quêtes. Pour le Québec et la
