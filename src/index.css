@@ -3575,7 +3575,7 @@ h2 {
     display: block;
   }
 
-  .msg-retour {
+  .msg-fil:not(.msg-fil-carte) .msg-retour {
     display: none;
   }
 
@@ -3797,4 +3797,18 @@ h2 {
 .dialogue-connexion .champ select,
 .dialogue-connexion .champ textarea {
   max-width: 100%;
+}
+
+/* Chat d'un groupe ouvert dans la carte de l'annonce: la carte prend toute la largeur de la liste. */
+.liste > li:has(.msg-fil-carte) {
+  grid-column: 1 / -1;
+}
+
+.msg-fil-carte {
+  margin-top: 10px;
+  box-shadow: none;
+}
+
+.msg-note-groupes {
+  margin: 8px 4px 0;
 }

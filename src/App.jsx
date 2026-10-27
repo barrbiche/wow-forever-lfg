@@ -653,7 +653,14 @@ export default function App() {
     () => new Map((conversations ?? []).filter((c) => c.type === 'groupe' && c.annonce_id).map((c) => [c.annonce_id, c])),
     [conversations],
   )
-  const nbMessagerie = (conversations ?? []).reduce((n, c) => n + (c.nb_en_attente || 0) + (c.non_lus || 0), 0)
+  // Les chats de groupe vivent sur les annonces (onglet Groupes); l'onglet Messages garde la Taverne et les amis.
+  const finieConv = (c) => !!c.fin_le && new Date(c.fin_le).getTime() <= Date.now()
+  const nbGroupesAlerte = (conversations ?? [])
+    .filter((c) => c.type === 'groupe' && !finieConv(c))
+    .reduce((n, c) => n + (c.nb_en_attente || 0) + (c.non_lus || 0), 0)
+  const nbMessagerie = (conversations ?? [])
+    .filter((c) => c.type !== 'groupe')
+    .reduce((n, c) => n + (c.nb_en_attente || 0) + (c.non_lus || 0), 0)
   const ouvrirChat = useCallback((type, id, panneau) => {
     setVue('messages')
     setChatCible({ type, id, panneau, n: Date.now() })
@@ -819,6 +826,11 @@ export default function App() {
             <button type="button" className="onglet" aria-pressed={vue === 'groupes'} onClick={() => setVue('groupes')}>
               <Icone nom="donjon" taille={22} />
               <span className="onglet-nom">Groupes</span> <span className="onglet-nombre">{annonces.length}</span>
+              {utilisateur && nbGroupesAlerte > 0 && (
+                <span className="onglet-alerte en-ligne" role="img" aria-label={`${nbGroupesAlerte} à voir dans tes groupes`}>
+                  {nbGroupesAlerte}
+                </span>
+              )}
             </button>
             <button type="button" className="onglet" aria-pressed={vue === 'guildes'} onClick={() => setVue('guildes')}>
               <Icone nom="guilde" taille={22} />
@@ -1087,7 +1099,6 @@ export default function App() {
                         repetition={recurrences.find((r) => r.source === a.id || r.derniere === a.id)}
                         messagerie={conversations !== null}
                         ouvrirDemande={setDemandeAnnonce}
-                        ouvrirChat={ouvrirChat}
                         annoncer={setMessage}
                       />
                     </li>
@@ -1219,7 +1230,7 @@ export default function App() {
 
 // ---------- Carte d'annonce ----------
 
-function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietaire, utilisateur, onConnexion, apres, demande, conv, places, repetition, messagerie, ouvrirDemande, ouvrirChat, annoncer }) {
+function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietaire, utilisateur, onConnexion, apres, demande, conv, places, repetition, messagerie, ouvrirDemande, annoncer }) {
   const [probleme, setProbleme] = useState('')
   const joueur = a.genre === 'joueur'
   const classe = CLASSES.find((c) => c.id === a.classe)
@@ -1371,7 +1382,6 @@ function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietai
           disponible={messagerie}
           complet={groupeComplet}
           ouvrirDemande={ouvrirDemande}
-          ouvrirChat={ouvrirChat}
           apres={apres}
           annoncer={annoncer}
         />

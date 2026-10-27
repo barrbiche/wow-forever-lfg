@@ -56,8 +56,9 @@ const couleurClasse = (id) => CLASSES.find((c) => c.id === id)?.couleur
 // ---------- Sur la carte d'une annonce ----------
 
 // Remplace le contact: « Demander à rejoindre » (ou l'état de ma demande), ou, pour le chef, l'accès aux demandes.
-export function ZoneRejoindre({ annonce: a, proprietaire, utilisateur, onConnexion, demande, conv, disponible, complet, ouvrirDemande, ouvrirChat, apres, annoncer }) {
+export function ZoneRejoindre({ annonce: a, proprietaire, utilisateur, onConnexion, demande, conv, disponible, complet, ouvrirDemande, apres, annoncer }) {
   const [occupe, setOccupe] = useState(false)
+  const [chat, setChat] = useState(null) // null: fermé. { panneau }: le chat du groupe est ouvert dans la carte
   const [probleme, setProbleme] = useState('')
   const joueur = a.genre === 'joueur'
 
@@ -82,14 +83,16 @@ export function ZoneRejoindre({ annonce: a, proprietaire, utilisateur, onConnexi
   if (proprietaire) {
     if (!conv) return null
     return (
+      <>
       <div className="rejoindre">
-        <button type="button" className="bouton petit principal" onClick={() => ouvrirChat('groupe', conv.cible, 'demandes')}>
+        <button type="button" className="bouton petit principal" onClick={() => setChat({ panneau: 'demandes' })}>
           <Icone nom="discussion" taille={15} />
           Demandes
           {conv.nb_en_attente > 0 && <span className="pastille-nombre" aria-label={`${conv.nb_en_attente} en attente`}>{conv.nb_en_attente}</span>}
         </button>
-        <button type="button" className="bouton petit" onClick={() => ouvrirChat('groupe', conv.cible)}>
+        <button type="button" className="bouton petit" onClick={() => setChat({})}>
           Ouvrir le chat
+          {conv.non_lus > 0 && <span className="pastille-nombre" aria-label={`${conv.non_lus} non lus`}>{conv.non_lus}</span>}
         </button>
         {!joueur && (
           <button type="button" className="bouton petit" onClick={basculerComplet} disabled={occupe} aria-pressed={!!complet}>
@@ -99,6 +102,18 @@ export function ZoneRejoindre({ annonce: a, proprietaire, utilisateur, onConnexi
         <span className="aide rejoindre-note">Ton contact reste caché jusqu’à ce que tu acceptes quelqu’un.</span>
         {probleme && <p className="msg-erreur" role="alert">{probleme}</p>}
       </div>
+      {chat && (
+        <ConversationGroupe
+          conv={conv}
+          panneauDepart={chat.panneau}
+          moi={utilisateur?.id}
+          retour={() => setChat(null)}
+          enCarte
+          apres={apres}
+          annoncer={annoncer}
+        />
+      )}
+      </>
     )
   }
 
@@ -117,7 +132,9 @@ export function ZoneRejoindre({ annonce: a, proprietaire, utilisateur, onConnexi
   }
 
   const statut = demande?.statut
+  const convMembre = statut === 'acceptee' ? conv : null
   return (
+    <>
     <div className="rejoindre">
       {!statut && complet && (
         <>
@@ -145,15 +162,30 @@ export function ZoneRejoindre({ annonce: a, proprietaire, utilisateur, onConnexi
       {statut === 'acceptee' && (
         <>
           <span className="ami-etat"><Icone nom="coche" taille={15} />{joueur ? 'Accepté' : 'Tu es dans le groupe'}</span>
-          <button type="button" className="bouton petit principal" onClick={() => ouvrirChat('groupe', demande.groupe_id)}>
-            Ouvrir le chat
-          </button>
+          {convMembre && (
+            <button type="button" className="bouton petit principal" aria-expanded={!!chat} onClick={() => setChat(chat ? null : {})}>
+              Ouvrir le chat
+              {convMembre.non_lus > 0 && <span className="pastille-nombre" aria-label={`${convMembre.non_lus} non lus`}>{convMembre.non_lus}</span>}
+            </button>
+          )}
         </>
       )}
       {statut === 'refusee' && <span className="ami-etat attente">Demande refusée</span>}
       {statut === 'expulse' && <span className="ami-etat attente">Retiré du groupe</span>}
       {probleme && <p className="msg-erreur" role="alert">{probleme}</p>}
     </div>
+    {convMembre && chat && (
+      <ConversationGroupe
+        conv={convMembre}
+        demandeId={demande.id}
+        moi={utilisateur?.id}
+        retour={() => setChat(null)}
+        enCarte
+        apres={apres}
+        annoncer={annoncer}
+      />
+    )}
+    </>
   )
 }
 
@@ -775,7 +807,7 @@ function PoucesFin({ conv, moi }) {
   )
 }
 
-function ConversationGroupe({ conv, demandeId, panneauDepart, moi, retour, apres, annoncer }) {
+function ConversationGroupe({ conv, demandeId, panneauDepart, moi, retour, enCarte, apres, annoncer }) {
   const [panneau, setPanneau] = useState(panneauDepart ?? '')
   const [copie, setCopie] = useState(false)
   const [quitter, setQuitter] = useState(false)
@@ -821,11 +853,11 @@ function ConversationGroupe({ conv, demandeId, panneauDepart, moi, retour, apres
   const termine = conv.fin_le && new Date(conv.fin_le).getTime() <= Date.now()
   const basculer = (nom) => setPanneau((p) => (p === nom ? '' : nom))
   return (
-    <section className="msg-fil" aria-label={`Conversation: ${conv.titre}`}>
+    <section className={`msg-fil${enCarte ? ' msg-fil-carte' : ''}`} aria-label={`Conversation: ${conv.titre}`}>
       <header className="msg-fil-haut">
-        <button type="button" className="bouton petit msg-retour" onClick={retour}>← Retour</button>
+        <button type="button" className="bouton petit msg-retour" onClick={retour}>{enCarte ? 'Fermer le chat' : '← Retour'}</button>
         <div className="msg-fil-titre">
-          <h3>{conv.titre}</h3>
+          <h3>{enCarte ? 'Chat du groupe' : conv.titre}</h3>
           <p className="aide">
             {chef ? 'Ton groupe' : conv.sous_titre} · {conv.nb_membres} {conv.nb_membres > 1 ? 'joueurs' : 'joueur'}
           </p>
@@ -1032,7 +1064,7 @@ export function SectionMessages({ utilisateur, onConnexion, conversations, deman
     return (
       <div className="vide">
         <span className="vide-icone" aria-hidden="true"><Icone nom="discussion" taille={30} /></span>
-        <p>Connecte-toi pour parler avec les joueurs de ton groupe et avec tes amis.</p>
+        <p>Connecte-toi pour jaser à la Taverne et écrire à tes amis.</p>
         <button type="button" className="bouton principal" onClick={onConnexion}>Se connecter</button>
       </div>
     )
@@ -1049,7 +1081,6 @@ export function SectionMessages({ utilisateur, onConnexion, conversations, deman
   // Un groupe dont l'annonce est terminée (expirée ou retirée) quitte la liste principale: il passe dans « Groupes terminés ».
   // Il reste lisible 24 heures, le temps de donner des pouces, puis le serveur l'efface.
   const finie = (c) => !!c.fin_le && new Date(c.fin_le).getTime() <= Date.now()
-  const groupes = conversations.filter((c) => c.type === 'groupe' && !finie(c))
   const groupesTermines = conversations.filter((c) => c.type === 'groupe' && finie(c))
   const discussions = conversations.filter((c) => c.type === 'ami')
   const amisListe = (amis ?? []).filter((a) => a.lien === 'ami')
@@ -1087,37 +1118,13 @@ export function SectionMessages({ utilisateur, onConnexion, conversations, deman
             </button>
           </li>
         </ul>
-        {conversations.length === 0 && amisSansConv.length === 0 && (
+        {discussions.length === 0 && amisSansConv.length === 0 && (
           <div className="vide">
             <span className="vide-icone" aria-hidden="true"><Icone nom="discussion" taille={30} /></span>
-            <p>
-              Pas encore de conversation. Demande à rejoindre une annonce: quand le chef t’accepte, le chat du groupe
-              apparaît ici. Tu peux aussi écrire à un ami depuis l’onglet Joueurs.
-            </p>
+            <p>Pas encore de conversation avec un ami. Ajoute des amis depuis l’onglet Joueurs, puis écris-leur ici.</p>
           </div>
         )}
-        {groupes.length > 0 && (
-          <>
-            <h2 className="msg-sous-titre">Groupes</h2>
-            <ul className="msg-liste">
-              {groupes.map((c) => (
-                <li key={c.cible}>
-                  <button type="button" className="msg-conv" aria-pressed={courante?.cible === c.cible} onClick={() => ouvrir(c)}>
-                    <span className="msg-conv-haut">
-                      <strong>{c.titre}</strong>
-                      {c.dernier_le && <span className="depuis">{depuis(c.dernier_le)}</span>}
-                    </span>
-                    <span className="msg-conv-bas">
-                      <span className="msg-extrait">{c.extrait || c.sous_titre}</span>
-                      {c.nb_en_attente > 0 && <span className="pastille-nombre" aria-label={`${c.nb_en_attente} demandes`}>{c.nb_en_attente} {c.nb_en_attente > 1 ? 'demandes' : 'demande'}</span>}
-                      {c.non_lus > 0 && <span className="pastille-nombre" aria-label={`${c.non_lus} non lus`}>{c.non_lus}</span>}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
+        <p className="aide msg-note-groupes">Le chat d’un groupe est sur son annonce, dans l’onglet Groupes.</p>
         {groupesTermines.length > 0 && (
           <details className="msg-nouveau msg-termines" open={!!courante && finie(courante)}>
             <summary>Groupes terminés ({groupesTermines.length})</summary>
