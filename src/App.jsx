@@ -8,6 +8,7 @@ import {
   arreterRecurrence,
   genererRecurrences,
   deconnecter,
+  compterVisite,
   envoyerLienCourriel,
   connecterParMotDePasse,
   creerCompte,
@@ -270,6 +271,7 @@ export default function App() {
   const [moderateur, setModerateur] = useState(false)
   const [moderationOuverte, setModerationOuverte] = useState(false)
   // Messagerie (ameliorations8.sql): groupes, chat entre amis, et l'état de mes demandes pour rejoindre.
+  const [visites, setVisites] = useState(null) // visiteurs d'aujourd'hui (null: pas disponible)
   const [conversations, setConversations] = useState([]) // null: pas activée (le SQL n'est pas roulé)
   const [mesDemandes, setMesDemandes] = useState([])
   const [chatCible, setChatCible] = useState(null) // { type: 'groupe' | 'ami', id, panneau, n }
@@ -289,6 +291,10 @@ export default function App() {
   const voirAvisRef = useRef(null)
   const nonLusRef = useRef(0)
   // Une alerte sur l'appareil ouvre l'onglet Messages (ouverture du site ou clic sur une alerte quand le site est déjà ouvert).
+  useEffect(() => {
+    compterVisite().then(setVisites)
+  }, [])
+
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('vue') === 'messages') {
       window.history.replaceState(null, '', window.location.pathname)
@@ -785,6 +791,12 @@ export default function App() {
                   {annonces.length === 0
                     ? "Aucune annonce pour l'instant. Sois le premier."
                     : `${annonces.length} ${annonces.length > 1 ? 'annonces actives' : 'annonce active'} en ce moment`}
+                </p>
+              )}
+              {visites !== null && (
+                <p className="compte visites">
+                  <Icone nom="amis" taille={16} />
+                  <span>{visites} {visites > 1 ? 'visiteurs' : 'visiteur'} aujourd'hui</span>
                 </p>
               )}
               {compte && (

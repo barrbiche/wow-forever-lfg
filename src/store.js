@@ -559,6 +559,37 @@ export async function signaler(type, id, motif) {
   if (error && error.code !== '23505') throw error
 }
 
+// ---------- Compteur de visiteurs (supabase/ameliorations14.sql) ----------
+
+// Une visite est comptée une fois par jour et par navigateur: le navigateur retient seulement la date de la dernière visite comptée.
+// La base ne garde qu'un nombre par jour. Retourne le total d'aujourd'hui, ou null (démo, base pas à jour, hors ligne).
+const CLE_VISITE = 'forever-visite'
+
+function jourLocal() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+export async function compterVisite() {
+  if (modeDemo) return null
+  try {
+    const aujourdhui = jourLocal()
+    let dejaCompte = false
+    let memoire = true
+    try {
+      dejaCompte = localStorage.getItem(CLE_VISITE) === aujourdhui
+      if (!dejaCompte) localStorage.setItem(CLE_VISITE, aujourdhui)
+    } catch {
+      memoire = false // navigation privée: on lit le total sans en ajouter un à chaque page
+    }
+    const { data, error } = await supabase.rpc(dejaCompte || !memoire ? 'visites_aujourdhui' : 'compter_visite')
+    if (error || typeof data !== 'number') return null
+    return data
+  } catch {
+    return null
+  }
+}
+
 // ---------- Boîte à messages (bogue, idée) ----------
 
 export async function envoyerRetour(categorie, texte) {

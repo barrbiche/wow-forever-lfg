@@ -44,6 +44,8 @@ Sans configuration, le site tourne en **mode démo**: les annonces restent dans 
 
 17. SQL Editor > New query: colle `supabase/ameliorations13.sql`, puis Run (nouveau type d'annonce « Quêtes » pour monter de niveau ensemble). **À rouler avant de pousser la mise à jour du site**: sans lui, publier une annonce de quêtes échoue. Les annonces de quêtes n'ont pas de rôles; un groupe de quêtes se remplit à 5 joueurs comme un donjon.
 
+18. SQL Editor > New query: colle `supabase/ameliorations14.sql`, puis Run (compteur « N visiteurs aujourd'hui » dans l'en-tête). Une visite est comptée une fois par jour et par navigateur; la base ne garde qu'un nombre par jour (Table Editor > `visites_jour` pour l'historique). Sans ce fichier, le compteur est simplement caché.
+
 ## Connexion par courriel
 
 Elle marche dès que le projet Supabase existe (le fournisseur « Email » est activé par défaut).

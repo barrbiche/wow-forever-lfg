@@ -42,6 +42,11 @@ export function SectionDonnees() {
           chiffres ne sont liés à aucun compte et sont gardés 12 semaines.
         </li>
         <li>
+          <strong>Le compteur de visiteurs.</strong> Le site compte combien de navigateurs le visitent chaque jour, pour
+          afficher « N visiteurs aujourd'hui ». La base ne garde qu'un nombre par jour: ni adresse IP, ni identifiant, ni
+          profil. Ton navigateur retient seulement la date de ta dernière visite comptée, pour ne pas te compter deux fois.
+        </li>
+        <li>
           <strong>Le badge « Supporter ».</strong> Si tu fais un don et que la personne qui gère le site te donne le
           badge, ton identifiant de compte est ajouté à une liste. Les gens connectés voient le badge à côté du nom de
           ton personnage. Le montant du don n'est pas gardé sur le site. Demande-lui de retirer le badge quand tu veux.
@@ -97,8 +102,8 @@ export function SectionDonnees() {
           <strong>Dans ton navigateur.</strong> Le site garde chez toi le style que tu as choisi, la langue de ton jeu,
           ton alerte de nouvelles annonces, ton personnage et ton contact (pour préremplir tes prochaines annonces) et
           ta connexion. {pubsActives
-            ? "Il n'y a pas d'outil de statistiques. Les témoins de publicité ne sont posés que si tu acceptes la publicité (voir plus bas)."
-            : "Il n'y a ni publicité, ni témoin de suivi, ni outil de statistiques."}
+            ? "Il n'y a pas d'outil de suivi. Les témoins de publicité ne sont posés que si tu acceptes la publicité (voir plus bas)."
+            : "Il n'y a ni publicité, ni témoin de suivi."}
         </li>
         {pubsActives && (
           <li>
