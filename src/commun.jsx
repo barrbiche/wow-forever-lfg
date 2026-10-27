@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useSyncExternalStore } from 'react'
 import { CLASSES, LANCEMENT_LE, MOTIFS_JOUEUR, MOTIFS_SIGNALEMENT, RAIDS_OUVERTS_LE, nomSpecialisation } from './data.js'
 import { signaler } from './store.js'
 import { LangueJeu, commandeInviter, useLangueJeu } from './langue.jsx'
@@ -105,6 +105,75 @@ export function depuis(iso) {
   return `il y a ${Math.floor(min / 60)} h`
 }
 
+// ---------- Minuteries qui descendent à la seconde ----------
+
+// Une seule horloge pour toute la page (une fois par seconde), partagée par tous les compteurs affichés.
+let instant = Math.floor(Date.now() / 1000) * 1000
+let abonnes = new Set()
+let horloge = null
+
+function abonner(rappel) {
+  abonnes.add(rappel)
+  if (!horloge) {
+    horloge = setInterval(() => {
+      instant = Math.floor(Date.now() / 1000) * 1000
+      abonnes.forEach((f) => f())
+    }, 1000)
+  }
+  instant = Math.floor(Date.now() / 1000) * 1000
+  return () => {
+    abonnes.delete(rappel)
+    if (abonnes.size === 0 && horloge) {
+      clearInterval(horloge)
+      horloge = null
+    }
+  }
+}
+
+export function useMaintenant() {
+  return useSyncExternalStore(abonner, () => instant, () => instant)
+}
+
+// 3 jours 4 h 05 min 09 s -> « 3 j 4 h 05 min 09 s »; sous une heure: « 29 min 41 s »; sous une minute: « 41 s ».
+export function formaterDuree(ms) {
+  const total = Math.max(0, Math.floor(ms / 1000))
+  const j = Math.floor(total / 86400)
+  const h = Math.floor((total % 86400) / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = total % 60
+  const p = (n) => String(n).padStart(2, '0')
+  if (j > 0) return `${j} j ${h} h ${p(m)} min ${p(s)} s`
+  if (h > 0) return `${h} h ${p(m)} min ${p(s)} s`
+  if (m > 0) return `${m} min ${p(s)} s`
+  return `${s} s`
+}
+
+// Le temps qui reste avant une date, mis à jour chaque seconde.
+export function Decompte({ fin }) {
+  const maintenant = useMaintenant()
+  return <span className="decompte" role="timer">{formaterDuree(new Date(fin).getTime() - maintenant)}</span>
+}
+
+// Sous le nom de l'auteur d'une annonce: « Expire dans … » ou « Départ dans … », et la barre qui se vide.
+export function DureeAnnonce({ annonce: a }) {
+  const maintenant = useMaintenant()
+  const fin = new Date(a.expires_at).getTime()
+  const debut = a.debut ? new Date(a.debut).getTime() : null
+  const total = fin - new Date(a.created_at).getTime()
+  const part = total <= 0 ? 0 : Math.max(0, Math.min(1, (fin - maintenant) / total))
+  let texte
+  if (debut !== null) texte = debut <= maintenant ? 'Départ en cours' : `Départ dans ${formaterDuree(debut - maintenant)}`
+  else texte = fin <= maintenant ? 'Expirée' : `Expire dans ${formaterDuree(fin - maintenant)}`
+  return (
+    <>
+      <span className="decompte" role="timer">{texte}</span>
+      <span className="duree" aria-hidden="true">
+        <span style={{ width: `${Math.round(part * 100)}%` }} />
+      </span>
+    </>
+  )
+}
+
 export function reste(iso) {
   const min = Math.max(0, Math.round((new Date(iso).getTime() - Date.now()) / 60000))
   if (min < 60) return `${min} min`
@@ -124,10 +193,10 @@ export function compteARebours() {
   const quand = (j) => (j === 1 ? 'demain' : `dans ${j} jours`)
   const jeu = joursAvant(LANCEMENT_LE)
   if (jeu === 0) return { texte: "Le jeu sort aujourd'hui!", date: '' }
-  if (jeu > 0) return { texte: `Le jeu sort ${quand(jeu)}`, date: '4 novembre' }
+  if (jeu > 0) return { texte: `Le jeu sort ${quand(jeu)}`, prefixe: 'Le jeu sort dans', cible: LANCEMENT_LE, date: '4 novembre' }
   const raids = joursAvant(RAIDS_OUVERTS_LE)
   if (raids === 0) return { texte: "Les raids ouvrent aujourd'hui!", date: '' }
-  if (raids > 0) return { texte: `Les raids ouvrent ${quand(raids)}`, date: '9 décembre' }
+  if (raids > 0) return { texte: `Les raids ouvrent ${quand(raids)}`, prefixe: 'Les raids ouvrent dans', cible: RAIDS_OUVERTS_LE, date: '9 décembre' }
   return null
 }
 

@@ -3998,3 +3998,8 @@ h2 {
 .msg-note-groupes {
   margin: 8px 4px 0;
 }
+
+/* Les minuteries gardent la même largeur à chaque seconde (chiffres de même taille). */
+.decompte {
+  font-variant-numeric: tabular-nums;
+}

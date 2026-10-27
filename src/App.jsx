@@ -72,14 +72,14 @@ import {
   LienDirect,
   NOMS_ACTIVITE,
   Signalement,
-  avantDepart,
+  Decompte,
+  DureeAnnonce,
   compteARebours,
   depuis,
   departParDefaut,
   departTexte,
   jourTexte,
   partRestante,
-  reste,
   SANS_ROLES,
   versChampDate,
 } from './commun.jsx'
@@ -831,7 +831,7 @@ export default function App() {
                 <p className="compte">
                   <Icone nom="horloge" taille={16} />
                   <span>
-                    {compte.texte}
+                    {compte.cible ? <>{compte.prefixe} <Decompte fin={compte.cible} /></> : compte.texte}
                     {compte.date && <span className="compte-date"> ({compte.date})</span>}
                   </span>
                 </p>
@@ -1429,10 +1429,7 @@ function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietai
                   </span>
                 )}
               </span>
-              <span>{a.debut ? avantDepart(a.debut) : `Expire dans ${reste(a.expires_at)}`}</span>
-              <span className="duree" aria-hidden="true">
-                <span style={{ width: `${Math.round(partRestante(a) * 100)}%` }} />
-              </span>
+              <DureeAnnonce annonce={a} />
             </div>
           </div>
         </div>
