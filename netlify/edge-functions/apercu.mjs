@@ -1,10 +1,12 @@
+// Texte de l'aperçu: voir netlify/partage/apercu-texte.mjs. Il est dans un autre dossier parce que Netlify prend chaque fichier de
+// netlify/edge-functions pour une fonction à part entière (et refuse celui qui n'a pas de fonction par défaut).
 // Quand on colle le lien d'une annonce ou d'une guilde (?annonce=ID ou ?guilde=ID) dans Discord, Facebook, Messenger
 // ou ailleurs, ces services lisent la page sans exécuter le site. Cette fonction écrit alors le titre et la description
 // de l'annonce dans la page, pour que l'aperçu dise « Donjon: The Deadmines — cherche DPS » au lieu du texte général.
 //
 // Elle lit la base avec la clé publique (la même que dans le site). Si quelque chose manque ou échoue, la page normale
 // est servie: le site ne casse jamais à cause de cette fonction.
-import { apercuAnnonce, apercuGuilde, ecrireApercu, idValide } from './apercu-texte.mjs'
+import { apercuAnnonce, apercuGuilde, ecrireApercu, idValide } from '../partage/apercu-texte.mjs'
 
 const COLONNES_ANNONCE = 'activite,cible,faction,niveau_min,niveau_max,roles,perso,note,genre,expires_at'
 const COLONNES_GUILDE = 'nom,faction,region,description,expires_at'
