@@ -1,5 +1,5 @@
 import { Fragment, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { BoutonInstaller } from './installer.jsx'
+import { BoutonInstaller, dejaInstalle, surIos } from './installer.jsx'
 import {
   connecter,
   compteSuspendu,
@@ -88,16 +88,29 @@ import {
 import { telechargerIcs } from './calendrier.js'
 import Achalandage from './Achalandage.jsx'
 import { BandeauPubs, ChoixPubs, Pub, pubsActives } from './Pub.jsx'
-import { rafraichirPush, retirerAlertesAppareil } from './push.js'
+import {
+  activerPush,
+  ecouterChangementPush,
+  enregistrerAlerteAnnonces,
+  etatPush,
+  lireAlerteAnnonces,
+  pushConfigure,
+  rafraichirPush,
+  retirerAlerteAnnonces,
+  retirerAlertesAppareil,
+} from './push.js'
 import { jouerSon, reglerSon, sonActif } from './sons.js'
 import {
   Alerte,
+  InvitationAlertes,
   demanderNotifications,
   ecrireAlerte,
   etatNotifications,
   filtresDeAlerte,
+  invitationAlertesVisible,
   lireAlerte,
   notifierAnnonce,
+  reporterInvitationAlertes,
   texteNouvelleAnnonce,
 } from './alertes.jsx'
 import Aide from './Aide.jsx'
@@ -288,6 +301,12 @@ export default function App() {
   // n'est jamais « nouvelle »); les refs permettent à `charger` de rester stable.
   const [alerte, setAlerte] = useState(lireAlerte)
   const [etatNotif, setEtatNotif] = useState(etatNotifications)
+  const [pushEtat, setPushEtat] = useState(null) // alertes de cet appareil: { supporte, bloque, actif } (null: pas connecté)
+  const [alerteServeur, setAlerteServeur] = useState(false) // l'alerte est aussi gardée avec le compte (site fermé)
+  const [occupeAlertes, setOccupeAlertes] = useState(false)
+  const [problemeAlertes, setProblemeAlertes] = useState('')
+  const [invitation, setInvitation] = useState(invitationAlertesVisible)
+  const syncAlerteRef = useRef('')
   const [nouvelles, setNouvelles] = useState(() => new Set())
   const [avis, setAvis] = useState(null) // { texte, ids }
   const vuesRef = useRef(null)
@@ -331,6 +350,61 @@ export default function App() {
   useEffect(() => {
     if (utilisateur?.id) rafraichirPush(utilisateur.id)
   }, [utilisateur?.id])
+
+  // L'état des alertes de cet appareil (pour l'invitation et le bouton d'alerte), relu quand on les active ou coupe.
+  useEffect(() => {
+    const id = utilisateur?.id
+    if (!id || !pushConfigure) {
+      setPushEtat(null)
+      return undefined
+    }
+    let actif = true
+    const lire = () => etatPush(id).then((e) => actif && setPushEtat(e))
+    lire()
+    const arreter = ecouterChangementPush(lire)
+    return () => {
+      actif = false
+      arreter()
+    }
+  }, [utilisateur?.id])
+
+  // L'alerte de nouvelles annonces suit le compte: elle est gardée sur le serveur pour t'avertir site fermé, et une
+  // personne qui se connecte sur un autre appareil retrouve son alerte.
+  useEffect(() => {
+    const id = utilisateur?.id
+    if (!id || !pushConfigure) {
+      syncAlerteRef.current = ''
+      setAlerteServeur(false)
+      return undefined
+    }
+    let actif = true
+    ;(async () => {
+      if (alerte) {
+        const filtresAlerte = filtresDeAlerte({ ...FILTRES_VIDES, ...alerte.filtres })
+        const cle = id + JSON.stringify(filtresAlerte)
+        if (syncAlerteRef.current === cle) return
+        const ok = await enregistrerAlerteAnnonces(filtresAlerte)
+        if (!actif) return
+        syncAlerteRef.current = ok ? cle : ''
+        setAlerteServeur(ok)
+      } else {
+        const serveur = await lireAlerteAnnonces()
+        if (!actif) return
+        if (!serveur) {
+          setAlerteServeur(false)
+          return
+        }
+        const filtresAlerte = filtresDeAlerte({ ...FILTRES_VIDES, ...serveur, activite: serveur.activite || 'tout' })
+        syncAlerteRef.current = id + JSON.stringify(filtresAlerte)
+        ecrireAlerte({ filtres: filtresAlerte })
+        setAlerte({ filtres: filtresAlerte })
+        setAlerteServeur(true)
+      }
+    })()
+    return () => {
+      actif = false
+    }
+  }, [utilisateur?.id, alerte])
 
   useEffect(() => {
     alerteRef.current = alerte
@@ -730,16 +804,45 @@ export default function App() {
   }
   voirAvisRef.current = voirAvis
 
+  // Active les alertes de cet appareil (notifications même site fermé). Retourne true si c'est fait.
+  const activerAppareil = async () => {
+    if (!utilisateur || !pushConfigure) return false
+    setOccupeAlertes(true)
+    setProblemeAlertes('')
+    try {
+      await activerPush(utilisateur.id)
+      setEtatNotif(etatNotifications())
+      return true
+    } catch (e) {
+      setProblemeAlertes(
+        e?.code === 'refuse'
+          ? 'Les alertes sont refusées. Autorise-les dans les réglages du site de ton navigateur, puis réessaie.'
+          : "Les alertes n'ont pas pu être activées. Réessaie dans un instant.",
+      )
+      setEtatNotif(etatNotifications())
+      return false
+    } finally {
+      setOccupeAlertes(false)
+    }
+  }
+
   const activerAlerte = async () => {
     const regle = { filtres: filtresDeAlerte(filtres) }
     ecrireAlerte(regle)
     setAlerte(regle)
+    // Connecté avec des alertes possibles sur cet appareil: on les active aussi (un seul clic, une seule permission).
+    if (pushEtat?.supporte && !pushEtat.bloque && !pushEtat.actif && (await activerAppareil())) {
+      setMessage("Alerte activée. Tu seras averti sur cet appareil même quand le site est fermé.")
+      return
+    }
     const etat = await demanderNotifications()
     setEtatNotif(etat)
     setMessage(
-      etat === 'autorisees'
-        ? 'Alerte activée. Une notification du navigateur t\'avertira quand le site est dans un autre onglet.'
-        : 'Alerte activée. Tu seras averti dans la page.',
+      pushEtat?.actif
+        ? "Alerte activée. Tu seras averti sur cet appareil même quand le site est fermé."
+        : etat === 'autorisees'
+          ? 'Alerte activée. Une notification du navigateur t\'avertira quand le site est dans un autre onglet.'
+          : 'Alerte activée. Tu seras averti dans la page.',
     )
   }
   const remplacerAlerte = () => {
@@ -748,10 +851,26 @@ export default function App() {
     setAlerte(regle)
     setMessage('Alerte mise à jour avec tes filtres.')
   }
-  const arreterAlerte = () => {
+  const arreterAlerte = async () => {
+    // D'abord le serveur: sinon la page reprendrait l'alerte du compte en voyant qu'il n'y en a plus ici.
+    if (utilisateur && pushConfigure) await retirerAlerteAnnonces()
+    syncAlerteRef.current = ''
+    setAlerteServeur(false)
     ecrireAlerte(null)
     setAlerte(null)
     setMessage('Alerte arrêtée.')
+  }
+
+  // Invitation à activer les alertes: connecté, alertes possibles ici (ou iPhone à installer), pas encore activées.
+  const invitationIos = !!utilisateur && !!pushEtat && !pushEtat.supporte && surIos() && !dejaInstalle()
+  const invitationVisible =
+    invitation && !!utilisateur && pushConfigure && !!pushEtat && !pushEtat.actif && !pushEtat.bloque && (pushEtat.supporte || invitationIos)
+  const plusTardAlertes = () => {
+    reporterInvitationAlertes()
+    setInvitation(false)
+  }
+  const activerDepuisInvitation = async () => {
+    if (await activerAppareil()) setMessage('Alertes activées sur cet appareil.')
   }
   const autoriserNotifications = async () => setEtatNotif(await demanderNotifications())
 
@@ -924,6 +1043,16 @@ export default function App() {
           <p className="bandeau demo" role="note">
             Mode démo: les annonces restent dans ton navigateur et personne d'autre ne les voit.
           </p>
+        )}
+
+        {invitationVisible && (
+          <InvitationAlertes
+            ios={invitationIos}
+            activer={activerDepuisInvitation}
+            plusTard={plusTardAlertes}
+            occupe={occupeAlertes}
+            probleme={problemeAlertes}
+          />
         )}
 
         <div className="barre">
@@ -1151,7 +1280,12 @@ export default function App() {
               remplacer={remplacerAlerte}
               arreter={arreterAlerte}
               autoriser={autoriserNotifications}
+              appareil={pushEtat}
+              serveur={alerteServeur}
+              activerAppareil={activerAppareil}
+              occupe={occupeAlertes}
             />
+            {problemeAlertes && alerte && <p className="erreur" role="alert">{problemeAlertes}</p>}
 
             {erreur && <p className="erreur" role="alert">{erreur}</p>}
 

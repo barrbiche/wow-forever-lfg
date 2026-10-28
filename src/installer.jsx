@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 // - iPhone et iPad (Safari): pas d'événement possible, on explique le geste « Sur l'écran d'accueil ».
 // Le bouton ne s'affiche pas si le site est déjà installé ou si le navigateur ne peut pas l'installer.
 
-const dejaInstalle = () => {
+export const dejaInstalle = () => {
   try {
     return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
   } catch {
@@ -13,7 +13,7 @@ const dejaInstalle = () => {
   }
 }
 
-const surIos = () => {
+export const surIos = () => {
   const ua = window.navigator.userAgent || ''
   return /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && window.navigator.maxTouchPoints > 1)
 }

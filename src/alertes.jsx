@@ -1,9 +1,11 @@
 import { FACTIONS, LANGUES, REGIONS, ROLES, STYLES, nomDe } from './data.js'
 import { Icone, NOMS_ACTIVITE } from './commun.jsx'
+import { pushConfigure } from './push.js'
 
 // Alertes de nouvelles annonces. La personne garde les filtres de l'onglet Groupes comme « alerte »: tant que le site
 // reste ouvert dans un onglet, chaque nouvelle annonce qui correspond est signalée dans la page et, si elle l'a
-// permis, par une notification du navigateur. Rien n'est envoyé à un serveur: le choix reste dans le navigateur.
+// permis, par une notification du navigateur. Une personne connectée qui a activé les alertes sur son appareil
+// (push.js) est aussi avertie site fermé: ses filtres sont alors gardés avec son compte (ameliorations16.sql).
 
 const CLE = 'forever-alerte'
 
@@ -104,7 +106,11 @@ export function notifierAnnonce(a, surClic) {
 
 // ---------- Interface (sous le nombre d'annonces) ----------
 
-export function Alerte({ alerte, filtres, etat, activer, remplacer, arreter, autoriser }) {
+// `appareil`: { supporte, bloque, actif } pour la personne connectée (null: pas connectée ou alertes pas configurées).
+// `serveur`: l'alerte est aussi gardée avec le compte, donc le serveur peut avertir même quand le site est fermé.
+export function Alerte({ alerte, filtres, etat, activer, remplacer, arreter, autoriser, appareil = null, serveur = false, activerAppareil, occupe = false }) {
+  const possible = !!appareil && appareil.supporte && !appareil.bloque
+  const sitefermeOk = possible && appareil.actif
   if (!alerte) {
     return (
       <div className="alerte">
@@ -113,7 +119,14 @@ export function Alerte({ alerte, filtres, etat, activer, remplacer, arreter, aut
           M'alerter des nouvelles annonces
         </button>
         <span className="alerte-aide">
-          {decrireFiltres(filtres)}. Marche tant que le site est ouvert dans un onglet.
+          {decrireFiltres(filtres)}.{' '}
+          {sitefermeOk
+            ? 'Tu seras averti même quand le site est fermé.'
+            : possible
+              ? "Le bouton active aussi les alertes sur cet appareil, pour t'avertir même quand le site est fermé."
+              : pushConfigure && !appareil
+                ? "Marche tant que le site est ouvert dans un onglet. Connecte-toi pour être averti même quand il est fermé."
+                : 'Marche tant que le site est ouvert dans un onglet.'}
         </span>
       </div>
     )
@@ -133,7 +146,12 @@ export function Alerte({ alerte, filtres, etat, activer, remplacer, arreter, aut
             Utiliser mes filtres actuels
           </button>
         )}
-        {etat === 'a-demander' && (
+        {possible && !appareil.actif && (
+          <button type="button" className="lien" onClick={activerAppareil} disabled={occupe}>
+            Activer les alertes sur cet appareil
+          </button>
+        )}
+        {!possible && etat === 'a-demander' && (
           <button type="button" className="lien" onClick={autoriser}>
             Autoriser les notifications
           </button>
@@ -143,11 +161,75 @@ export function Alerte({ alerte, filtres, etat, activer, remplacer, arreter, aut
         </button>
       </span>
       <span className="alerte-aide">
-        {etat === 'autorisees' && "Quand le site est dans un autre onglet, une notification du navigateur t'avertit. "}
-        {etat === 'bloquees' && "Les notifications sont bloquées dans ton navigateur: tu seras averti dans la page seulement. "}
-        {etat === 'indisponibles' && "Ton navigateur n'a pas les notifications: tu seras averti dans la page seulement. "}
-        Le site doit rester ouvert dans un onglet.
+        {sitefermeOk && serveur ? (
+          "Tu es averti sur tes appareils où les alertes sont activées, même quand le site est fermé."
+        ) : (
+          <>
+            {etat === 'autorisees' && "Quand le site est dans un autre onglet, une notification du navigateur t'avertit. "}
+            {etat === 'bloquees' && "Les notifications sont bloquées dans ton navigateur: tu seras averti dans la page seulement. "}
+            {etat === 'indisponibles' && "Ton navigateur n'a pas les notifications: tu seras averti dans la page seulement. "}
+            Le site doit rester ouvert dans un onglet{possible && !appareil.actif ? ", sauf si tu actives les alertes sur cet appareil" : ''}.
+          </>
+        )}
       </span>
     </div>
   )
+}
+
+// Invitation à activer les alertes de l'appareil, juste après la connexion. `ios`: iPhone ou iPad où le site n'est pas
+// encore installé (les alertes n'y marchent qu'à partir de l'icône sur l'écran d'accueil).
+export function InvitationAlertes({ ios, activer, plusTard, occupe, probleme }) {
+  return (
+    <section className="invitation-alertes" aria-label="Alertes sur ton cellulaire">
+      <span className="invitation-icone" aria-hidden="true">
+        <Icone nom="cloche" taille={20} />
+      </span>
+      <div className="invitation-texte">
+        <strong>Reçois des alertes sur ton cellulaire</strong>
+        {ios ? (
+          <p>
+            Sur iPhone et iPad, installe d'abord le site: touche le bouton Partager, puis « Sur l'écran d'accueil ».
+            Ouvre-le ensuite depuis l'icône et reviens ici pour activer les alertes.
+          </p>
+        ) : (
+          <p>
+            Une alerte quand on te répond, quand ton groupe va partir ou quand une annonce t'intéresse, même si le site est
+            fermé. Le texte de tes messages n'est jamais envoyé.
+          </p>
+        )}
+        {probleme && <p className="msg-erreur" role="alert">{probleme}</p>}
+      </div>
+      <div className="invitation-actions">
+        {!ios && (
+          <button type="button" className="bouton principal petit" onClick={activer} disabled={occupe}>
+            Activer les alertes
+          </button>
+        )}
+        <button type="button" className="bouton petit" onClick={plusTard}>
+          {ios ? 'Compris' : 'Plus tard'}
+        </button>
+      </div>
+    </section>
+  )
+}
+
+const CLE_INVITATION = 'forever-push-invite'
+const SEPT_JOURS = 7 * 24 * 3600 * 1000
+
+// L'invitation est cachée 7 jours après « Plus tard » (ou « Compris »).
+export function invitationAlertesVisible() {
+  try {
+    const v = Number(localStorage.getItem(CLE_INVITATION))
+    return !v || Date.now() - v > SEPT_JOURS
+  } catch {
+    return true
+  }
+}
+
+export function reporterInvitationAlertes() {
+  try {
+    localStorage.setItem(CLE_INVITATION, String(Date.now()))
+  } catch {
+    // navigation privée: elle reviendra à la prochaine visite
+  }
 }

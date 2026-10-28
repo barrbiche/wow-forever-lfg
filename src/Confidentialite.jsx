@@ -29,9 +29,11 @@ export function SectionDonnees() {
         <li>
           <strong>Les alertes sur l'appareil.</strong> Si tu les actives, le site garde l'adresse d'envoi de ton
           navigateur et ses clés (pas ton nom). Elles servent seulement à t'envoyer des alertes. Une alerte ne contient
-          jamais le texte d'un message, seulement une phrase comme « Nouveau message dans ton groupe ». Elles passent par
-          le service d'alertes de ton navigateur (Google, Apple ou Mozilla). Tu peux les couper en tout temps; un appareil
-          sans visite depuis 60 jours est retiré.
+          jamais le texte d'un message, seulement une phrase comme « Nouveau message dans ton groupe » ou ce qui est déjà
+          public dans une annonce. Elles passent par le service d'alertes de ton navigateur (Google, Apple ou Mozilla). Tu
+          peux les couper en tout temps; un appareil sans visite depuis 60 jours est retiré. Si tu as une « alerte de
+          nouvelles annonces » et que tu es connecté, ses filtres (activité, faction, niveau, rôle...) sont gardés avec ton
+          compte pour t'avertir site fermé; ils sont effacés quand tu arrêtes l'alerte ou que ton compte est supprimé.
         </li>
         <li>
           <strong>Les annonces qui se répètent.</strong> Pour republier ton annonce chaque semaine, le site en garde une

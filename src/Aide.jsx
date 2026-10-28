@@ -96,10 +96,12 @@ export default function Aide({ ouvert, fermer }) {
               compte dans leur réputation (page Joueurs).
             </li>
             <li>
-              Les alertes sur l'appareil (onglet Messages, « Activer les alertes ») affichent une notification quand on
-              demande à rejoindre ton groupe, qu'on t'accepte, qu'on écrit dans ton groupe ou qu'un ami t'écrit, même si
-              le site est fermé. Elles ne contiennent jamais le texte du message. Chaque appareil s'active séparément et on
-              peut les couper en tout temps. Sur iPhone, ajoute d'abord le site à l'écran d'accueil.
+              Les alertes sur l'appareil (onglet Messages, « Activer les alertes ») affichent une notification, même si
+              le site est fermé: quand on demande à rejoindre ton groupe, qu'on t'accepte, qu'on écrit dans ton groupe ou
+              qu'un ami t'écrit, 15 minutes avant le départ d'un groupe planifié, quand un groupe est fermé ou complet, et
+              quand une annonce correspond à ton alerte de nouvelles annonces. Elles ne contiennent jamais le texte d'un
+              message. Chaque appareil s'active séparément et on peut les couper en tout temps. Sur iPhone, ajoute d'abord
+              le site à l'écran d'accueil (Partager, puis « Sur l'écran d'accueil »).
             </li>
             <li>
               Le site joue un petit son quand une nouvelle annonce apparaît (seulement celles de ton alerte, si tu en as
@@ -158,8 +160,9 @@ export default function Aide({ ouvert, fermer }) {
             <li>
               <strong>Alerte de nouvelles annonces.</strong> Règle les filtres de l'onglet Groupes, puis « M'alerter des
               nouvelles annonces ». Tant que le site reste ouvert dans un onglet, chaque nouvelle annonce qui correspond
-              est signalée dans la page et, si tu l'autorises, par une notification de ton navigateur. Rien n'est envoyé
-              à un serveur: l'alerte reste dans ton navigateur et s'arrête si tu fermes l'onglet.
+              est signalée dans la page et, si tu l'autorises, par une notification de ton navigateur. Si tu es connecté
+              et que tu as activé les alertes sur ton appareil, tes filtres sont aussi gardés avec ton compte: tu es alors
+              averti sur ton cellulaire ou ton ordinateur même quand le site est fermé, jusqu'à ce que tu arrêtes l'alerte.
             </li>
             <li>
               <strong>Groupe planifié.</strong> « Ajouter à mon calendrier » télécharge un fichier qui s'ouvre dans Google

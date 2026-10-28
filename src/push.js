@@ -8,6 +8,20 @@ const CLE_COMPTE = 'forever-push-compte' // qui a activé les alertes sur cet ap
 
 export const pushConfigure = !!CLE_PUBLIQUE && !modeDemo
 
+// Quand les alertes de cet appareil changent (activées, coupées), le reste de la page relit l'état.
+const EVENEMENT = 'forever-push-change'
+const prevenir = () => {
+  try {
+    window.dispatchEvent(new Event(EVENEMENT))
+  } catch {
+    // pas grave
+  }
+}
+export function ecouterChangementPush(rappel) {
+  window.addEventListener(EVENEMENT, rappel)
+  return () => window.removeEventListener(EVENEMENT, rappel)
+}
+
 export const pushSupporte = () =>
   typeof navigator !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
 
@@ -63,6 +77,7 @@ export async function activerPush(idCompte) {
   const { error } = await supabase.rpc('enregistrer_push', { p_endpoint: j.endpoint, p_p256dh: j.keys?.p256dh, p_auth: j.keys?.auth })
   if (error) throw error
   ecrireCompte(idCompte)
+  prevenir()
 }
 
 export async function desactiverPush() {
@@ -74,6 +89,7 @@ export async function desactiverPush() {
     }
   } finally {
     ecrireCompte(null)
+    prevenir()
   }
 }
 
@@ -97,5 +113,40 @@ export async function rafraichirPush(idCompte) {
     await supabase.rpc('enregistrer_push', { p_endpoint: j.endpoint, p_p256dh: j.keys?.p256dh, p_auth: j.keys?.auth })
   } catch {
     // pas grave: ce sera refait à la prochaine visite
+  }
+}
+
+// ---------- Alerte « nouvelle annonce » gardée sur le serveur (ameliorations16.sql) ----------
+// Les filtres de l'alerte sont aussi gardés avec ton compte pour que le serveur t'envoie une alerte sur tes appareils,
+// même quand le site est fermé. Chaque fonction retourne sans erreur si la base n'est pas à jour.
+
+export async function enregistrerAlerteAnnonces(filtres) {
+  if (!pushConfigure) return false
+  try {
+    const { error } = await supabase.rpc('enregistrer_alerte_annonces', { p_filtres: filtres })
+    return !error
+  } catch {
+    return false
+  }
+}
+
+export async function retirerAlerteAnnonces() {
+  if (!pushConfigure) return false
+  try {
+    const { error } = await supabase.rpc('retirer_alerte_annonces')
+    return !error
+  } catch {
+    return false
+  }
+}
+
+// Les filtres de l'alerte du compte, ou null (pas d'alerte, ou base pas à jour).
+export async function lireAlerteAnnonces() {
+  if (!pushConfigure) return null
+  try {
+    const { data, error } = await supabase.rpc('mon_alerte_annonces')
+    return !error && data && typeof data === 'object' ? data : null
+  } catch {
+    return null
   }
 }

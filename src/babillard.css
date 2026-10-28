@@ -845,3 +845,61 @@ body::before {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
   }
 }
+
+/* Invitation à activer les alertes sur le cellulaire (juste après la connexion). */
+.invitation-alertes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--gold-line);
+  border-left-width: 4px;
+  border-radius: var(--r-papier);
+  background: var(--grain), var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.invitation-icone {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--gold) 22%, transparent);
+  color: var(--gold-line);
+}
+
+.invitation-texte {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.invitation-texte p {
+  margin: 2px 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.invitation-texte .msg-erreur {
+  color: var(--danger);
+}
+
+.invitation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 559px) {
+  .invitation-actions {
+    flex: 1 1 100%;
+  }
+  .invitation-actions .bouton {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
