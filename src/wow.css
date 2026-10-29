@@ -360,3 +360,83 @@
     animation: none;
   }
 }
+
+/* ---------- Cadres dorés au survol (onglets, pastilles, filtres) ---------- */
+
+.onglet:not([aria-pressed='true']):hover,
+.pastille:hover,
+.faction-bouton:hover {
+  box-shadow: inset 0 0 0 1px rgb(201 162 74 / 0.7), 0 0 14px -6px rgb(255 190 40 / 0.6);
+}
+
+/* ---------- « Ready check »: le groupe vient de se former ---------- */
+
+.carte {
+  position: relative;
+}
+
+.ready-check {
+  position: absolute;
+  z-index: 3;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 8px;
+  color: #62f352;
+  background: linear-gradient(180deg, rgb(16 34 18 / 0.96), rgb(6 16 8 / 0.97));
+  border: 1px solid #c9a24a;
+  border-radius: 999px;
+  box-shadow:
+    inset 0 0 0 1px #000,
+    0 0 22px rgb(98 243 82 / 0.55);
+  font-family: var(--fantasy);
+  font-size: 1.05rem;
+  pointer-events: none;
+  animation: ready-entree 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.ready-check svg {
+  padding: 3px;
+  border-radius: 50%;
+  background: #1c6b16;
+  color: #eaffe4;
+  box-shadow: 0 0 0 2px #62f352;
+  width: 30px;
+  height: 30px;
+}
+
+.groupe-pret {
+  animation: groupe-pret 1.4s ease-out 2;
+}
+
+@keyframes ready-entree {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+@keyframes groupe-pret {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 0 1px rgb(0 0 0 / 0.85),
+      0 0 0 1px rgb(0 0 0 / 0.6),
+      0 0 18px -6px rgb(98 243 82 / 0.1);
+  }
+  40% {
+    box-shadow:
+      inset 0 0 0 1px rgb(0 0 0 / 0.85),
+      0 0 0 1px rgb(0 0 0 / 0.6),
+      0 0 38px 4px rgb(98 243 82 / 0.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ready-check,
+  .groupe-pret {
+    animation: none;
+  }
+}

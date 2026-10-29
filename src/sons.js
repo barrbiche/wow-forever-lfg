@@ -50,9 +50,10 @@ if (typeof window !== 'undefined') {
 const NOTES = {
   message: [{ f: 880, t: 0 }, { f: 1320, t: 0.11 }], // « ding ding » court: quelqu'un t'écrit
   annonce: [{ f: 523, t: 0 }, { f: 659, t: 0.1 }, { f: 784, t: 0.2 }], // petit arpège: nouvelle annonce
+  pret: [{ f: 392, t: 0 }, { f: 587, t: 0.14 }, { f: 784, t: 0.28 }, { f: 1175, t: 0.42 }], // « ready check »: le groupe est formé
 }
 
-// Joue un son (« message » ou « annonce »). Jamais plus d'un son toutes les 2 secondes. Silencieux si le choix est coupé.
+// Joue un son (« message », « annonce » ou « pret »). Jamais plus d'un son toutes les 2 secondes. Silencieux si le choix est coupé.
 export function jouerSon(type, forcer = false) {
   if (!forcer && !sonActif()) return
   const maintenant = Date.now()
@@ -80,4 +81,47 @@ export function jouerSon(type, forcer = false) {
   } catch {
     // pas de son: ce n'est pas grave
   }
+}
+
+// Petit « clic » doré quand on touche un bouton (comme les fenêtres du jeu). Très court, doux, et coupé avec le choix « Sons ».
+let dernierClic = 0
+export function jouerClic() {
+  if (!sonActif()) return
+  const maintenant = Date.now()
+  if (maintenant - dernierClic < 70) return
+  const c = obtenirContexte()
+  if (!c) return
+  try {
+    if (c.state === 'suspended') c.resume().catch(() => {})
+    if (c.state === 'suspended') return
+    dernierClic = maintenant
+    const t = c.currentTime + 0.005
+    const osc = c.createOscillator()
+    const gain = c.createGain()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(1500, t)
+    osc.frequency.exponentialRampToValueAtTime(900, t + 0.05)
+    gain.gain.setValueAtTime(0.0001, t)
+    gain.gain.exponentialRampToValueAtTime(0.07, t + 0.006)
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.06)
+    osc.connect(gain)
+    gain.connect(c.destination)
+    osc.start(t)
+    osc.stop(t + 0.07)
+  } catch {
+    // pas de son: ce n'est pas grave
+  }
+}
+
+// Un clic sur n'importe quel bouton du site joue le petit son (sauf l'interrupteur « Sons » lui-même).
+if (typeof window !== 'undefined') {
+  window.addEventListener(
+    'click',
+    (e) => {
+      const b = e.target instanceof Element ? e.target.closest('button, [role="tab"], summary') : null
+      if (!b || b.disabled || b.getAttribute('aria-disabled') === 'true' || b.closest('.bouton-son')) return
+      jouerClic()
+    },
+    true,
+  )
 }

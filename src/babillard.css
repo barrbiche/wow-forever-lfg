@@ -1,7 +1,7 @@
 /* Babillard Forever — habillage « babillard d'auberge ».
 
-   Les annonces sont des papiers épinglés sur un tableau (liège pour Neutre, feutre matelassé pour Alliance,
-   plaques de fer pour Horde). L'en-tête et la barre de navigation sont en bois, avec des plaques de laiton.
+   Les annonces sont des papiers épinglés sur un tableau. Le style final (sombre et doré, façon WoW) est dans
+   wow.css, chargé après ce fichier. L'en-tête et la barre de navigation sont en bois, avec des plaques de laiton.
    Ce fichier ne change aucune structure: il redéfinit les couleurs (jetons) de index.css et habille les
    composants. Pour revenir au look sobre, il suffit de retirer son import dans main.jsx.
 

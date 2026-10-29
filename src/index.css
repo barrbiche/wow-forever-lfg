@@ -416,12 +416,6 @@ h2 {
   }
 }
 
-.aide-lien {
-  font-size: 0.9rem;
-  color: var(--haut-ink);
-  opacity: 0.92;
-}
-
 .point {
   flex: none;
   width: 9px;

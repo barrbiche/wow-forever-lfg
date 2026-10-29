@@ -244,6 +244,8 @@ export default function App() {
   const [recurrences, setRecurrences] = useState([])
   const dernierGenRef = useRef(0)
   const [places, setPlaces] = useState(() => new Map())
+  const placesPrecedentes = useRef(null) // dernière liste des places, pour voir qu'un groupe vient d'être formé
+  const [groupesPrets, setGroupesPrets] = useState(() => new Set())
   const [supporters, setSupporters] = useState(() => new Set())
   const [joueurs, setJoueurs] = useState([]) // null: pas encore disponibles (ex.: base pas à jour)
   const [enLigne, setEnLigne] = useState(() => new Set())
@@ -441,7 +443,18 @@ export default function App() {
   // quand on n'est pas dans l'onglet Messages.
   const chargerPlaces = useCallback(async () => {
     try {
-      setPlaces(new Map((await lirePlaces()).map((p) => [p.annonce_id, p])))
+      const nouvelles = new Map((await lirePlaces()).map((p) => [p.annonce_id, p]))
+      // « Ready check »: un groupe qui vient de se former (pas ceux déjà complets à l'ouverture de la page).
+      const avant = placesPrecedentes.current
+      placesPrecedentes.current = nouvelles
+      if (avant) {
+        const formes = [...nouvelles.values()].filter((p) => p.complet && !avant.get(p.annonce_id)?.complet).map((p) => p.annonce_id)
+        if (formes.length > 0) {
+          setGroupesPrets((s) => new Set([...s, ...formes]))
+          setTimeout(() => setGroupesPrets((s) => new Set([...s].filter((id) => !formes.includes(id)))), 4500)
+        }
+      }
+      setPlaces(nouvelles)
     } catch {
       // pas grave: les cartes n'affichent simplement pas les places
     }
@@ -1331,6 +1344,7 @@ export default function App() {
                         demande={demandesParAnnonce.get(a.id)}
                         conv={groupesParAnnonce.get(a.id)}
                         places={places.get(a.id)}
+                        pret={groupesPrets.has(a.id)}
                         repetition={recurrences.find((r) => r.source === a.id || r.derniere === a.id)}
                         messagerie={conversations !== null}
                         ouvrirDemande={setDemandeAnnonce}
@@ -1469,8 +1483,13 @@ export default function App() {
 
 // ---------- Carte d'annonce ----------
 
-function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietaire, utilisateur, onConnexion, apres, demande, conv, places, repetition, messagerie, ouvrirDemande, annoncer }) {
+function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietaire, utilisateur, onConnexion, apres, demande, conv, places, pret, repetition, messagerie, ouvrirDemande, annoncer }) {
   const [probleme, setProbleme] = useState('')
+  // Le son du « ready check » ne joue que pour le chef du groupe et les joueurs acceptés.
+  const dansLeGroupe = proprietaire || demande?.statut === 'acceptee'
+  useEffect(() => {
+    if (pret && dansLeGroupe) jouerSon('pret')
+  }, [pret, dansLeGroupe])
   const joueur = a.genre === 'joueur'
   const classe = CLASSES.find((c) => c.id === a.classe)
   // Raid qui cherche un nombre précis de joueurs par rôle (ex.: 2 tanks, 5 heals, 12 DPS).
@@ -1499,7 +1518,15 @@ function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietai
   }
 
   return (
-    <article className={`carte ${a.faction}`} data-activite={a.activite} id={`annonce-${a.id}`} tabIndex={-1}>
+    <article className={`carte ${a.faction}${pret ? ' groupe-pret' : ''}`} data-activite={a.activite} id={`annonce-${a.id}`} tabIndex={-1}>
+      {pret && (
+        <div className="ready-check" role="status">
+          <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
+            <path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <strong>Groupe prêt!</strong>
+        </div>
+      )}
       <div className="carte-plaque">
         <Icone nom={joueur ? 'joueur' : a.activite} taille={26} />
         <strong className="plaque-niveau" aria-hidden="true">
