@@ -63,6 +63,7 @@ import {
   RULESETS,
   STYLES,
   champsManquants,
+  couleurTexteClasse,
   nomDe,
   raidsOuverts,
 } from './data.js'
@@ -77,6 +78,7 @@ import {
   NOMS_ACTIVITE,
   Signalement,
   Decompte,
+  PlaqueLancement,
   DureeAnnonce,
   compteARebours,
   depuis,
@@ -180,32 +182,6 @@ function correspond(a, f) {
   return true
 }
 
-// ---------- Style du site (Neutre, Alliance ou Horde), gardé dans le navigateur ----------
-
-const STYLES_SITE = [
-  ['', 'Neutre'],
-  ['alliance', 'Alliance'],
-  ['horde', 'Horde'],
-]
-const COULEURS_BARRE = { alliance: '#071229', horde: '#0b0404' }
-
-function styleEnregistre() {
-  const v = document.documentElement.dataset.style
-  return v === 'alliance' || v === 'horde' ? v : ''
-}
-
-function appliquerStyle(style) {
-  if (style) document.documentElement.dataset.style = style
-  else delete document.documentElement.dataset.style
-  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', style ? COULEURS_BARRE[style] : m.dataset.defaut))
-  try {
-    if (style) localStorage.setItem('forever-style', style)
-    else localStorage.removeItem('forever-style')
-  } catch {
-    // navigation privée: le style n'est pas gardé pour la prochaine visite
-  }
-}
-
 // Adresse directe vers une annonce, une guilde ou un guide: ?annonce=ID, ?guilde=ID ou ?guide=ID.
 function lireLienDirect() {
   const p = new URLSearchParams(window.location.search)
@@ -256,13 +232,6 @@ export default function App() {
   const [message, setMessage] = useState('')
   const [nouveauMdp, setNouveauMdp] = useState(false)
   const [utilisateur, setUtilisateur] = useState(null)
-  const [styleSite, setStyleSite] = useState(styleEnregistre)
-
-  const choisirStyle = (style) => {
-    appliquerStyle(style)
-    setStyleSite(style)
-  }
-
   const [guildes, setGuildes] = useState(null) // null: pas encore disponibles (ex.: base pas à jour)
   const [vue, setVue] = useState(() => (new URLSearchParams(window.location.search).get('vue') === 'messages' ? 'messages' : 'groupes'))
   const [aideOuverte, setAideOuverte] = useState(false)
@@ -905,7 +874,33 @@ export default function App() {
             d="M120 60C148 18 215 14 215 60C215 106 148 102 120 60C92 18 25 14 25 60C25 106 92 102 120 60Z"
           />
         </svg>
+        <svg className="haut-decor" viewBox="0 0 1200 260" preserveAspectRatio="xMidYMax slice" aria-hidden="true" focusable="false">
+          <defs>
+            <radialGradient id="decor-soleil" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#ffd100" stopOpacity="0.5" />
+              <stop offset="55%" stopColor="#ff9a1f" stopOpacity="0.16" />
+              <stop offset="100%" stopColor="#ff9a1f" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          <circle cx="880" cy="120" r="210" fill="url(#decor-soleil)" />
+          <path
+            d="M0 168L70 128L150 156L250 84L340 142L430 104L530 160L650 92L750 146L860 76L960 132L1060 98L1200 154V260H0Z"
+            fill="#121832"
+            stroke="#ffd100"
+            strokeOpacity="0.3"
+            strokeWidth="1.2"
+          />
+          <path
+            d="M0 208L110 164L200 196L320 132L420 184L540 148L640 198L760 150L880 200L1000 160L1100 192L1200 170V260H0Z"
+            fill="#0b0f21"
+            stroke="#ffd100"
+            strokeOpacity="0.18"
+            strokeWidth="1"
+          />
+          <path d="M0 240L130 214L240 236L380 204L500 234L640 210L780 238L920 212L1060 236L1200 218V260H0Z" fill="#080a14" />
+        </svg>
         <div className="haut-contenu">
+          <PlaqueLancement compte={compte} />
           <div className="titre-bloc">
             <h1>
               <a
@@ -1006,7 +1001,7 @@ export default function App() {
                 </p>
               )}
               {compte && (
-                <p className="compte">
+                <p className="compte sr">
                   <Icone nom="horloge" taille={16} />
                   <span>
                     {compte.cible ? <>{compte.prefixe} <Decompte fin={compte.cible} /></> : compte.texte}
@@ -1032,20 +1027,6 @@ export default function App() {
                 </span>
               </button>
             </div>
-          </div>
-          <div className="styles" role="group" aria-label="Apparence du site">
-            {STYLES_SITE.map(([id, nom]) => (
-              <button
-                key={id || 'neutre'}
-                type="button"
-                data-style={id || 'neutre'}
-                aria-pressed={styleSite === id}
-                title={`Style ${nom}`}
-                onClick={() => choisirStyle(id)}
-              >
-                {nom}
-              </button>
-            ))}
           </div>
         </div>
       </header>
@@ -1444,7 +1425,7 @@ export default function App() {
           setPublierApresProfil(false)
         }}
         profil={monProfil}
-        factionParDefaut={styleSite === 'horde' ? 'horde' : 'alliance'}
+        factionParDefaut={monProfil?.faction === 'horde' ? 'horde' : 'alliance'}
         apres={charger}
         annoncer={setMessage}
         pourPublier={publierApresProfil}
@@ -1455,7 +1436,7 @@ export default function App() {
       />
 
       <Formulaire
-        factionParDefaut={styleSite === 'horde' ? 'horde' : 'alliance'}
+        factionParDefaut={monProfil?.faction === 'horde' ? 'horde' : 'alliance'}
         utilisateur={utilisateur}
         ouvert={formulaireOuvert}
         fermer={() => setFormulaireOuvert(false)}
@@ -1517,7 +1498,7 @@ function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietai
   }
 
   return (
-    <article className={`carte ${a.faction}`} id={`annonce-${a.id}`} tabIndex={-1}>
+    <article className={`carte ${a.faction}`} data-activite={a.activite} id={`annonce-${a.id}`} tabIndex={-1}>
       <div className="carte-plaque">
         <Icone nom={joueur ? 'joueur' : a.activite} taille={26} />
         <strong className="plaque-niveau" aria-hidden="true">
@@ -1611,7 +1592,7 @@ function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietai
             </span>
             <div className="auteur-texte">
               <span className="auteur-nom">
-                <strong>{a.perso}</strong>
+                <strong style={classe ? { color: couleurTexteClasse(a.classe) } : undefined}>{a.perso}</strong>
                 <BadgeSupporter id={a.user_id} />
                 {profil && !profil.en_revision && profil.pouces > 0 && (
                   <span className="respect-mini" title={`Respect: ${profil.pouces} ${profil.pouces > 1 ? 'pouces' : 'pouce'}`}>

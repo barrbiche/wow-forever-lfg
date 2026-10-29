@@ -161,6 +161,13 @@ export const CLASSES = [
   { id: 'druide', nom: 'Druide', couleur: '#FF7D0A' },
 ]
 
+// Couleur de classe pour du TEXTE sur fond sombre (le bleu officiel du chaman est trop foncé pour se lire bien).
+export function couleurTexteClasse(id) {
+  const c = CLASSES.find((x) => x.id === id)
+  if (!c) return undefined
+  return id === 'chaman' ? '#4da3ff' : c.couleur
+}
+
 // Les trois spécialisations (arbres de talents) de chaque classe. L'identifiant est celui que la base accepte
 // (ameliorations4.sql: profils_specialisation_ok): ne le change pas sans changer la base.
 // Noms français: seemeta.com/fr/wow-forever/classes. Noms anglais: warcrafttavern.com/forever/guides/classes.

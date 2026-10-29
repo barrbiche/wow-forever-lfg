@@ -188,6 +188,42 @@ export function joursAvant(date) {
   return Math.round((new Date(date).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000)
 }
 
+// Grande plaque du compte à rebours (bannière de l'en-tête). Décorative: le texte lu par les lecteurs d'écran est
+// celui de la ligne d'état (« Le jeu sort dans … »), donc la plaque est cachée pour eux.
+export function PlaqueLancement({ compte }) {
+  const maintenant = useMaintenant()
+  if (!compte) return null
+  const titre = compte.cible ? `${compte.prefixe.replace(/ dans$/, '')} le ${compte.date}` : compte.texte
+  if (!compte.cible) {
+    return (
+      <div className="lancement" aria-hidden="true">
+        <p className="lancement-titre grand">{titre}</p>
+      </div>
+    )
+  }
+  const total = Math.max(0, Math.floor((new Date(compte.cible).getTime() - maintenant) / 1000))
+  const p = (n) => String(n).padStart(2, '0')
+  const cases = [
+    [Math.floor(total / 86400), 'jours'],
+    [Math.floor((total % 86400) / 3600), 'heures'],
+    [Math.floor((total % 3600) / 60), 'minutes'],
+    [total % 60, 'secondes'],
+  ]
+  return (
+    <div className="lancement" aria-hidden="true">
+      <p className="lancement-titre">{titre}</p>
+      <div className="lancement-chiffres">
+        {cases.map(([valeur, nom]) => (
+          <div key={nom} className="lancement-case">
+            <strong>{p(valeur)}</strong>
+            <small>{nom}</small>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // Compte à rebours de l'en-tête: la sortie du jeu, puis l'ouverture des raids. Rien ensuite.
 // Retourne { texte, date } ou null.
 export function compteARebours() {

@@ -738,68 +738,11 @@ h2 {
   cursor: pointer;
 }
 
-/* ---------- Choix du style du site (trois pastilles dans l'en-tête) ---------- */
-
-.styles {
-  position: static;
-  order: -1;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 14px;
-}
-
-/* Trois pastilles qui portent leur nom: jaune pour Neutre, bleu pour Alliance, rouge pour Horde. */
-.styles button {
-  --pt: #e9ab1e;
-  --pt-ink: #1d1505;
-  min-height: 32px;
-  padding: 0 14px;
-  font: inherit;
-  font-size: 0.84rem;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--pt-ink);
-  border-radius: 999px;
-  border: 2px solid transparent;
-  background: var(--pt);
-  cursor: pointer;
-  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.3);
-}
-
-.styles button[data-style='alliance'] {
-  --pt: #3468d0;
-  --pt-ink: #ffffff;
-}
-
-.styles button[data-style='horde'] {
-  --pt: #c8221c;
-  --pt-ink: #ffffff;
-}
-
-.styles button[aria-pressed='true'] {
-  border-color: var(--haut-fond-bord);
-  box-shadow: 0 0 0 2px var(--haut-ink);
-}
-
-.styles button:hover {
-  filter: brightness(1.1);
-}
-
 @media (min-width: 760px) {
   .haut-contenu {
     display: block;
   }
 
-  .styles {
-    position: absolute;
-    top: 2px;
-    right: 16px;
-    margin-bottom: 0;
-    gap: 8px;
-  }
-
-  /* Garde le titre à gauche des pastilles de style. */
   .haut h1 {
     max-width: calc(100% - 290px);
   }
@@ -3192,90 +3135,6 @@ h2 {
     padding: 0 5px;
     font-size: 0.72rem;
   }
-}
-
-/* ---------- Style Alliance: bleu royal et or, coins arrondis ---------- */
-
-:root[data-style='alliance'] {
-  color-scheme: dark;
-  --bg: #08101f;
-  --surface: #12203f;
-  --field: #0b1630;
-  --ink: #eef2fb;
-  --muted: #aab7d6;
-  --line: #2b4585;
-  --gold: #e0a63b;
-  --gold-light: #f2c25f;
-  --gold-ink: #1b1403;
-  --gold-line: #d3a23a;
-  --alliance: #8ab4ff;
-  --alliance-ink: #08111f;
-  --horde: #f08882;
-  --horde-ink: #240b0a;
-  --tank: #7fb0ff;
-  --heal: #6fdca0;
-  --dps: #ff8f80;
-  --focus: #9cc4ff;
-  --danger: #f08882;
-  --shadow: 0 8px 22px rgb(0 0 0 / 0.35);
-  --radius: 18px;
-  --r-bouton: 13px;
-  --r-champ: 11px;
-  --haut-fond:
-    radial-gradient(640px 340px at 88% 6%, rgb(224 166 59 / 0.24), transparent 70%),
-    radial-gradient(620px 340px at 4% 100%, rgb(60 120 255 / 0.5), transparent 70%),
-    linear-gradient(180deg, #071229, #10285a);
-  --haut-fond-bord: #071229;
-  --haut-ink: #ffffff;
-  --haut-doux: rgb(255 255 255 / 0.8);
-  --haut-bord: rgb(255 255 255 / 0.38);
-  --haut-trait: #e8b447;
-  --haut-lueur: rgb(224 166 59 / 0.55);
-  --motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M22 0L44 22L22 44L0 22Z' fill='none' stroke='white' stroke-width='1'/%3E%3C/svg%3E");
-}
-
-/* ---------- Style Horde: fer noir, rouge sang et os, coins taillés ---------- */
-
-:root[data-style='horde'] {
-  color-scheme: dark;
-  --bg: #0a0808;
-  --surface: #1f1919;
-  --field: #120d0d;
-  --ink: #f1e9e2;
-  --muted: #b8aba3;
-  --line: #4f3d3b;
-  --gold: #c8221c;
-  --gold-light: #e0443a;
-  --gold-ink: #ffffff;
-  --gold-line: #ff6b5e;
-  --alliance: #8ab4ff;
-  --alliance-ink: #08111f;
-  --horde: #ff5a4d;
-  --horde-ink: #1f0504;
-  --tank: #7fb0ff;
-  --heal: #6fdca0;
-  --dps: #ffa08f;
-  --focus: #ff9a8c;
-  --danger: #ff6b5e;
-  --shadow: 0 8px 22px rgb(0 0 0 / 0.5);
-  --radius: 6px;
-  --r-bouton: 5px;
-  --r-champ: 5px;
-  --haut-fond:
-    radial-gradient(640px 340px at 88% 6%, rgb(235 60 40 / 0.34), transparent 70%),
-    radial-gradient(620px 340px at 4% 100%, rgb(160 14 14 / 0.55), transparent 70%),
-    linear-gradient(180deg, #0b0404, #330808);
-  --haut-fond-bord: #0b0404;
-  --haut-ink: #fff1e6;
-  --haut-doux: rgb(255 241 230 / 0.8);
-  --haut-bord: rgb(255 241 230 / 0.38);
-  --haut-trait: #ff6b5e;
-  --haut-lueur: rgb(200 34 28 / 0.65);
-  --motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M0 36L22 8L44 36' fill='none' stroke='white' stroke-width='1.2'/%3E%3C/svg%3E");
-}
-
-:root[data-style='horde'] .bouton.principal {
-  border-color: var(--gold-line);
 }
 
 /* ---------- Page publique /confidentialite ---------- */

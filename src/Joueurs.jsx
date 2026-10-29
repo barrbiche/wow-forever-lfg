@@ -18,6 +18,7 @@ import {
   ROLES,
   STYLES,
   champsManquants,
+  couleurTexteClasse,
   nomDe,
   nomSpecialisation,
   normaliserBattleTag,
@@ -315,7 +316,7 @@ function CarteApercu({ joueur: j, actif }) {
       <div className="carte-corps">
         <div className="carte-haut">
           <div className="carte-titre">
-            <h2>{j.perso}</h2>
+            <h2 style={{ color: couleurTexteClasse(j.classe) }}>{j.perso}</h2>
             <span className={`faction ${j.faction}`}>{nomDe(FACTIONS, j.faction)}</span>
           </div>
           {actif ? (
@@ -436,7 +437,7 @@ function CarteJoueur({ joueur: j, commande, enLigne, lien, apresAmis, utilisateu
       <div className="carte-corps">
         <div className="carte-haut">
           <div className="carte-titre">
-            <h2>
+            <h2 style={{ color: couleurTexteClasse(j.classe) }}>
               {j.perso}
               <BadgeSupporter id={j.user_id} />
             </h2>

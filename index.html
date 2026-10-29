@@ -7,8 +7,7 @@
     <meta name="google-adsense-account" content="ca-pub-8930239787504104" />
     <link rel="apple-touch-icon" href="/icone-192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#090e19" media="(prefers-color-scheme: light)" data-defaut="#090e19" />
-    <meta name="theme-color" content="#090e19" media="(prefers-color-scheme: dark)" data-defaut="#090e19" />
+    <meta name="theme-color" content="#07080c" />
     <meta name="description" content="Trouve du monde pour tes donjons, ton PvP et tes quêtes dans WoW Forever. Annonce ton groupe ou rejoins-en un." />
     <link rel="canonical" href="https://babillard-forever.com/" />
     <!-- Aperçu du lien dans Discord, Facebook, Messenger, etc. -->
@@ -25,17 +24,6 @@
     <meta property="og:image:alt" content="Babillard Forever, trouve ton groupe pour les donjons, les raids, le PvP et les quêtes" />
     <meta name="twitter:card" content="summary_large_image" />
     <title>Babillard Forever</title>
-    <script>
-      // Applique le style choisi (Alliance ou Horde) avant l'affichage, pour éviter un flash de couleurs.
-      try {
-        var s = localStorage.getItem('forever-style')
-        if (s === 'alliance' || s === 'horde') {
-          document.documentElement.dataset.style = s
-          var couleur = s === 'horde' ? '#0b0404' : '#071229'
-          document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) { m.setAttribute('content', couleur) })
-        }
-      } catch (e) {}
-    </script>
   </head>
   <body>
     <div id="root"></div>

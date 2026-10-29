@@ -116,7 +116,7 @@ function CarteGuilde({ guilde: g, proprietaire, utilisateur, onConnexion, apres 
   const jours = Math.max(0, Math.ceil((new Date(g.expires_at).getTime() - Date.now()) / 86400000))
 
   return (
-    <article className={`carte guilde ${g.faction}`} id={`guilde-${g.id}`} tabIndex={-1}>
+    <article className={`carte guilde ${g.faction}`} data-activite="guilde" id={`guilde-${g.id}`} tabIndex={-1}>
       <div className="carte-plaque">
         <Icone nom="guilde" taille={30} />
         <span className="plaque-unite">Guilde</span>
