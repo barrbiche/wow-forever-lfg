@@ -924,3 +924,119 @@ body::before {
 .installer-fenetre .choix-appareil {
   margin-bottom: 4px;
 }
+
+/* ============================================================
+   Style Horde, version « Orgrimmar »: fer noir, rouille, braise, peau tannée et pointes.
+   Seul le style Horde est touché (tout est sous :root[data-style='horde']).
+   ============================================================ */
+
+:root[data-style='horde'] {
+  --bg: #0b0706;
+  --surface: #251813;
+  --field: #130b08;
+  --ink: #f2e6d3;
+  --muted: #bda795;
+  --line: #5e3a28;
+  --gold: #c2411f;
+  --gold-light: #ff9457;
+  --gold-ink: #ffffff;
+  --gold-line: #e0642e;
+  --focus: #ffb27a;
+  --fantasy: 'Germania One', 'Cinzel', Georgia, serif;
+  --haut-ink: #fff0dd;
+  --haut-doux: rgb(255 240 221 / 0.8);
+  --haut-bord: rgb(255 240 221 / 0.38);
+  --haut-trait: #ff8a3d;
+  --haut-lueur: rgb(255 110 40 / 0.6);
+  --haut-fond:
+    radial-gradient(620px 320px at 90% 0%, rgb(255 110 40 / 0.3), transparent 70%),
+    radial-gradient(640px 360px at 0% 100%, rgb(150 20 10 / 0.55), transparent 70%),
+    linear-gradient(180deg, #090404, #2a0a05);
+  /* Trois griffures, comme une marque de combat. */
+  --motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Cpath d='M14 6Q26 36 22 66M30 2Q44 34 40 68M46 6Q58 36 56 62' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+  --planche: var(--tex-fer), linear-gradient(180deg, #201511, #0b0706);
+  --planche-ink: #f2e6d3;
+  --planche-doux: #cdb9a6;
+  --bois: linear-gradient(180deg, #3a2419, #170e0a);
+  --bois-ink: #f8eadb;
+  --bois-doux: rgb(248 234 219 / 0.82);
+  --bois-trait: rgb(255 150 90 / 0.22);
+  --laiton: linear-gradient(180deg, #f0693a, #c2381b 50%, #7a1608);
+  --laiton-ink: #ffffff;
+  --titre-couleur: #ffe9cf;
+  --titre-ombre: 0 2px 0 #561007, 0 0 28px rgb(255 100 40 / 0.45), 0 8px 26px rgb(0 0 0 / 0.7);
+  /* Les pointes et les rivets sont en fer, pas en laiton. */
+  --pin: linear-gradient(90deg, #5a524c, #d9d1c9 42%, #3c3631);
+}
+
+/* L'enseigne: bord inférieur en pointes de fer, avec un filet de braise juste au-dessus. */
+:root[data-style='horde'] .haut {
+  padding-bottom: 64px;
+  background:
+    linear-gradient(to top, #4d4540 0, #9a918a 9px, #3b3530 20px, transparent 20px),
+    var(--haut-fond);
+  -webkit-mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - 20px) no-repeat,
+    conic-gradient(from -45deg at bottom, #000 90deg, #0000 0) bottom left / 40px 20px repeat-x;
+  mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - 20px) no-repeat,
+    conic-gradient(from -45deg at bottom, #000 90deg, #0000 0) bottom left / 40px 20px repeat-x;
+  box-shadow: none;
+}
+
+@media (min-width: 760px) {
+  :root[data-style='horde'] .haut {
+    padding-bottom: 70px;
+  }
+}
+
+:root[data-style='horde'] .haut::before {
+  opacity: 0.09;
+}
+
+:root[data-style='horde'] .haut::after {
+  inset: auto 0 20px;
+  height: 4px;
+  background: linear-gradient(90deg, #3b0d08, #e2572f 28%, #ffb066 50%, #e2572f 72%, #3b0d08);
+  box-shadow: 0 -6px 18px rgb(255 90 30 / 0.35);
+}
+
+:root[data-style='horde'] .haut h1 {
+  font-size: clamp(1.9rem, 9.4vw, 3.9rem);
+  font-weight: 400;
+  letter-spacing: 0.05em;
+}
+
+/* Pointe de fer plantée dans la fiche, à la place de la punaise. */
+:root[data-style='horde'] .carte,
+:root[data-style='horde'] .filtres {
+  --pin: linear-gradient(90deg, #5a524c, #d9d1c9 42%, #3c3631);
+}
+
+:root[data-style='horde'] .carte::after {
+  top: -13px;
+  width: 16px;
+  height: 22px;
+  margin-left: -8px;
+  border-radius: 0;
+  background: var(--pin);
+  box-shadow: none;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  filter: drop-shadow(0 3px 2px rgb(0 0 0 / 0.55));
+}
+
+/* Les languettes de ruban adhésif deviennent des lanières de cuir cousues. */
+:root[data-style='horde'] .filtres::before,
+:root[data-style='horde'] .filtres::after {
+  background: #4a2b1c;
+  border: 1px dashed rgb(255 200 150 / 0.38);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.5);
+}
+
+:root[data-style='horde'] .carte.horde {
+  --banniere: #b3261b;
+}
+
+:root[data-style='horde'] .faction-bouton.horde[aria-pressed='true'] {
+  background: #b3261b;
+}
