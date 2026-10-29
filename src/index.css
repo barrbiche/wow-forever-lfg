@@ -276,6 +276,20 @@ h2 {
   flex: none;
 }
 
+/* Bouton « Comment ça marche? »: même famille que les autres boutons dorés. */
+.actions .bouton.bouton-aide {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-color: var(--gold-line);
+  color: var(--gold-light);
+}
+
+.actions .bouton.bouton-aide svg {
+  flex: none;
+}
+
 @media (max-width: 559px) {
   .actions {
     flex-wrap: wrap;
@@ -283,7 +297,8 @@ h2 {
 
   .actions .bouton.bouton-taverne,
   .actions .bouton.bouton-soutien,
-  .actions .bouton.bouton-installer {
+  .actions .bouton.bouton-installer,
+  .actions .bouton.bouton-aide {
     flex: 1 1 40%;
     justify-content: center;
   }
@@ -292,7 +307,20 @@ h2 {
 @media (max-width: 399px) {
   .actions .bouton.bouton-taverne,
   .actions .bouton.bouton-soutien,
-  .actions .bouton.bouton-installer {
+  .actions .bouton.bouton-installer,
+  .actions .bouton.bouton-aide {
+    flex-basis: 44%;
+    gap: 6px;
+    padding-inline: 6px;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 359px) {
+  .actions .bouton.bouton-taverne,
+  .actions .bouton.bouton-soutien,
+  .actions .bouton.bouton-installer,
+  .actions .bouton.bouton-aide {
     flex-basis: 100%;
   }
 }

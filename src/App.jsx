@@ -979,6 +979,10 @@ export default function App() {
                 </a>
               )}
               <BoutonInstaller classe="bouton bouton-installer" icone="telephone" />
+              <button type="button" className="bouton bouton-aide" onClick={() => setAideOuverte(true)}>
+                <Icone nom="livre" taille={18} />
+                Comment ça marche?
+              </button>
             </div>
             <div className="statut">
               {!chargement && (
@@ -1026,9 +1030,6 @@ export default function App() {
                 <span className="interrupteur" aria-hidden="true">
                   <span className="interrupteur-bouton" />
                 </span>
-              </button>
-              <button type="button" className="lien aide-lien" onClick={() => setAideOuverte(true)}>
-                Comment ça marche?
               </button>
             </div>
           </div>
