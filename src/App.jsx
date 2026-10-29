@@ -1029,6 +1029,7 @@ export default function App() {
               <button type="button" className="lien aide-lien" onClick={() => setAideOuverte(true)}>
                 Comment ça marche?
               </button>
+              <BoutonInstaller classe="lien aide-lien" />
             </div>
           </div>
           <div className="styles" role="group" aria-label="Apparence du site">

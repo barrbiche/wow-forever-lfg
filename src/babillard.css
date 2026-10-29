@@ -903,3 +903,24 @@ body::before {
     justify-content: center;
   }
 }
+
+/* ---------- Fenêtre « Installer l'app » ---------- */
+.installer-fenetre .installer-rapide {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+.installer-fenetre section {
+  display: grid;
+  gap: 8px;
+}
+
+.installer-fenetre h3 {
+  margin: 0;
+}
+
+.installer-fenetre .choix-appareil {
+  margin-bottom: 4px;
+}
