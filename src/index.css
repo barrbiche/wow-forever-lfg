@@ -262,13 +262,28 @@ h2 {
   color: #ef6f6c;
 }
 
+/* Bouton « Installer l'app »: même famille que la Taverne et « Soutenir le site » (contour doré), avec un cellulaire. */
+.actions .bouton.bouton-installer {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-color: var(--gold-line);
+  color: var(--gold-light);
+}
+
+.actions .bouton.bouton-installer svg {
+  flex: none;
+}
+
 @media (max-width: 559px) {
   .actions {
     flex-wrap: wrap;
   }
 
   .actions .bouton.bouton-taverne,
-  .actions .bouton.bouton-soutien {
+  .actions .bouton.bouton-soutien,
+  .actions .bouton.bouton-installer {
     flex: 1 1 40%;
     justify-content: center;
   }
@@ -276,7 +291,8 @@ h2 {
 
 @media (max-width: 399px) {
   .actions .bouton.bouton-taverne,
-  .actions .bouton.bouton-soutien {
+  .actions .bouton.bouton-soutien,
+  .actions .bouton.bouton-installer {
     flex-basis: 100%;
   }
 }

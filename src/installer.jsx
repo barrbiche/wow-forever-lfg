@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Icone } from './commun.jsx'
 
 // Bouton « Installer l'app » et sa fenêtre d'explications. Le site s'installe comme une app, avec son icône:
 // - Chrome, Edge, Brave (Android et ordinateur): le navigateur nous donne un événement, un bouton installe en un geste.
@@ -50,13 +51,14 @@ function useInstallation() {
   return { evenement: evenementInstall, installe: installeMaintenant || dejaInstalle() }
 }
 
-export function BoutonInstaller({ classe = 'lien', children = "Installer l'app" }) {
+export function BoutonInstaller({ classe = 'lien', icone = null, children = "Installer l'app" }) {
   const { installe } = useInstallation()
   const [ouvert, setOuvert] = useState(false)
   if (installe) return null
   return (
     <>
       <button type="button" className={classe} onClick={() => setOuvert(true)} aria-haspopup="dialog">
+        {icone && <Icone nom={icone} taille={18} />}
         {children}
       </button>
       <FenetreInstaller ouvert={ouvert} fermer={() => setOuvert(false)} />
