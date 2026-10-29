@@ -28,8 +28,10 @@ import {
   lireAnnonces,
   lireGuildes,
   lireAmis,
+  lireApercuJoueurs,
   lireJoueurs,
   lireProfil,
+  estConnecte,
   MESSAGE_COMPTE_SUSPENDU,
   modeDemo,
   retirerAnnonce,
@@ -275,6 +277,7 @@ export default function App() {
   const [supporters, setSupporters] = useState(() => new Set())
   const [joueurs, setJoueurs] = useState([]) // null: pas encore disponibles (ex.: base pas à jour)
   const [enLigne, setEnLigne] = useState(() => new Set())
+  const [apercuJoueurs, setApercuJoueurs] = useState(null) // visiteur non connecté: { liste, total } (null: indisponible)
   const [amis, setAmis] = useState([]) // null: pas encore disponibles (ameliorations6.sql pas roulé)
   const [vueJoueurs, setVueJoueurs] = useState('tous') // 'tous' ou 'amis'
   const demandesVuesRef = useRef(null)
@@ -526,6 +529,13 @@ export default function App() {
       }
     } catch {
       setJoueurs(null)
+    }
+    try {
+      // Un visiteur ne reçoit pas la liste des joueurs, seulement un petit aperçu pour lui donner le goût d'essayer.
+      const apercu = (await estConnecte()) ? null : await lireApercuJoueurs()
+      if (lecture === lectureRef.current) setApercuJoueurs(apercu)
+    } catch {
+      setApercuJoueurs(null)
     }
     setSupporters(await lireSupporters())
     try {
@@ -1136,6 +1146,7 @@ export default function App() {
           />
         ) : vue === 'joueurs' ? (
           <SectionJoueurs
+            apercu={apercuJoueurs}
             joueurs={joueurs}
             visibles={joueursVisibles}
             enLigne={enLigne}

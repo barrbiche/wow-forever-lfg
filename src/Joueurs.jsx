@@ -30,6 +30,7 @@ import { BoutonsAmi, SectionAmis } from './Amis.jsx'
 // ---------- Onglet « Joueurs »: les profils, qui est en ligne, la réputation ----------
 
 export default function SectionJoueurs({
+  apercu,
   joueurs,
   visibles,
   enLigne,
@@ -54,14 +55,7 @@ export default function SectionJoueurs({
   const [langue] = useLangueJeu()
 
   if (!utilisateur) {
-    return (
-      <div className="vide">
-        <span className="vide-icone" aria-hidden="true"><Icone nom="joueur" taille={30} /></span>
-        <p>La liste des joueurs est réservée aux gens connectés.</p>
-        <p className="aide">Connecte-toi pour voir les joueurs et ceux qui sont en ligne, et pour ajouter des amis.</p>
-        <button type="button" className="bouton principal" onClick={onConnexion}>Se connecter</button>
-      </div>
-    )
+    return <ApercuJoueurs apercu={apercu} onConnexion={onConnexion} />
   }
 
   if (joueurs === null) {
@@ -250,6 +244,131 @@ export default function SectionJoueurs({
         </ul>
       )}
     </>
+  )
+}
+
+// ---------- Aperçu pour les visiteurs non connectés ----------
+
+// Un avant-goût: les profils actifs récemment, sans BattleTag, sans petit mot et sans boutons d'action.
+function ApercuJoueurs({ apercu, onConnexion }) {
+  const liste = apercu?.liste ?? []
+  const reste = Math.max(0, (apercu?.total ?? 0) - liste.length)
+  const recent = (j) => Date.now() - new Date(j.vu_le).getTime() < 20 * 60000
+
+  return (
+    <>
+      <section className="filtres apercu-joueurs" aria-label="Aperçu des joueurs">
+        <p className="intro-guildes">
+          Voici des joueurs du site. Connecte-toi pour voir la liste complète et ceux qui sont en ligne, inviter dans le jeu,
+          ajouter des amis et recommander les gens avec qui tu as joué.
+        </p>
+        <div className="filtres-ligne">
+          <button type="button" className="bouton principal" onClick={onConnexion}>Se connecter</button>
+        </div>
+      </section>
+
+      {liste.length === 0 ? (
+        <div className="vide">
+          <span className="vide-icone" aria-hidden="true"><Icone nom="joueur" taille={30} /></span>
+          <p>{apercu === null ? "L'aperçu des joueurs n'est pas disponible pour l'instant." : "Personne n'est dans la liste pour l'instant."}</p>
+          <p className="aide">Connecte-toi pour créer ton profil et publier une annonce.</p>
+          <button type="button" className="bouton principal" onClick={onConnexion}>Se connecter</button>
+        </div>
+      ) : (
+        <>
+          <div className="resume">
+            <strong>{apercu.total} {apercu.total > 1 ? 'joueurs' : 'joueur'}</strong>
+            <span className="resume-detail">les plus actifs récemment</span>
+          </div>
+          <ul className="liste">
+            {liste.map((j, i) => (
+              <li key={`${j.perso}-${i}`}>
+                <CarteApercu joueur={j} actif={recent(j)} />
+              </li>
+            ))}
+          </ul>
+          <div className="vide apercu-suite">
+            <p>{reste > 0 ? `Et ${reste} autre${reste > 1 ? 's' : ''} joueur${reste > 1 ? 's' : ''} à découvrir.` : 'Tu as fait le tour de la liste.'}</p>
+            <p className="aide">Connecte-toi pour inviter les joueurs dans le jeu, les ajouter en ami et créer ton profil.</p>
+            <button type="button" className="bouton principal" onClick={onConnexion}>Se connecter</button>
+          </div>
+        </>
+      )}
+    </>
+  )
+}
+
+function CarteApercu({ joueur: j, actif }) {
+  const etiquettes = Object.entries(j.etiquettes ?? {})
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+  return (
+    <article className={`carte joueur ${j.faction}`}>
+      <div className="carte-plaque">
+        <Icone nom="joueur" taille={26} />
+        <strong className="plaque-niveau" aria-hidden="true">{j.niveau ?? '?'}</strong>
+        <span className="plaque-unite" aria-hidden="true">niveau</span>
+        <span className="sr">{j.niveau ? `Niveau ${j.niveau}` : 'Niveau non précisé'}</span>
+      </div>
+
+      <div className="carte-corps">
+        <div className="carte-haut">
+          <div className="carte-titre">
+            <h2>{j.perso}</h2>
+            <span className={`faction ${j.faction}`}>{nomDe(FACTIONS, j.faction)}</span>
+          </div>
+          {actif ? (
+            <span className="depuis en-ligne">
+              <span className="point" aria-hidden="true" />
+              Actif récemment
+            </span>
+          ) : (
+            <span className="depuis">{vuTexte(j.vu_le)}</span>
+          )}
+        </div>
+
+        <ul className="infos">
+          <ChipClasse classe={j.classe} specialisation={j.specialisation} />
+          {j.guilde && <li className="chip fort">{j.guilde}</li>}
+          <li className="chip">{j.region}</li>
+          <li className="chip">{nomDe(STYLES, j.style)}</li>
+          <li className="chip">{nomDe(LANGUES, j.langue)}</li>
+        </ul>
+
+        {j.roles.length > 0 && (
+          <p className="roles">
+            <span>Joue</span>
+            {ROLES.filter((r) => j.roles.includes(r.id)).map((r) => (
+              <span key={r.id} className={`role ${r.id}`}>
+                <Icone nom={r.id} taille={15} />
+                {r.nom}
+              </span>
+            ))}
+          </p>
+        )}
+
+        {j.en_revision ? (
+          <p className="reputation revision">
+            <Icone nom="pouce" taille={16} />
+            Respect: réputation en vérification
+          </p>
+        ) : (
+          <div className="reputation">
+            <span className="respect-titre">Respect</span>
+            <span className="pouces" aria-label={`${j.pouces} ${j.pouces > 1 ? 'pouces' : 'pouce'}`}>
+              <Icone nom="pouce" taille={16} />
+              <strong>{j.pouces}</strong>
+              <span aria-hidden="true">{j.pouces > 1 ? 'pouces' : 'pouce'}</span>
+            </span>
+            {etiquettes.map(([id, n]) => (
+              <span key={id} className="etiquette">{nomDe(ETIQUETTES, id)} <span className="etiquette-n">×{n}</span></span>
+            ))}
+            {j.pouces === 0 && <span className="aide">Pas encore de pouce.</span>}
+          </div>
+        )}
+      </div>
+    </article>
   )
 }
 
@@ -788,7 +907,7 @@ export function ProfilJoueur({
           <span>Apparaître dans la liste des joueurs</span>
         </label>
         <p className="aide">
-          Seules les personnes connectées voient la liste, et tu y es « en ligne » quand le site est ouvert. Le contact de
+          Les personnes connectées voient la liste complète, et tu y es « en ligne » quand le site est ouvert. Les visiteurs sans compte voient un aperçu de ton personnage (sans BattleTag ni petit mot). Le contact de
           tes annonces n'y est jamais. Décoche la case pour te cacher en tout temps (ton BattleTag aussi).
         </p>
 

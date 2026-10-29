@@ -59,7 +59,9 @@ export function SectionDonnees() {
           annonce » sans profil complet, le site ouvre d'abord « Mon profil », puis le formulaire d'annonce. Le profil
           contient aussi ta faction, ta région, ta langue, ton style et, si tu les donnes, ta guilde et un petit mot,
           et, seulement si tu l'écris, ton BattleTag. Le contact de tes annonces n'y est jamais. Seules les personnes
-          connectées voient la liste des joueurs et les BattleTag. Dans « Mon profil », tu peux tout modifier, te
+          connectées voient la liste complète des joueurs et les BattleTag. Les visiteurs sans compte voient un petit
+          aperçu des profils visibles (nom du personnage, classe, niveau, rôles, faction, région, langue, style,
+          guilde et pouces), jamais le BattleTag, le petit mot ni ton compte. Dans « Mon profil », tu peux tout modifier, te
           cacher de la liste ou supprimer ton profil (tu devras alors le refaire pour publier).
         </li>
         <li>

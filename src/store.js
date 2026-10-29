@@ -755,6 +755,37 @@ export async function lireJoueurs() {
   return data
 }
 
+// Aperçu pour les visiteurs non connectés: les profils actifs récemment, sans BattleTag, sans petit mot et sans
+// identifiant de compte. Retourne { liste, total } ou null si la base n'est pas à jour (ameliorations17.sql).
+export async function lireApercuJoueurs() {
+  if (modeDemo) {
+    const actifs = lireJoueursDemo()
+      .filter((j) => j.visible && !j.moi)
+      .sort((a, b) => new Date(b.vu_le) - new Date(a.vu_le))
+    const liste = actifs.slice(0, 24).map((j) => ({
+      perso: j.perso,
+      classe: j.classe,
+      specialisation: j.specialisation,
+      niveau: j.niveau,
+      roles: j.roles ?? [],
+      faction: j.faction,
+      region: j.region,
+      langue: j.langue,
+      style: j.style,
+      guilde: j.guilde ?? '',
+      vu_le: j.vu_le,
+      pouces: j.pouces,
+      etiquettes: j.etiquettes,
+      en_revision: !!j.en_revision,
+    }))
+    return { liste, total: actifs.length }
+  }
+  const { data, error } = await supabase.rpc('apercu_joueurs')
+  if (error) return null
+  const lignes = data ?? []
+  return { liste: lignes.map(({ total, ...j }) => j), total: lignes[0]?.total ?? 0 }
+}
+
 // Quand les groupes se forment: [{ jour (0 = dimanche), heure (heure de l'Est), n }]. Public. null si la base n'est pas à jour.
 export async function lireAchalandage() {
   if (modeDemo) {
