@@ -1181,7 +1181,7 @@ export default function App() {
             annoncer={setMessage}
           />
         ) : (
-          <>
+          <div className="vue-groupes">
             <section className="filtres" aria-label="Filtres">
               <div className="filtres-ligne">
                 <div className={`segments${raids ? ' quatre' : ''}`} role="group" aria-label="Type d'activité">
@@ -1356,7 +1356,7 @@ export default function App() {
               </ul>
             )}
             <Pub masquer={!!utilisateur && supporters.has(utilisateur.id)} />
-          </>
+          </div>
         )}
 
         <footer className="pied">

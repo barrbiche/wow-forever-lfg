@@ -5,6 +5,7 @@ import './textures.css'
 import './index.css'
 import './babillard.css'
 import './wow.css'
+import './classique.css'
 import App from './App.jsx'
 import Confidentialite from './Confidentialite.jsx'
 
