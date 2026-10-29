@@ -876,46 +876,9 @@ export default function App() {
       />
 
       <header className="haut">
-        <svg className="haut-infini" viewBox="0 0 240 120" aria-hidden="true" focusable="false">
-          <path
-            className="eco"
-            pathLength="1"
-            d="M120 60C148 18 215 14 215 60C215 106 148 102 120 60C92 18 25 14 25 60C25 106 92 102 120 60Z"
-          />
-          <path
-            className="trait"
-            pathLength="1"
-            d="M120 60C148 18 215 14 215 60C215 106 148 102 120 60C92 18 25 14 25 60C25 106 92 102 120 60Z"
-          />
-        </svg>
-        <svg className="haut-decor" viewBox="0 0 1200 260" preserveAspectRatio="xMidYMax slice" aria-hidden="true" focusable="false">
-          <defs>
-            <radialGradient id="decor-soleil" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#ffd100" stopOpacity="0.5" />
-              <stop offset="55%" stopColor="#ff9a1f" stopOpacity="0.16" />
-              <stop offset="100%" stopColor="#ff9a1f" stopOpacity="0" />
-            </radialGradient>
-          </defs>
-          <circle cx="880" cy="120" r="210" fill="url(#decor-soleil)" />
-          <path
-            d="M0 168L70 128L150 156L250 84L340 142L430 104L530 160L650 92L750 146L860 76L960 132L1060 98L1200 154V260H0Z"
-            fill="#121832"
-            stroke="#ffd100"
-            strokeOpacity="0.3"
-            strokeWidth="1.2"
-          />
-          <path
-            d="M0 208L110 164L200 196L320 132L420 184L540 148L640 198L760 150L880 200L1000 160L1100 192L1200 170V260H0Z"
-            fill="#0b0f21"
-            stroke="#ffd100"
-            strokeOpacity="0.18"
-            strokeWidth="1"
-          />
-          <path d="M0 240L130 214L240 236L380 204L500 234L640 210L780 238L920 212L1060 236L1200 218V260H0Z" fill="#080a14" />
-        </svg>
         <div className="haut-contenu">
-          <PlaqueLancement compte={compte} />
           <div className="titre-bloc">
+            <div className="parchemin-titre">
             <h1>
               <a
                 href="/"
@@ -937,6 +900,8 @@ export default function App() {
               Trouve ton groupe pour les donjons{raids ? ', les raids' : ''}, le PvP et les quêtes. Pour le Québec et la
               francophonie.
             </p>
+            </div>
+            <PlaqueLancement compte={compte} />
             <p className="beta-note">
               <span className="etiquette-beta">Bêta</span>
               Le site est en test: des bogues sont possibles.

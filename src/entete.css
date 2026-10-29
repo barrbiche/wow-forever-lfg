@@ -1,0 +1,228 @@
+/* En-tête « salle de la taverne »: un cuir sombre éclairé par deux torches, le titre sur un grand parchemin
+   déroulé, le compte à rebours sur une plaque de bronze, puis les boutons. Vient après classique.css. */
+
+.ruban {
+  background: linear-gradient(180deg, #3b2716, #1d130a);
+  color: #e8d5a2;
+  border-bottom: 1px solid #8a6228;
+  box-shadow: inset 0 -1px 0 #000;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ruban-texte,
+  .ruban-texte + .ruban-texte {
+    padding: 6px 0;
+  }
+}
+
+.ruban-bouton {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+header.haut {
+  padding: 30px 0 30px;
+  background:
+    radial-gradient(520px 300px at 6% 38%, rgb(255 150 40 / 0.26), transparent 70%),
+    radial-gradient(520px 300px at 94% 38%, rgb(255 150 40 / 0.26), transparent 70%),
+    var(--cuir),
+    linear-gradient(180deg, #1a1109, #2b1c0f 75%, #1a1109);
+  box-shadow: 0 16px 28px -12px rgb(0 0 0 / 0.8);
+}
+
+header.haut::before {
+  content: none;
+}
+
+header.haut::after {
+  height: 6px;
+  background: var(--bronze);
+  opacity: 1;
+  box-shadow: 0 -1px 0 #000, inset 0 1px 0 rgb(255 255 255 / 0.35);
+}
+
+header.haut .haut-contenu {
+  align-items: center;
+  text-align: center;
+}
+
+header.haut .titre-bloc {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+/* ----- Le parchemin du titre ----- */
+
+.parchemin-titre {
+  position: relative;
+  max-width: 100%;
+  padding: 20px 52px 18px;
+  color: var(--encre);
+  background:
+    var(--parchemin-grain),
+    var(--parchemin-taches),
+    radial-gradient(120% 120% at 50% 0%, #efe0b2, #dcc48e 55%, #c4a56a);
+  border-block: 3px solid #5b3d15;
+  box-shadow:
+    inset 0 0 36px rgb(110 70 20 / 0.45),
+    0 14px 24px -8px rgb(0 0 0 / 0.85);
+}
+
+.parchemin-titre::before,
+.parchemin-titre::after {
+  content: '';
+  position: absolute;
+  top: -10px;
+  bottom: -10px;
+  width: 18px;
+  border-radius: 9px;
+  background: linear-gradient(90deg, #2a1808, #d9b26a 38%, #7a5226 68%, #2a1808);
+  box-shadow: 0 5px 9px rgb(0 0 0 / 0.65), inset 0 0 0 1px rgb(0 0 0 / 0.4);
+}
+
+.parchemin-titre::before {
+  left: -9px;
+}
+
+.parchemin-titre::after {
+  right: -9px;
+}
+
+header.haut h1 {
+  font-size: clamp(1.6rem, 7.4vw, 3.5rem);
+  line-height: 1.08;
+  letter-spacing: 0.08em;
+  color: #3a1608;
+  text-shadow: 0 1px 0 rgb(255 240 200 / 0.7), 0 2px 3px rgb(80 40 10 / 0.25);
+}
+
+header.haut h1 span {
+  display: block;
+}
+
+header.haut .sous-titre {
+  max-width: 46ch;
+  margin: 10px auto 0;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #5a4126;
+}
+
+/* ----- La plaque du compte à rebours ----- */
+
+.lancement {
+  width: min(560px, 100%);
+  margin-top: 26px;
+  padding: 12px 18px 10px;
+  text-align: center;
+  background: radial-gradient(120% 140% at 50% 0%, #2c1d10, #120b05);
+  border: 3px solid transparent;
+  border-image: linear-gradient(180deg, #e0bc78, #8a6228 45%, #4e3412) 1;
+  box-shadow:
+    inset 0 0 0 1px #000,
+    inset 0 0 26px rgb(255 160 40 / 0.14),
+    0 12px 24px -8px rgb(0 0 0 / 0.85);
+}
+
+.lancement-titre {
+  margin: 0 0 8px;
+  font-family: var(--fantasy);
+  font-size: 0.9rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #d9b26a;
+}
+
+.lancement-titre.grand {
+  margin: 0;
+  padding: 10px 6px;
+  font-size: 1.25rem;
+  color: #ffd100;
+}
+
+.lancement-chiffres {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.lancement-case {
+  display: grid;
+  gap: 2px;
+}
+
+.lancement-case strong {
+  font-family: var(--fantasy);
+  font-size: clamp(1.8rem, 8vw, 3rem);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, #fff1b0, #ffd100 45%, #c98a12);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 0 rgb(0 0 0 / 0.8));
+}
+
+.lancement-case small {
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  color: #c9b48a;
+}
+
+/* ----- Le reste: centré ----- */
+
+header.haut .beta-note {
+  justify-content: center;
+  margin-top: 18px;
+  color: #e8d5a2;
+}
+
+header.haut .actions {
+  justify-content: center;
+  margin-top: 16px;
+}
+
+header.haut .statut {
+  justify-content: center;
+  color: #d9c9a0;
+}
+
+@media (min-width: 760px) {
+  header.haut .actions .bouton,
+  header.haut .actions .session {
+    flex: 0 1 auto;
+  }
+
+  header.haut h1 span {
+    display: inline;
+  }
+}
+
+@media (max-width: 559px) {
+  .parchemin-titre {
+    padding: 16px 34px 14px;
+  }
+
+  .lancement {
+    margin-top: 22px;
+    padding-inline: 10px;
+  }
+}
+
+header.haut h1,
+header.haut .titre-lien {
+  display: block;
+  text-align: center;
+}
+
+@media (min-width: 760px) {
+  header.haut h1 {
+    white-space: nowrap;
+  }
+
+  .parchemin-titre {
+    padding-inline: 72px;
+  }
+}
