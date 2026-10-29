@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useSyncExternalStore } from 'react'
-import { CLASSES, LANCEMENT_LE, MOTIFS_JOUEUR, MOTIFS_SIGNALEMENT, RAIDS_OUVERTS_LE, nomSpecialisation } from './data.js'
+import { CLASSES, LANCEMENT_LE, MOTIFS_JOUEUR, MOTIFS_SIGNALEMENT, RAIDS_OUVERTS_LE, couleurTexteClasse, nomSpecialisation, specialisationsDe } from './data.js'
+import { Infobulle, contenuClasse } from './infobulle.jsx'
 import { signaler } from './store.js'
 import { LangueJeu, commandeInviter, useLangueJeu } from './langue.jsx'
 
@@ -60,12 +61,19 @@ export function ChipClasse({ classe: id, specialisation }) {
   const classe = CLASSES.find((c) => c.id === id)
   if (!classe) return null
   const spec = nomSpecialisation(id, specialisation, langue)
+  const contenu = contenuClasse({
+    nom: classe.nom,
+    couleur: couleurTexteClasse(id),
+    specs: specialisationsDe(id),
+    choisie: specialisation,
+    langue,
+  })
   return (
-    <li className="chip classe">
+    <Infobulle as="li" className="chip classe" contenu={contenu}>
       <span className="classe-point" style={{ background: classe.couleur }} aria-hidden="true" />
       {classe.nom}
       {spec && <span className="spec">{spec}</span>}
-    </li>
+    </Infobulle>
   )
 }
 

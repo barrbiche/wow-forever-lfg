@@ -117,6 +117,7 @@ import {
   reporterInvitationAlertes,
   texteNouvelleAnnonce,
 } from './alertes.jsx'
+import { Infobulle, contenuDonjon, contenuRole } from './infobulle.jsx'
 import Aide from './Aide.jsx'
 import DialogueRetour from './Retours.jsx'
 import { DialogueDemande, SectionMessages, ZoneRejoindre } from './Messages.jsx'
@@ -1514,7 +1515,19 @@ function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietai
       <div className="carte-corps">
         <div className="carte-haut">
           <div className="carte-titre">
-            <h2>{a.cible}</h2>
+            <h2>
+              <Infobulle
+                contenu={
+                  a.activite === 'donjon'
+                    ? contenuDonjon({ nom: a.cible, plage: NIVEAUX_DONJONS[a.cible], aGuide })
+                    : a.activite === 'raid'
+                      ? contenuDonjon({ nom: a.cible, raid: RAIDS.find((r) => r.nom === a.cible)?.taille })
+                      : null
+                }
+              >
+                {a.cible}
+              </Infobulle>
+            </h2>
             <span className={`faction ${a.faction}`}>
               {nomDe(FACTIONS, a.faction)}
               {joueur ? ' · joueur seul' : ''}
@@ -1555,11 +1568,11 @@ function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietai
           <p className="roles">
             <span>{joueur ? 'Joue' : 'Cherche'}</span>
             {rolesVisibles.map((r) => (
-              <span key={r.id} className={`role ${r.id}`}>
+              <Infobulle key={r.id} className={`role ${r.id}`} contenu={contenuRole(r.id)}>
                 <Icone nom={r.id} taille={15} />
                 {r.nom}
                 {composition?.[r.id] > 0 && <span className="role-nombre">×{restant(r.id)}</span>}
-              </span>
+              </Infobulle>
             ))}
           </p>
         )}
