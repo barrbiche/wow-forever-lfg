@@ -314,7 +314,11 @@ export async function connecter() {
   }
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: window.location.origin },
+    options: {
+      redirectTo: window.location.origin,
+      // Google redemande quel compte utiliser au lieu de reprendre le dernier automatiquement
+      queryParams: { prompt: 'select_account' },
+    },
   })
   if (error) throw error
 }
