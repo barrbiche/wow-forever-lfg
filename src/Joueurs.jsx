@@ -151,8 +151,8 @@ export default function SectionJoueurs({
         </div>
 
         <div className="pastilles">
-          <button type="button" className="pastille" aria-pressed={filtres.enLigne} onClick={() => basculer('enLigne', true)}>
-            En ligne maintenant ({nbEnLigne})
+          <button type="button" className="pastille" aria-pressed={filtres.horsLigne} onClick={() => basculer('horsLigne', true)}>
+            Voir aussi les hors ligne ({joueurs.length - nbEnLigne})
           </button>
           <button type="button" className="pastille" aria-pressed={filtres.langue === 'fr'} onClick={() => basculer('langue', 'fr')}>
             Français seulement
@@ -218,8 +218,15 @@ export default function SectionJoueurs({
           <p>
             {filtresActifs
               ? 'Aucun joueur avec ces filtres.'
-              : "Personne n'est dans la liste pour l'instant. Publie une annonce ou crée ton profil."}
+              : !filtres.horsLigne && joueurs.length > 0
+                ? "Personne n'est en ligne pour l'instant."
+                : "Personne n'est dans la liste pour l'instant. Publie une annonce ou crée ton profil."}
           </p>
+          {!filtres.horsLigne && joueurs.length > 0 && (
+            <button type="button" className="bouton" onClick={() => basculer('horsLigne', true)}>
+              Voir les joueurs hors ligne
+            </button>
+          )}
           {!filtresActifs && !monProfil && (
             <button type="button" className="bouton" onClick={ouvrirProfil}>Créer mon profil</button>
           )}

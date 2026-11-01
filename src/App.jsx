@@ -147,19 +147,19 @@ const FILTRES_VIDES = {
   // Onglet Joueurs
   classe: '',
   recherche: '',
-  enLigne: false,
+  horsLigne: false,
 }
 
 // Les filtres qui comptent dans chaque onglet (faction, langue, région et rôle sont partagés).
 const CLES_GROUPES = ['activite', 'faction', 'region', 'role', 'niveau', 'style', 'langue', 'genre', 'planifies']
-const CLES_JOUEURS = ['faction', 'langue', 'region', 'role', 'classe', 'recherche', 'enLigne']
+const CLES_JOUEURS = ['faction', 'langue', 'region', 'role', 'classe', 'recherche', 'horsLigne']
 
 function correspondJoueur(j, f, enLigne) {
   if (f.langue && j.langue !== f.langue) return false
   if (f.region && j.region !== f.region) return false
   if (f.role && !j.roles.includes(f.role)) return false
   if (f.classe && j.classe !== f.classe) return false
-  if (f.enLigne && !enLigne.has(j.user_id)) return false
+  if (!f.horsLigne && !enLigne.has(j.user_id)) return false
   const q = f.recherche.trim().toLowerCase()
   if (q && !j.perso.toLowerCase().includes(q)) return false
   return true
