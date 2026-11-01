@@ -35,6 +35,9 @@ export const CHEMINS = {
 // Permet à n'importe quelle carte de joueur d'ouvrir le chat avec un ami: ouvrirAmi(idDeLAmi).
 export const OuvrirChat = createContext({ ouvrirAmi: null })
 
+// Mes personnages (jusqu'à 3): null quand la base n'est pas à jour (ameliorations19.sql), [] sans profil.
+export const ContextePersos = createContext(null)
+
 // Ensemble des comptes « Supporter » (voir supabase/ameliorations9.sql). Vide pour un visiteur ou si la base n'est pas à jour.
 export const Supporters = createContext(new Set())
 

@@ -1,4 +1,4 @@
-import { Fragment, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, Suspense, lazy, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { BoutonInstaller, dejaInstalle, surIos } from './installer.jsx'
 import {
   connecter,
@@ -30,6 +30,7 @@ import {
   lireAmis,
   lireApercuJoueurs,
   lireJoueurs,
+  lirePersos,
   lireProfil,
   estConnecte,
   MESSAGE_COMPTE_SUSPENDU,
@@ -65,6 +66,9 @@ import {
   champsManquants,
   couleurTexteClasse,
   nomDe,
+  nomRuleset,
+  nomSpecialisation,
+  specialisationsDe,
   raidsOuverts,
 } from './data.js'
 import {
@@ -72,6 +76,7 @@ import {
   CommandeAnnonce,
   Icone,
   OuvrirChat,
+  ContextePersos,
   Supporters,
   BadgeSupporter,
   LienDirect,
@@ -121,6 +126,7 @@ import { Infobulle, contenuDonjon, contenuRole } from './infobulle.jsx'
 import Aide from './Aide.jsx'
 import DialogueRetour from './Retours.jsx'
 import { DialogueDemande, SectionMessages, ZoneRejoindre } from './Messages.jsx'
+import { useLangueJeu } from './langue.jsx'
 import { lireConversations, lireMesDemandes, lirePlaces, messagerieAbsente } from './messagerie.js'
 import SectionGuildes from './Guildes.jsx'
 import SectionJoueurs, { ProfilJoueur } from './Joueurs.jsx'
@@ -248,6 +254,7 @@ export default function App() {
   const [groupesPrets, setGroupesPrets] = useState(() => new Set())
   const [supporters, setSupporters] = useState(() => new Set())
   const [joueurs, setJoueurs] = useState([]) // null: pas encore disponibles (ex.: base pas à jour)
+  const [persos, setPersos] = useState(null) // mes personnages (jusqu'à 3); null: pas disponibles (base pas à jour)
   const [enLigne, setEnLigne] = useState(() => new Set())
   const [apercuJoueurs, setApercuJoueurs] = useState(null) // visiteur non connecté: { liste, total } (null: indisponible)
   const [amis, setAmis] = useState([]) // null: pas encore disponibles (ameliorations6.sql pas roulé)
@@ -512,6 +519,12 @@ export default function App() {
       }
     } catch {
       setJoueurs(null)
+    }
+    try {
+      const mesPersos = (await estConnecte()) ? await lirePersos() : null
+      if (lecture === lectureRef.current) setPersos(mesPersos)
+    } catch {
+      setPersos(null)
     }
     try {
       // Un visiteur ne reçoit pas la liste des joueurs, seulement un petit aperçu pour lui donner le goût d'essayer.
@@ -869,6 +882,7 @@ export default function App() {
 
   return (
     <OuvrirChat.Provider value={contexteChat}>
+    <ContextePersos.Provider value={persos}>
     <Supporters.Provider value={supporters}>
       <Ruban
         connecte={!!utilisateur}
@@ -897,8 +911,7 @@ export default function App() {
               </a>
             </h1>
             <p className="sous-titre">
-              Trouve ton groupe pour les donjons{raids ? ', les raids' : ''}, le PvP et les quêtes. Pour le Québec et la
-              francophonie.
+              Trouve ton groupe pour les donjons, le PvP et les quêtes. Pour le Québec et la francophonie.
             </p>
             </div>
             <PlaqueLancement compte={compte} />
@@ -1405,6 +1418,7 @@ export default function App() {
           setPublierApresProfil(false)
         }}
         profil={monProfil}
+        persos={persos}
         factionParDefaut={monProfil?.faction === 'horde' ? 'horde' : 'alliance'}
         apres={charger}
         annoncer={setMessage}
@@ -1442,6 +1456,7 @@ export default function App() {
 
       {message && <div className="toast" role="status">{message}</div>}
     </Supporters.Provider>
+    </ContextePersos.Provider>
     </OuvrirChat.Provider>
   )
 }
@@ -1530,7 +1545,7 @@ function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietai
 
         <ul className="infos">
           {nouvelle && <li className="chip nouveau">Nouveau</li>}
-          <ChipClasse classe={a.classe} specialisation={profil?.classe === a.classe ? profil?.specialisation : ''} />
+          <ChipClasse classe={a.classe} specialisation={a.specialisation || (profil?.classe === a.classe ? profil?.specialisation : '')} />
           {a.activite === 'raid' && (
             <li className="chip fort">{RAIDS.find((r) => r.nom === a.cible)?.taille ?? ''} joueurs</li>
           )}
@@ -1548,9 +1563,7 @@ function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietai
           {a.debut && repetition && (
             <li className="chip">Chaque {new Date(a.debut).toLocaleDateString('fr-CA', { weekday: 'long' })}</li>
           )}
-          {a.activite !== 'pvp' && a.ruleset && a.ruleset !== 'normal' && (
-            <li className="chip">{RULESETS.find((r) => r.id === a.ruleset)?.carte ?? a.ruleset}</li>
-          )}
+          <li className="chip chip-serveur">{RULESETS.find((r) => r.id === (a.ruleset || 'normal'))?.carte ?? a.ruleset}</li>
           <li className="chip">{a.region}</li>
           {a.style && <li className="chip">{nomDe(STYLES, a.style)}</li>}
           {a.langue && <li className="chip">{a.langue === 'en' ? 'English' : 'Français'}</li>}
@@ -1702,9 +1715,11 @@ const FORMULAIRE_VIDE = {
   cible: '',
   faction: 'alliance',
   region: 'US',
+  ruleset: 'normal',
   style: 'relax',
   langue: 'fr',
   classe: '',
+  specialisation: '',
   niveau_min: '',
   niveau_max: '',
   roles: [],
@@ -1721,12 +1736,12 @@ const FORMULAIRE_VIDE = {
 const totalNombres = (nb) => ROLES.reduce((n, r) => n + (nb?.[r.id] ?? 0), 0)
 
 // Ce qui est gardé dans le navigateur d'une annonce à l'autre.
-const CHAMPS_DU_PROFIL = ['perso', 'classe', 'contact', 'faction', 'region', 'langue']
+const CHAMPS_DU_PROFIL = ['perso', 'classe', 'specialisation', 'contact', 'faction', 'region', 'ruleset', 'langue']
 const versProfil = (champs) => Object.fromEntries(CHAMPS_DU_PROFIL.map((cle) => [cle, champs[cle]]))
 
 // La dernière annonce publiée, pour la reprendre en un clic (gardée seulement dans ce navigateur).
 const CLE_DERNIERE = 'forever-derniere-annonce'
-const CHAMPS_DERNIERE = ['genre', 'activite', 'cible', 'faction', 'style', 'langue', 'classe', 'region', 'niveau_min', 'niveau_max', 'roles', 'roles_nb', 'perso', 'contact', 'note', 'heures']
+const CHAMPS_DERNIERE = ['genre', 'activite', 'cible', 'faction', 'ruleset', 'style', 'langue', 'classe', 'specialisation', 'region', 'niveau_min', 'niveau_max', 'roles', 'roles_nb', 'perso', 'contact', 'note', 'heures']
 
 function lireDerniere(id) {
   try {
@@ -1770,6 +1785,8 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
   const [derniere, setDerniere] = useState(null)
   const [envoi, setEnvoi] = useState(false)
   const [erreurServeur, setErreurServeur] = useState('')
+  const [langueJeu] = useLangueJeu()
+  const persos = useContext(ContextePersos)
   const raids = raidsOuverts()
   const premierPassage = useRef(true)
 
@@ -1780,12 +1797,15 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
       setDerniere(lireDerniere(utilisateur?.id))
       // Le personnage de l'annonce est celui du profil (modifiable pour cette annonce seulement).
       if (profil) {
+        const principal = persos?.find((p) => p.slot === 1)
         setChamps((c) => ({
           ...c,
           perso: profil.perso || c.perso,
           classe: profil.classe || c.classe,
+          specialisation: (profil.classe ? profil.specialisation : c.specialisation) || '',
           faction: profil.faction || c.faction,
           region: profil.region || c.region,
+          ruleset: principal?.ruleset || c.ruleset,
           langue: profil.langue || c.langue,
         }))
       }
@@ -1861,6 +1881,25 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
         : {}),
     }))
     setErreurs((e) => ({ ...e, cible: undefined, niveau_min: undefined, niveau_max: undefined }))
+  }
+
+  // Publier avec l'un de mes personnages: son nom, sa classe, sa faction, sa région et son type de serveur sont repris.
+  const choisirPerso = (slot) => {
+    const p = persos?.find((x) => x.slot === Number(slot))
+    if (!p) return
+    setChamps((c) => ({
+      ...c,
+      perso: p.perso,
+      classe: p.classe || '',
+      specialisation: p.specialisation || '',
+      faction: p.faction,
+      region: p.region,
+      ruleset: p.ruleset || 'normal',
+      ...(c.genre === 'joueur'
+        ? { roles: c.activite === 'raid' ? c.roles : p.roles ?? [], ...(p.niveau ? { niveau_min: String(p.niveau), niveau_max: String(p.niveau) } : {}) }
+        : {}),
+    }))
+    setErreurs({})
   }
 
   const changerMonNiveau = (valeur) => {
@@ -1943,10 +1982,11 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
           activite: champs.activite,
           cible: champs.cible || PVP_PEU_IMPORTE,
           faction: champs.faction,
-          ruleset: 'normal', // le choix des règles n'est plus demandé; la base exige une valeur
+          ruleset: champs.ruleset || 'normal',
           style: champs.style,
           langue: champs.langue,
           classe: champs.classe || null,
+          specialisation: champs.classe ? champs.specialisation || '' : '',
           region: champs.region,
           niveau_min: Number(champs.niveau_min),
           niveau_max: joueur ? Number(champs.niveau_min) : Number(champs.niveau_max),
@@ -2135,7 +2175,27 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
             </>
           )}
 
-          <div className="deux court">
+          {persos && persos.length > 1 && (
+            <label className="champ">
+              <span>Avec quel personnage?</span>
+              <select
+                value={persos.find((p) => p.perso === champs.perso)?.slot ?? ''}
+                onChange={(e) => choisirPerso(e.target.value)}
+              >
+                {!persos.some((p) => p.perso === champs.perso) && <option value="">Choisis un personnage</option>}
+                {persos.map((p) => (
+                  <option key={p.slot} value={p.slot}>
+                    {p.perso}
+                    {p.classe ? ` · ${nomDe(CLASSES, p.classe)}` : ''}
+                    {p.classe && p.specialisation ? ` ${nomSpecialisation(p.classe, p.specialisation, langueJeu)}` : ''}
+                    {` · ${nomDe(FACTIONS, p.faction)} · ${nomRuleset(p.ruleset)} · ${p.region}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          <div className="deux court trois">
             <label className="champ">
               <span>Faction</span>
               <select value={champs.faction} onChange={(e) => maj('faction', e.target.value)}>
@@ -2148,7 +2208,17 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
                 {REGIONS.map((r) => <option key={r.id} value={r.id}>{r.nom}</option>)}
               </select>
             </label>
+            <label className="champ">
+              <span>Type de serveur</span>
+              <select value={champs.ruleset} onChange={(e) => maj('ruleset', e.target.value)}>
+                {RULESETS.map((r) => <option key={r.id} value={r.id}>{r.nom}</option>)}
+              </select>
+            </label>
           </div>
+          <p className="aide">
+            Seuls les joueurs de la même faction, de la même région et du même type de serveur peuvent demander à
+            rejoindre. Les autres ne voient pas le bouton.
+          </p>
 
           {!sansRoles && raid && !joueur && (
             <fieldset className="groupe">
@@ -2295,11 +2365,22 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
               </label>
               <label className="champ">
                 <span>Ta classe</span>
-                <select value={champs.classe} onChange={(e) => maj('classe', e.target.value)}>
+                <select value={champs.classe} onChange={(e) => setChamps((c) => ({ ...c, classe: e.target.value, specialisation: '' }))}>
                   <option value="">Non précisée</option>
                   {CLASSES.map((c) => <option key={c.id} value={c.id}>{c.nom}</option>)}
                 </select>
               </label>
+              {champs.classe && (
+                <label className="champ">
+                  <span>Ta spécialisation</span>
+                  <select value={champs.specialisation} onChange={(e) => maj('specialisation', e.target.value)}>
+                    <option value="">Non précisée</option>
+                    {specialisationsDe(champs.classe).map((sp) => (
+                      <option key={sp.id} value={sp.id}>{nomSpecialisation(champs.classe, sp.id, langueJeu)}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
               {champs.quand === 'maintenant' && (
                 <label className="champ">
                   <span>L'annonce reste affichée</span>

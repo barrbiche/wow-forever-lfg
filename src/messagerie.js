@@ -7,6 +7,7 @@ import {
   lireAmisDemo,
   lireDemo,
   lireJoueursDemo,
+  lirePersos,
   minutes,
   modeDemo,
   supabase,
@@ -366,9 +367,10 @@ export async function lireConversations() {
 // ---------- Demandes ----------
 
 // Retourne 'en_attente' (ou 'acceptee' si c'était déjà fait).
-export async function demanderRejoindre(annonce, role, message) {
+export async function demanderRejoindre(annonce, role, message, perso = 1) {
   const mot = String(message ?? '').trim()
   if (modeDemo) {
+    const persosDemo = await lirePersos()
     return avecEtat((etat) => {
       if (!lireJoueursDemo().some((j) => j.moi)) throw erreur('crée ton profil avant de demander à rejoindre', '22023')
       if (annonce.user_id === MOI) throw erreur("c'est ta propre annonce", '22023')
@@ -379,16 +381,26 @@ export async function demanderRejoindre(annonce, role, message) {
       if (d && d.statut !== 'quitte') throw erreur('demande refusée', '42501')
       if (g.complet) throw erreur('groupe complet', '55000')
       if (etat.demandes.filter((x) => x.de === MOI && x.statut === 'en_attente').length >= 10) throw erreur('trop de demandes en attente', '54000')
-      const neuve = { id: `d-${g.id}-${MOI}`, groupe_id: g.id, de: MOI, role: role || null, message: mot, statut: 'en_attente', created_at: new Date().toISOString() }
+      const choisi = persosDemo.find((x) => x.slot === perso)
+      if (!choisi) throw erreur('personnage introuvable', '22023')
+      if (choisi.region !== annonce.region) throw erreur('ce personnage est dans une autre région', '42501')
+      if (choisi.faction !== annonce.faction) throw erreur("ce personnage est d'une autre faction", '42501')
+      if ((choisi.ruleset || 'normal') !== (annonce.ruleset || 'normal')) throw erreur('ce personnage a un autre type de serveur', '42501')
+      const neuve = {
+        id: `d-${g.id}-${MOI}`, groupe_id: g.id, de: MOI, role: role || null, message: mot, statut: 'en_attente', created_at: new Date().toISOString(),
+        perso_slot: choisi.slot, perso_nom: choisi.perso, perso_classe: choisi.classe, perso_spec: choisi.specialisation, perso_niveau: choisi.niveau,
+      }
       if (d) Object.assign(d, neuve)
       else etat.demandes.push(neuve)
       return 'en_attente'
     })
   }
+  // Le personnage n'est envoyé que si ce n'est pas le principal: l'ancienne version de la base continue de marcher.
   const { data, error } = await supabase.rpc('demander_rejoindre', {
     p_annonce: annonce.id,
     p_role: role || null,
     p_message: mot,
+    ...(perso !== 1 ? { p_perso: perso } : {}),
   })
   if (error) throw error
   return data
@@ -407,7 +419,8 @@ export async function lireDemandesGroupe(groupe) {
           const p = profilDemo(d.de) ?? {}
           return {
             id: d.id, user_id: d.de, statut: d.statut, role: d.role, message: d.message, created_at: d.created_at,
-            perso: p.perso ?? 'Joueur', classe: p.classe ?? null, specialisation: p.specialisation ?? '', niveau: p.niveau ?? null,
+            perso: d.perso_nom ?? p.perso ?? 'Joueur', classe: d.perso_classe ?? p.classe ?? null,
+            specialisation: (d.perso_nom ? d.perso_spec : p.specialisation) ?? '', niveau: d.perso_niveau ?? p.niveau ?? null,
             roles: p.roles ?? [], guilde: p.guilde ?? '', langue: p.langue ?? 'fr', style: p.style ?? 'relax', bio: p.bio ?? '',
           }
         })

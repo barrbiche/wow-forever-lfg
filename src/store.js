@@ -95,6 +95,7 @@ export function lireDemo() {
 const COLONNES_ANNONCES_SANS_COMPOSITION =
   'id,user_id,created_at,expires_at,activite,cible,faction,ruleset,region,niveau_min,niveau_max,roles,perso,note,style,langue,debut,genre,classe'
 const COLONNES_ANNONCES = `${COLONNES_ANNONCES_SANS_COMPOSITION},roles_nb`
+const COLONNES_ANNONCES_AVEC_SPEC = `${COLONNES_ANNONCES},specialisation`
 const COLONNES_ANNONCES_ANCIENNES =
   'id,user_id,created_at,expires_at,activite,cible,faction,ruleset,region,niveau_min,niveau_max,roles,perso,note,style,langue,debut'
 const COLONNES_GUILDES =
@@ -115,7 +116,7 @@ export async function lireAnnonces() {
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   }
   // Depuis ameliorations8.sql, personne ne reçoit le contact d'une annonce ici: il passe par le chat du groupe.
-  const essais = [COLONNES_ANNONCES, COLONNES_ANNONCES_SANS_COMPOSITION, COLONNES_ANNONCES_ANCIENNES, '*']
+  const essais = [COLONNES_ANNONCES_AVEC_SPEC, COLONNES_ANNONCES, COLONNES_ANNONCES_SANS_COMPOSITION, COLONNES_ANNONCES_ANCIENNES, '*']
   let derniereErreur = null
   for (const colonnes of essais) {
     const { data, error } = await supabase
@@ -150,7 +151,12 @@ export async function creerAnnonce(champs, heures) {
     }
     return complete
   }
-  const { data, error } = await supabase.from('annonces').insert(annonce).select('id,user_id,created_at,expires_at').single()
+  let { data, error } = await supabase.from('annonces').insert(annonce).select('id,user_id,created_at,expires_at').single()
+  if (error?.code === 'PGRST204' && error.message?.includes("'specialisation'")) {
+    // ameliorations19.sql pas encore roulé: on publie sans la spécialisation.
+    const { specialisation, ...sans } = annonce // eslint-disable-line no-unused-vars
+    ;({ data, error } = await supabase.from('annonces').insert(sans).select('id,user_id,created_at,expires_at').single())
+  }
   if (error) throw error
   return data
 }
@@ -647,6 +653,7 @@ const JOUEUR_VIDE = {
   guilde: '',
   bio: '',
   battletag: '',
+  ruleset: 'normal',
   visible: true,
   pouces: 0,
   etiquettes: {},
@@ -726,6 +733,7 @@ function versLigneProfil(c) {
     roles: c.roles ?? [],
     faction: c.faction,
     region: c.region,
+    ruleset: c.ruleset || 'normal',
     langue: c.langue || 'fr',
     style: c.style || 'relax',
     guilde: String(c.guilde ?? '').trim(),
@@ -854,10 +862,10 @@ export async function enregistrerProfil(champs) {
   if (!uid) throw new Error('connexion requise')
   // Si la base n'a pas encore une colonne (ameliorations4.sql pas roulé de nouveau), on enregistre le reste:
   // le BattleTag s'il est vide, et la spécialisation (le site ne l'exige plus tant que la base ne la connaît pas).
-  const manquantes = ['specialisation', ...(ligne.battletag ? [] : ['battletag'])]
+  const manquantes = ['specialisation', ...(ligne.ruleset === 'normal' ? ['ruleset'] : []), ...(ligne.battletag ? [] : ['battletag'])]
   let envoi = { ...ligne }
   let { error } = await supabase.from('profils').upsert({ user_id: uid, ...envoi }, { onConflict: 'user_id' })
-  for (let i = 0; i < 2 && error?.code === 'PGRST204'; i += 1) {
+  for (let i = 0; i < 3 && error?.code === 'PGRST204'; i += 1) {
     const colonne = manquantes.find((c) => error.message?.includes(`'${c}'`))
     if (!colonne) break
     delete envoi[colonne]
@@ -866,9 +874,79 @@ export async function enregistrerProfil(champs) {
   if (error) throw error
 }
 
+// ---------- Mes personnages (jusqu'à 3): le principal est le profil, les 2 autres sont à part (ameliorations19.sql) ----------
+
+const CLE_PERSOS_DEMO = 'forever-demo-persos'
+
+function lireExtrasDemo() {
+  try {
+    return JSON.parse(localStorage.getItem(CLE_PERSOS_DEMO) || '[]') ?? []
+  } catch {
+    return []
+  }
+}
+
+const versPerso = (slot, j) => ({
+  slot,
+  perso: j.perso,
+  classe: j.classe ?? null,
+  specialisation: j.specialisation ?? '',
+  niveau: j.niveau ?? null,
+  roles: j.roles ?? [],
+  faction: j.faction,
+  region: j.region,
+  ruleset: j.ruleset || 'normal',
+})
+
+// Retourne [{ slot, perso, classe, specialisation, niveau, roles, faction, region, ruleset }] (le slot 1 est le profil),
+// ou null si la base n'est pas encore à jour (ameliorations19.sql): le site ne bloque alors personne.
+export async function lirePersos() {
+  if (modeDemo) {
+    const moi = lireJoueursDemo().find((j) => j.moi)
+    if (!moi) return []
+    return [versPerso(1, moi), ...lireExtrasDemo().map((x, i) => versPerso(i + 2, x))]
+  }
+  try {
+    const { data, error } = await supabase.rpc('mes_persos')
+    if (error) return null
+    return data ?? []
+  } catch {
+    return null
+  }
+}
+
+// Remplace mes personnages en plus (2 au maximum).
+export async function enregistrerPersosExtra(extras) {
+  const liste = (extras ?? []).slice(0, 2).map((x) => ({
+    perso: String(x.perso ?? '').trim(),
+    classe: x.classe || null,
+    specialisation: x.classe ? String(x.specialisation ?? '') : '',
+    niveau: x.niveau ? Number(x.niveau) : null,
+    roles: x.roles ?? [],
+    faction: x.faction,
+    region: x.region,
+    ruleset: x.ruleset || 'normal',
+  }))
+  if (modeDemo) {
+    try {
+      localStorage.setItem(CLE_PERSOS_DEMO, JSON.stringify(liste))
+    } catch {
+      // navigation privée: rien n'est gardé
+    }
+    return
+  }
+  const { error } = await supabase.rpc('definir_persos_extra', { p_extras: liste })
+  if (error) throw error
+}
+
 export async function supprimerProfil() {
   if (modeDemo) {
     ecrireJoueursDemo(lireJoueursDemo().filter((j) => !j.moi))
+    try {
+      localStorage.removeItem(CLE_PERSOS_DEMO)
+    } catch {
+      // rien à faire
+    }
     return
   }
   const uid = await idConnecte()

@@ -66,7 +66,8 @@ export function SectionDonnees() {
         </li>
         <li>
           <strong>Demandes pour rejoindre et chat.</strong> Quand tu demandes à rejoindre un groupe, le chef voit ton
-          personnage (nom, classe, niveau, rôle, guilde, petit mot), jamais ton courriel ni ton nom Google. Les messages
+          personnage (nom, classe, niveau, rôle, guilde, petit mot), jamais ton courriel ni ton nom Google. Si tu as plusieurs
+          personnages, il ne voit que celui avec lequel tu postules: tes autres personnages restent cachés. Les messages
           d'un groupe ne sont lisibles que par le chef et les joueurs acceptés, et sont effacés 24 heures après la fin de
           l'annonce (expirée ou retirée). Les messages entre amis ne sont lisibles que par vous deux et sont effacés après
           30 jours. Tu peux effacer tes propres messages. Un message signalé est copié, avec les quelques messages qui le

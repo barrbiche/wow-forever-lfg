@@ -58,6 +58,33 @@ export default function Aide({ ouvert, fermer }) {
         </section>
 
         <section>
+          <h3>Qui peut rejoindre quel groupe?</h3>
+          <p>
+            Pour se voir en jeu, ajouter un ami et partir en donjon ou en quête ensemble, il faut valider 3 règles. Le
+            site les vérifie pour toi: si aucun de tes personnages ne convient, tu ne vois pas le bouton « Demander à
+            rejoindre », et la raison est écrite à la place.
+          </p>
+          <ul className="puces">
+            <li>
+              <strong>La même région.</strong> Les serveurs US (Amériques) et EU (Europe) sont complètement séparés.
+            </li>
+            <li>
+              <strong>Le même type de serveur.</strong> Normal (PvE), PvP, Jeu de rôle (RP) ou Jeu de rôle PvP (RP-PvP),
+              choisi à la création du personnage. Un personnage Normal ne peut pas grouper avec un personnage PvP.
+            </li>
+            <li>
+              <strong>La même faction.</strong> La séparation Horde et Alliance reste stricte.
+            </li>
+          </ul>
+          <p>
+            Tu peux avoir jusqu'à 3 personnages dans « Mon profil » (le principal et 2 autres). Quand tu publies une
+            annonce ou que tu demandes à rejoindre un groupe, tu choisis avec lequel tu joues, parmi ceux qui conviennent.
+            Un personnage peut avoir deux noms (par exemple « King Quebec »), ou un seul (« King »): écris le deuxième
+            dans « 2e nom ».
+          </p>
+        </section>
+
+        <section>
           <h3>Rejoindre un groupe et discuter</h3>
           <ul className="puces">
             <li>

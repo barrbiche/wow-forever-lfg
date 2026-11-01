@@ -1,0 +1,52 @@
+/* Trois personnages, type de serveur: ce qu'il faut pour rejoindre doit être clair. */
+
+.persos-extra {
+  margin: 1.1rem 0 .4rem;
+  display: grid;
+  gap: .7rem;
+}
+
+.persos-extra h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.perso-extra {
+  display: grid;
+  gap: .7rem;
+  margin: 0;
+  padding: .8rem .9rem .9rem;
+  border: 1px solid rgba(214, 170, 76, .45);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, .18);
+}
+
+.perso-extra legend {
+  padding: 0 .4rem;
+  font-weight: 700;
+}
+
+.perso-extra .bouton {
+  justify-self: start;
+}
+
+/* Le type de serveur sur la carte d'une annonce */
+.chip.chip-serveur {
+  font-weight: 700;
+}
+
+/* Le bouton « Rejoindre » est remplacé par la raison: lisible, sur sa propre ligne */
+.rejoindre .rejoindre-note strong {
+  white-space: nowrap;
+}
+
+/* Trois champs sur une ligne (nom, 2e nom, niveau / faction, région, type de serveur) */
+.deux.court.trois {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 559px) {
+  .deux.court.trois {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { MESSAGE_COMPTE_SUSPENDU, compteSuspendu, recommander, reprocher } from './store.js'
 import { activerPush, desactiverPush, etatPush, pushConfigure } from './push.js'
 import {
@@ -20,8 +20,9 @@ import {
   reglerComplet,
   signalerMessage,
 } from './messagerie.js'
-import { CLASSES, MOTIFS_MESSAGE, REPROCHES, ROLES, STYLES, nomDe } from './data.js'
-import { ChipClasse, Icone, depuis, reste } from './commun.jsx'
+import { CLASSES, FACTIONS, MOTIFS_MESSAGE, REPROCHES, ROLES, STYLES, compatibilite, exigencesAnnonce, nomDe, nomRuleset, nomSpecialisation } from './data.js'
+import { ChipClasse, ContextePersos, Icone, depuis, reste } from './commun.jsx'
+import { useLangueJeu } from './langue.jsx'
 import { SelecteurEmojis, emoticones } from './Emojis.jsx'
 
 // Demandes pour rejoindre, chat de groupe et chat entre amis (supabase/ameliorations8.sql).
@@ -40,6 +41,8 @@ export function messageMessagerie(e) {
     if (/demandes/i.test(t)) return 'Ce groupe a déjà beaucoup de demandes en attente.'
     return 'Doucement: attends quelques secondes avant d’écrire un autre message.'
   }
+  if (/personnage introuvable/i.test(t)) return 'Ce personnage n’existe plus. Ouvre « Mon profil » pour vérifier tes personnages.'
+  if (/ce personnage/i.test(t)) return 'Ce personnage ne peut pas rejoindre ce groupe: il faut la même région, le même type de serveur et la même faction.'
   if (e?.code === '55000' || /complet/i.test(t)) return 'Ce groupe est complet.'
   if (/refusée/i.test(t)) return 'Ta demande a été refusée: tu ne peux pas la refaire.'
   if (/personnage requis/i.test(t)) return 'Crée ton personnage dans « Mon profil » pour jaser dans la Taverne.'
@@ -61,7 +64,10 @@ export function ZoneRejoindre({ annonce: a, proprietaire, utilisateur, onConnexi
   const [occupe, setOccupe] = useState(false)
   const [chat, setChat] = useState(null) // null: fermé. { panneau }: le chat du groupe est ouvert dans la carte
   const [probleme, setProbleme] = useState('')
+  const persos = useContext(ContextePersos)
   const joueur = a.genre === 'joueur'
+  // Il faut la même région, le même type de serveur et la même faction: sinon, pas de bouton, et on dit pourquoi.
+  const aucunPersoCompatible = !!utilisateur && !!persos && persos.length > 0 && !persos.some((p) => compatibilite(p, a).ok)
 
   if (disponible === false) {
     return <p className="aide rejoindre-note">Les demandes pour rejoindre arrivent bientôt sur ce site.</p>
@@ -143,7 +149,18 @@ export function ZoneRejoindre({ annonce: a, proprietaire, utilisateur, onConnexi
           <span className="aide rejoindre-note">Le chef ne prend plus de demandes pour le moment.</span>
         </>
       )}
-      {!statut && !complet && (
+      {!statut && !complet && aucunPersoCompatible && (
+        <>
+          <span className="ami-etat attente">{joueur ? 'Tu ne peux pas lui proposer de groupe' : 'Tu ne peux pas rejoindre ce groupe'}</span>
+          <span className="aide rejoindre-note">
+            Il faut un personnage <strong>{exigencesAnnonce(a)}</strong>.{' '}
+            {persos.length === 1
+              ? `Ton personnage: ${descriptionServeur(persos[0])}.`
+              : `Aucun de tes ${persos.length} personnages ne correspond.`}
+          </span>
+        </>
+      )}
+      {!statut && !complet && !aucunPersoCompatible && (
         <>
           <button type="button" className="bouton petit principal" onClick={() => (utilisateur ? ouvrirDemande(a) : onConnexion())}>
             <Icone nom="discussion" taille={15} />
@@ -192,6 +209,9 @@ export function ZoneRejoindre({ annonce: a, proprietaire, utilisateur, onConnexi
 
 // ---------- Fenêtre « Demander à rejoindre » ----------
 
+// « Alliance · PvE · US »
+const descriptionServeur = (p) => `${nomDe(FACTIONS, p.faction)} · ${nomRuleset(p.ruleset)} · ${p.region}`
+
 export function DialogueDemande({ annonce, fermer, profil, ouvrirProfil, apres, annoncer }) {
   const dialogue = useRef(null)
   const joueur = annonce?.genre === 'joueur'
@@ -201,12 +221,21 @@ export function DialogueDemande({ annonce, fermer, profil, ouvrirProfil, apres, 
   const [mot, setMot] = useState('')
   const [envoi, setEnvoi] = useState(false)
   const [probleme, setProbleme] = useState('')
+  const [langueJeu] = useLangueJeu()
+  const persos = useContext(ContextePersos)
+  // Mes personnages qui peuvent rejoindre (même région, même type de serveur, même faction).
+  const compatibles = useMemo(() => (persos && annonce ? persos.filter((p) => compatibilite(p, annonce).ok) : []), [persos, annonce])
+  const [slot, setSlot] = useState(1)
+  // Sans la liste des personnages (base pas à jour), on postule avec le profil comme avant.
+  const choisi = persos ? (compatibles.find((p) => p.slot === slot) ?? compatibles[0] ?? null) : profil
 
   useEffect(() => {
     const d = dialogue.current
     if (!d) return
     if (annonce && !d.open) {
-      const prefere = (profil?.roles ?? []).find((r) => choixRoles.some((c) => c.id === r))
+      const premier = compatibles.find((p) => p.slot === 1) ?? compatibles[0]
+      if (premier) setSlot(premier.slot)
+      const prefere = (premier?.roles ?? profil?.roles ?? []).find((r) => choixRoles.some((c) => c.id === r))
       setRole(prefere ?? '')
       setMot('')
       setProbleme('')
@@ -224,7 +253,7 @@ export function DialogueDemande({ annonce, fermer, profil, ouvrirProfil, apres, 
     setEnvoi(true)
     setProbleme('')
     try {
-      await demanderRejoindre(annonce, joueur ? null : role, mot)
+      await demanderRejoindre(annonce, joueur ? null : role, mot, persos ? (choisi?.slot ?? 1) : 1)
       annoncer(joueur ? 'Proposition envoyée.' : 'Demande envoyée. Le chef va répondre ici.')
       fermer()
       await apres()
@@ -251,6 +280,7 @@ export function DialogueDemande({ annonce, fermer, profil, ouvrirProfil, apres, 
           </div>
           <p className="aide">
             <strong>{annonce.cible}</strong> · niveaux {annonce.niveau_min === annonce.niveau_max ? annonce.niveau_min : `${annonce.niveau_min} à ${annonce.niveau_max}`}
+            {' · '}{exigencesAnnonce(annonce)}
           </p>
 
           {!profil ? (
@@ -262,11 +292,29 @@ export function DialogueDemande({ annonce, fermer, profil, ouvrirProfil, apres, 
             </div>
           ) : (
             <>
-              <p className="aide">
-                {joueur ? 'Il' : 'Le chef'} verra : <strong>{profil.perso}</strong>
-                {profil.classe ? `, ${nomDe(CLASSES, profil.classe).toLowerCase()}` : ''}
-                {profil.niveau ? `, niveau ${profil.niveau}` : ''}. Ton courriel et ton nom Google ne sont jamais montrés.
-              </p>
+              {persos && compatibles.length > 1 && (
+                <fieldset className="champ groupe-choix">
+                  <legend>Avec quel personnage?</legend>
+                  <div className="pastilles">
+                    {compatibles.map((p) => (
+                      <button key={p.slot} type="button" className="pastille" aria-pressed={choisi?.slot === p.slot} onClick={() => setSlot(p.slot)}>
+                        {p.perso}
+                        {p.classe ? ` · ${nomDe(CLASSES, p.classe)}` : ''}
+                        {p.classe && p.specialisation ? ` ${nomSpecialisation(p.classe, p.specialisation, langueJeu)}` : ''}
+                        {p.niveau ? ` · niv ${p.niveau}` : ''}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
+              {choisi && (
+                <p className="aide">
+                  {joueur ? 'Il' : 'Le chef'} verra : <strong>{choisi.perso}</strong>
+                  {choisi.classe ? `, ${nomDe(CLASSES, choisi.classe).toLowerCase()}` : ''}
+                  {choisi.classe && choisi.specialisation ? ` ${nomSpecialisation(choisi.classe, choisi.specialisation, langueJeu).toLowerCase()}` : ''}
+                  {choisi.niveau ? `, niveau ${choisi.niveau}` : ''}. Ton courriel et ton nom Google ne sont jamais montrés.
+                </p>
+              )}
               {!joueur && (
                 <fieldset className="champ groupe-choix">
                   <legend>Ton rôle</legend>

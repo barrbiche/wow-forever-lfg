@@ -8,6 +8,7 @@ import './wow.css'
 import './classique.css'
 import './entete.css'
 import './amis.css'
+import './persos.css'
 import App from './App.jsx'
 import Confidentialite from './Confidentialite.jsx'
 

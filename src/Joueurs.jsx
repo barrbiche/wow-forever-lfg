@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   ecrireProfil,
+  enregistrerPersosExtra,
   enregistrerProfil,
   lireProfil,
   modeDemo,
@@ -18,12 +19,15 @@ import {
   LANGUES,
   REGIONS,
   ROLES,
+  RULESETS,
   STYLES,
   champsManquants,
   couleurTexteClasse,
+  nomComplet,
   nomDe,
   nomSpecialisation,
   normaliserBattleTag,
+  separerNom,
   specialisationsDe,
 } from './data.js'
 import { BadgeSupporter, BoutonLienSite, ChipClasse, Icone, LigneCopie, Signalement, vuTexte } from './commun.jsx'
@@ -618,6 +622,8 @@ function CarteJoueur({ joueur: j, commande, enLigne, lien, apresAmis, utilisateu
 
 const PROFIL_VIDE = {
   perso: '',
+  perso2: '',
+  ruleset: 'normal',
   classe: '',
   specialisation: '',
   niveau: '',
@@ -633,11 +639,14 @@ const PROFIL_VIDE = {
 }
 
 // Ce qui est déjà connu du joueur: son profil s'il existe, sinon ce qu'il a écrit dans ses annonces.
-function champsInitiaux(profil, factionParDefaut) {
+function champsInitiaux(profil, factionParDefaut, persos) {
   if (profil) {
+    const { nom, nom2 } = separerNom(profil.perso)
     return {
       ...PROFIL_VIDE,
-      perso: profil.perso ?? '',
+      perso: nom,
+      perso2: nom2,
+      ruleset: persos?.find((p) => p.slot === 1)?.ruleset ?? 'normal',
       classe: profil.classe ?? '',
       specialisation: profil.specialisation ?? '',
       niveau: profil.niveau ? String(profil.niveau) : '',
@@ -654,10 +663,13 @@ function champsInitiaux(profil, factionParDefaut) {
   }
   const garde = lireProfil()
   const texte = (cle) => (typeof garde[cle] === 'string' && garde[cle] ? { [cle]: garde[cle] } : {})
+  const gardeNom = separerNom(garde.perso)
   return {
     ...PROFIL_VIDE,
     faction: factionParDefaut,
-    ...texte('perso'),
+    perso: gardeNom.nom,
+    perso2: gardeNom.nom2,
+    ...texte('ruleset'),
     ...texte('classe'),
     ...texte('faction'),
     ...texte('region'),
@@ -665,15 +677,28 @@ function champsInitiaux(profil, factionParDefaut) {
   }
 }
 
+// Les personnages en plus (slots 2 et 3): même champs que le profil, avec le nom en deux parties.
+const EXTRA_VIDE = { perso: '', perso2: '', classe: '', specialisation: '', niveau: '', roles: [], faction: 'alliance', region: 'US', ruleset: 'normal' }
+
+function extrasInitiaux(persos) {
+  return (persos ?? [])
+    .filter((p) => p.slot > 1)
+    .map((p) => {
+      const { nom, nom2 } = separerNom(p.perso)
+      return { ...EXTRA_VIDE, perso: nom, perso2: nom2, classe: p.classe ?? '', specialisation: p.specialisation ?? '', niveau: p.niveau ? String(p.niveau) : '', roles: p.roles ?? [], faction: p.faction, region: p.region, ruleset: p.ruleset || 'normal' }
+    })
+}
+
 // `pourPublier`: la fenêtre s'ouvre parce qu'il faut un profil complet pour publier une annonce.
 // `exigerSpec`: faux quand la base ne connaît pas encore les spécialisations (le champ disparaît alors).
 // `apresEnregistrement`: appelée une fois le profil enregistré (le site ouvre alors le formulaire d'annonce).
 export function ProfilJoueur({
-  ouvert, fermer, profil, factionParDefaut, apres, annoncer, pourPublier = false, exigerSpec = true, apresEnregistrement,
+  ouvert, fermer, profil, persos = null, factionParDefaut, apres, annoncer, pourPublier = false, exigerSpec = true, apresEnregistrement,
 }) {
   const [langueJeu] = useLangueJeu()
   const dialogue = useRef(null)
-  const [champs, setChamps] = useState(() => champsInitiaux(profil, factionParDefaut))
+  const [champs, setChamps] = useState(() => champsInitiaux(profil, factionParDefaut, persos))
+  const [extras, setExtras] = useState(() => extrasInitiaux(persos))
   const [erreurs, setErreurs] = useState({})
   const [envoi, setEnvoi] = useState(false)
   const [erreurServeur, setErreurServeur] = useState('')
@@ -683,7 +708,8 @@ export function ProfilJoueur({
     const d = dialogue.current
     if (!d) return
     if (ouvert && !d.open) {
-      setChamps(champsInitiaux(profil, factionParDefaut))
+      setChamps(champsInitiaux(profil, factionParDefaut, persos))
+      setExtras(extrasInitiaux(persos))
       setErreurs({})
       setErreurServeur('')
       setConfirmer(false)
@@ -710,6 +736,16 @@ export function ProfilJoueur({
     setErreurs((e) => (e.roles ? { ...e, roles: undefined } : e))
   }
 
+  const majExtra = (i, cle, valeur) => {
+    setExtras((liste) => liste.map((x, k) => (k === i ? { ...x, [cle]: valeur, ...(cle === 'classe' ? { specialisation: '' } : {}) } : x)))
+    setErreurs((e) => (e['extra' + i] ? { ...e, ['extra' + i]: undefined } : e))
+  }
+  const basculerRoleExtra = (i, id) =>
+    setExtras((liste) => liste.map((x, k) => (k === i ? { ...x, roles: x.roles.includes(id) ? x.roles.filter((r) => r !== id) : [...x.roles, id] } : x)))
+  const ajouterExtra = () =>
+    setExtras((liste) => (liste.length >= 2 ? liste : [...liste, { ...EXTRA_VIDE, faction: champs.faction, region: champs.region, ruleset: champs.ruleset }]))
+  const retirerExtra = (i) => setExtras((liste) => liste.filter((_, k) => k !== i))
+
   const valider = () => {
     const e = {}
     const manque = champsManquants(champs, exigerSpec)
@@ -718,6 +754,12 @@ export function ProfilJoueur({
     else if (manque.includes('specialisation')) e.specialisation = 'Choisis ta spécialisation.'
     if (manque.includes('niveau')) e.niveau = 'Écris ton niveau, entre 1 et 60.'
     if (manque.includes('roles')) e.roles = 'Choisis au moins un rôle que tu joues.'
+    if (nomComplet(champs.perso, champs.perso2).length > 24) e.perso = 'Le nom complet (avec le 2e nom) est limité à 24 caractères.'
+    extras.forEach((x, i) => {
+      const m = champsManquants({ ...x, perso: nomComplet(x.perso, x.perso2) }, exigerSpec)
+      if (m.length > 0) e['extra' + i] = 'Complète ce personnage: nom, classe, spécialisation, niveau et au moins un rôle.'
+      else if (nomComplet(x.perso, x.perso2).length > 24) e['extra' + i] = 'Le nom complet (avec le 2e nom) est limité à 24 caractères.'
+    })
     if (champs.battletag.trim() && !BATTLETAG_FORMAT.test(normaliserBattleTag(champs.battletag))) {
       e.battletag = "Écris-le comme Nom#1234: un nom de 3 à 12 caractères, un dièse, puis 4 à 8 chiffres."
     }
@@ -741,16 +783,29 @@ export function ProfilJoueur({
     setEnvoi(true)
     setErreurServeur('')
     try {
-      await enregistrerProfil(champs)
+      const complet = nomComplet(champs.perso, champs.perso2)
+      await enregistrerProfil({ ...champs, perso: complet })
       // Les annonces suivantes se remplissent avec les mêmes choix.
       ecrireProfil({
         ...lireProfil(),
-        perso: champs.perso.trim(),
+        perso: complet,
         classe: champs.classe,
+        specialisation: champs.specialisation,
         faction: champs.faction,
         region: champs.region,
+        ruleset: champs.ruleset,
         langue: champs.langue,
       })
+      // Les personnages en plus (seulement si la base les connaît, ou s'il y a quelque chose à effacer).
+      if (persos !== null && (extras.length > 0 || persos.some((p) => p.slot > 1))) {
+        try {
+          await enregistrerPersosExtra(extras.map((x) => ({ ...x, perso: nomComplet(x.perso, x.perso2) })))
+        } catch {
+          await apres()
+          setErreurServeur('Ton profil est enregistré, mais tes autres personnages ne l’ont pas été. Réessaie dans un instant.')
+          return
+        }
+      }
       annoncer('Profil enregistré.')
       await apres()
       apresEnregistrement?.()
@@ -800,11 +855,15 @@ export function ProfilJoueur({
           </p>
         )}
 
-        <div className="deux court">
+        <div className="deux court trois">
           <label className="champ">
             <span>Nom de ton personnage</span>
-            <input type="text" maxLength={24} autoComplete="off" value={champs.perso} onChange={(e) => maj('perso', e.target.value)} aria-invalid={!!erreurs.perso} />
+            <input type="text" maxLength={24} autoComplete="off" value={champs.perso} onChange={(e) => maj('perso', e.target.value.replace(/\s/g, ''))} aria-invalid={!!erreurs.perso} />
             {erreur('perso')}
+          </label>
+          <label className="champ">
+            <span>2e nom (facultatif)</span>
+            <input type="text" maxLength={24} autoComplete="off" value={champs.perso2} onChange={(e) => maj('perso2', e.target.value.replace(/\s/g, ''))} placeholder="Ex.: Quebec" />
           </label>
           <label className="champ">
             <span>Niveau</span>
@@ -869,6 +928,12 @@ export function ProfilJoueur({
             </select>
           </label>
           <label className="champ">
+            <span>Type de serveur</span>
+            <select value={champs.ruleset} onChange={(e) => maj('ruleset', e.target.value)}>
+              {RULESETS.map((r) => <option key={r.id} value={r.id}>{r.nom}</option>)}
+            </select>
+          </label>
+          <label className="champ">
             <span>Langue</span>
             <select value={champs.langue} onChange={(e) => maj('langue', e.target.value)}>
               {LANGUES.map((l) => <option key={l.id} value={l.id}>{l.nom}</option>)}
@@ -881,6 +946,92 @@ export function ProfilJoueur({
             </select>
           </label>
         </div>
+
+        {persos !== null && (
+          <section className="persos-extra" aria-labelledby="titre-persos-extra">
+            <h3 id="titre-persos-extra">Mes autres personnages</h3>
+            <p className="aide">
+              Tu peux en avoir 3 en tout: celui ci-dessus est le principal, et tu en ajoutes jusqu’à 2. Pour rejoindre un
+              groupe ou publier une annonce, il faut la même faction, la même région et le même type de serveur: tu
+              choisis alors avec lequel tu joues.
+            </p>
+            {extras.map((x, i) => (
+              <fieldset key={i} className="perso-extra">
+                <legend>Personnage {i + 2}</legend>
+                <div className="deux court trois">
+                  <label className="champ">
+                    <span>Nom</span>
+                    <input type="text" maxLength={24} autoComplete="off" value={x.perso} onChange={(e) => majExtra(i, 'perso', e.target.value.replace(/\s/g, ''))} />
+                  </label>
+                  <label className="champ">
+                    <span>2e nom (facultatif)</span>
+                    <input type="text" maxLength={24} autoComplete="off" value={x.perso2} onChange={(e) => majExtra(i, 'perso2', e.target.value.replace(/\s/g, ''))} />
+                  </label>
+                  <label className="champ">
+                    <span>Niveau</span>
+                    <input type="number" inputMode="numeric" min="1" max="60" value={x.niveau} onChange={(e) => majExtra(i, 'niveau', e.target.value)} />
+                  </label>
+                </div>
+                <div className="deux">
+                  <label className="champ">
+                    <span>Classe</span>
+                    <select value={x.classe} onChange={(e) => majExtra(i, 'classe', e.target.value)}>
+                      <option value="">Choisis la classe</option>
+                      {CLASSES.map((c) => <option key={c.id} value={c.id}>{c.nom}</option>)}
+                    </select>
+                  </label>
+                  {exigerSpec && (
+                    <label className="champ">
+                      <span>Spécialisation</span>
+                      <select value={x.specialisation} onChange={(e) => majExtra(i, 'specialisation', e.target.value)} disabled={!x.classe}>
+                        <option value="">{x.classe ? 'Choisis la spécialisation' : "Choisis d'abord la classe"}</option>
+                        {specialisationsDe(x.classe).map((sp) => (
+                          <option key={sp.id} value={sp.id}>{nomSpecialisation(x.classe, sp.id, langueJeu)}</option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                </div>
+                <div className="cases">
+                  {ROLES.map((r) => (
+                    <label key={r.id} className="case">
+                      <input type="checkbox" checked={x.roles.includes(r.id)} onChange={() => basculerRoleExtra(i, r.id)} />
+                      <Icone nom={r.id} taille={16} />
+                      <span>{r.nom}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="deux court trois">
+                  <label className="champ">
+                    <span>Faction</span>
+                    <select value={x.faction} onChange={(e) => majExtra(i, 'faction', e.target.value)}>
+                      {FACTIONS.map((f) => <option key={f.id} value={f.id}>{f.nom}</option>)}
+                    </select>
+                  </label>
+                  <label className="champ">
+                    <span>Région</span>
+                    <select value={x.region} onChange={(e) => majExtra(i, 'region', e.target.value)}>
+                      {REGIONS.map((r) => <option key={r.id} value={r.id}>{r.nom}</option>)}
+                    </select>
+                  </label>
+                  <label className="champ">
+                    <span>Type de serveur</span>
+                    <select value={x.ruleset} onChange={(e) => majExtra(i, 'ruleset', e.target.value)}>
+                      {RULESETS.map((r) => <option key={r.id} value={r.id}>{r.nom}</option>)}
+                    </select>
+                  </label>
+                </div>
+                {erreurs['extra' + i] && <span className="msg-erreur" aria-invalid="true">{erreurs['extra' + i]}</span>}
+                <button type="button" className="bouton petit" onClick={() => retirerExtra(i)}>Retirer ce personnage</button>
+              </fieldset>
+            ))}
+            {extras.length < 2 && (
+              <button type="button" className="bouton petit" onClick={ajouterExtra}>
+                Ajouter un personnage ({extras.length + 1} sur 3)
+              </button>
+            )}
+          </section>
+        )}
 
         <label className="champ">
           <span>Guilde (facultatif)</span>

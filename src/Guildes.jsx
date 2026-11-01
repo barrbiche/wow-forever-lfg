@@ -335,7 +335,7 @@ function FormulaireGuilde({ utilisateur, ouvert, fermer, apresInscription }) {
 
           <div className="deux">
             <label className="champ">
-              <span>Règles de jeu</span>
+              <span>Type de serveur</span>
               <select value={champs.ruleset} onChange={(e) => maj('ruleset', e.target.value)}>
                 {RULESETS.map((r) => <option key={r.id} value={r.id}>{r.nom}</option>)}
               </select>

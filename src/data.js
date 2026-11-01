@@ -132,13 +132,39 @@ export const FACTIONS = [
   { id: 'horde', nom: 'Horde' },
 ]
 
-// Les règles de jeu servent seulement aux guildes; les annonces n’en demandent plus.
+// Les types de serveur de WoW Forever: tous les joueurs d'une région partagent un grand monde, découpé selon le
+// type choisi à la création du personnage. On ne peut pas grouper entre deux types différents.
 // Hardcore arrive après le lancement: on l'ajoutera à ce moment-là.
 export const RULESETS = [
-  { id: 'normal', nom: 'Normal', carte: 'Règles normales' },
-  { id: 'pvp', nom: 'PvP', carte: 'Règles PvP' },
-  { id: 'rp', nom: 'Jeu de rôle', carte: 'Règles jeu de rôle' },
+  { id: 'normal', nom: 'Normal (PvE)', court: 'PvE', carte: 'Normal (PvE)' },
+  { id: 'pvp', nom: 'PvP', court: 'PvP', carte: 'PvP' },
+  { id: 'rp', nom: 'Jeu de rôle (RP)', court: 'RP', carte: 'Jeu de rôle (RP)' },
+  { id: 'rp_pvp', nom: 'Jeu de rôle PvP (RP-PvP)', court: 'RP-PvP', carte: 'RP-PvP' },
 ]
+
+// Un personnage peut avoir deux noms (ex.: « King Quebec »), ou un seul (« King »). Le site garde le nom complet
+// avec une espace, et le sépare en deux champs seulement dans les formulaires.
+export const nomComplet = (nom, nom2) => [nom, nom2].map((x) => String(x ?? '').trim()).filter(Boolean).join(' ')
+export function separerNom(complet) {
+  const t = String(complet ?? '').trim()
+  const i = t.indexOf(' ')
+  return i < 0 ? { nom: t, nom2: '' } : { nom: t.slice(0, i), nom2: t.slice(i + 1).trim() }
+}
+
+// Pour grouper, il faut la même région, le même type de serveur et la même faction.
+// `perso`: { faction, region, ruleset }. `annonce`: l'annonce ou le groupe visé.
+export function compatibilite(perso, annonce) {
+  const raisons = []
+  if (perso.region !== annonce.region) raisons.push('region')
+  if ((perso.ruleset || 'normal') !== (annonce.ruleset || 'normal')) raisons.push('ruleset')
+  if (perso.faction !== annonce.faction) raisons.push('faction')
+  return { ok: raisons.length === 0, raisons }
+}
+
+export const nomRuleset = (id) => RULESETS.find((r) => r.id === (id || 'normal'))?.court ?? 'PvE'
+
+// « Horde · PvP · US »: ce qu'il faut pour rejoindre.
+export const exigencesAnnonce = (a) => `${FACTIONS.find((f) => f.id === a.faction)?.nom ?? a.faction} · ${nomRuleset(a.ruleset)} · ${a.region}`
 
 // Les mêmes quatre styles que l'outil de groupe du jeu (Blizzard ne les a pas encore définis).
 export const STYLES = [
