@@ -267,6 +267,16 @@ export const ETIQUETTES = [
   { id: 'bon_chef', nom: 'Bon chef de groupe' },
 ]
 
+// Pouces vers le bas (supabase/ameliorations18.sql). Un reproche devient visible quand 4 personnes différentes
+// donnent la même catégorie. On ne peut en donner qu'à quelqu'un qui était dans son groupe.
+export const REPROCHES = [
+  { id: 'rageux', nom: 'Rageux', aide: "S'énerve et s'en prend aux autres quand ça va mal." },
+  { id: 'leaver', nom: 'Leave ninja', aide: 'Quitte en plein donjon sans prévenir.' },
+  { id: 'need_tout', nom: 'Need sur tout', aide: 'Prend le butin sans respecter les rôles ni les autres.' },
+  { id: 'irrespectueux', nom: 'Irrespectueux', aide: 'Insulte ou manque de respect au groupe.' },
+]
+export const SEUIL_REPROCHES = 4
+
 export const MOTIFS_JOUEUR = [
   { id: 'comportement', nom: 'Comportement toxique ou harcèlement' },
   { id: 'faux_profil', nom: 'Faux profil ou faux nom' },

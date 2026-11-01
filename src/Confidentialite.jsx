@@ -95,7 +95,8 @@ export function SectionDonnees() {
         <li>
           <strong>Les pouces.</strong> Un pouce est lié à ton compte, mais les autres joueurs ne voient jamais qui l'a
           donné: seulement le nombre et les étiquettes. Les personnes qui gèrent le site peuvent le voir dans la base
-          de données. Tes signalements restent eux aussi privés.
+          de données. Il en va de même pour les pouces vers le bas (rageux, leave ninja, need sur tout, irrespectueux): ils
+          ne s'affichent qu'à partir de 4 personnes différentes pour la même catégorie. Tes signalements restent eux aussi privés.
         </li>
         <li>
           <strong>Les messages « Bogue ou idée ».</strong> Si tu écris à la personne qui fait le site, ton message est

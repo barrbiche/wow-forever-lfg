@@ -654,6 +654,8 @@ const JOUEUR_VIDE = {
   moi: false,
   ma_reco: false,
   mes_etiquettes: [],
+  reproches: {},
+  mes_reproches: [],
   mon_signalement: false,
 }
 
@@ -675,7 +677,7 @@ function joueursDemo() {
     j({
       user_id: 'demo-j-grumash', perso: 'Grumash', classe: 'chasseur', specialisation: 'precision', niveau: 55, roles: ['dps'], faction: 'horde',
       region: 'US', langue: 'fr', style: 'competitif', guilde: 'Sang et Fer', battletag: 'Grumash#5678', vu_le: minutes(95),
-      pouces: 8, etiquettes: { competent: 6, bon_chef: 3 },
+      pouces: 8, etiquettes: { competent: 6, bon_chef: 3 }, reproches: { rageux: 5, need_tout: 4, leaver: 2 },
     }),
     j({
       user_id: 'demo-j-lyra', perso: 'Lyra', classe: 'pretre', specialisation: 'sacre', niveau: 47, roles: ['heal'], faction: 'alliance',
@@ -752,7 +754,22 @@ export async function lireJoueurs() {
   }
   const { data, error } = await supabase.rpc('lister_joueurs')
   if (error) throw error
-  return data
+  // Les pouces vers le bas viennent de ameliorations18.sql: tant qu'elle n'est pas roulée, on les ignore.
+  let visibles = []
+  let miens = []
+  try {
+    const [r1, r2] = await Promise.all([supabase.rpc('reproches_visibles'), supabase.rpc('mes_reproches')])
+    if (!r1.error) visibles = r1.data ?? []
+    if (!r2.error) miens = r2.data ?? []
+  } catch {
+    // pas grave
+  }
+  if (visibles.length === 0 && miens.length === 0) return data
+  return (data ?? []).map((j) => {
+    const reproches = {}
+    for (const r of visibles) if (r.pour === j.user_id) reproches[r.categorie] = r.n
+    return { ...j, reproches, mes_reproches: miens.find((m) => m.pour === j.user_id)?.categories ?? [] }
+  })
 }
 
 // Aperçu pour les visiteurs non connectés: les profils actifs récemment, sans BattleTag, sans petit mot et sans
@@ -893,6 +910,25 @@ export async function recommander(id, etiquettes) {
     return
   }
   const { error } = await supabase.rpc('recommander', { p_pour: id, p_etiquettes: etiquettes })
+  if (error) throw error
+}
+
+// Donne (ou change) ses pouces vers le bas à quelqu'un de son groupe. `categories` remplace ce qu'on avait donné.
+export async function reprocher(groupe, id, categories) {
+  if (modeDemo) {
+    ecrireJoueursDemo(
+      lireJoueursDemo().map((j) => {
+        if (j.user_id !== id) return j
+        const compte = { ...(j.reproches ?? {}) }
+        for (const c of j.mes_reproches ?? []) compte[c] = Math.max(0, (compte[c] ?? 0) - 1)
+        for (const c of categories) compte[c] = (compte[c] ?? 0) + 1
+        for (const c of Object.keys(compte)) if (!compte[c]) delete compte[c]
+        return { ...j, reproches: compte, mes_reproches: categories }
+      }),
+    )
+    return
+  }
+  const { error } = await supabase.rpc('reprocher', { p_groupe: groupe, p_pour: id, p_categories: categories })
   if (error) throw error
 }
 

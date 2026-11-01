@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { MESSAGE_COMPTE_SUSPENDU, compteSuspendu, recommander } from './store.js'
+import { MESSAGE_COMPTE_SUSPENDU, compteSuspendu, recommander, reprocher } from './store.js'
 import { activerPush, desactiverPush, etatPush, pushConfigure } from './push.js'
 import {
   LONGUEUR_MESSAGE,
@@ -12,6 +12,7 @@ import {
   effacerMessage,
   lireDemandesGroupe,
   lireMembres,
+  lireMembresReproches,
   lireMessagesAmi,
   lireMessagesGroupe,
   lireMessagesSalon,
@@ -19,7 +20,7 @@ import {
   reglerComplet,
   signalerMessage,
 } from './messagerie.js'
-import { CLASSES, MOTIFS_MESSAGE, ROLES, STYLES, nomDe } from './data.js'
+import { CLASSES, MOTIFS_MESSAGE, REPROCHES, ROLES, STYLES, nomDe } from './data.js'
 import { ChipClasse, Icone, depuis, reste } from './commun.jsx'
 import { SelecteurEmojis, emoticones } from './Emojis.jsx'
 
@@ -746,10 +747,18 @@ function PoucesFin({ conv, moi }) {
   })
   const [occupe, setOccupe] = useState('')
   const [probleme, setProbleme] = useState('')
+  const [reprochesOk, setReprochesOk] = useState(false)
+  const [bas, setBas] = useState(null) // { id, choix }: le joueur à qui je prépare un pouce vers le bas
+  const [reprochesDonnes, setReprochesDonnes] = useState({})
 
   useEffect(() => {
     let actif = true
-    lireMembres(conv.cible).then((m) => actif && setMembres(m)).catch(() => actif && setMembres([]))
+    // Avec les pouces vers le bas (ameliorations18.sql); sinon, la liste d'avant, sans eux.
+    lireMembresReproches(conv.cible)
+      .then((m) => actif && (setReprochesOk(true), setMembres(m)))
+      .catch(() =>
+        lireMembres(conv.cible).then((m) => actif && setMembres(m)).catch(() => actif && setMembres([])),
+      )
     return () => {
       actif = false
     }
@@ -783,14 +792,39 @@ function PoucesFin({ conv, moi }) {
     }
   }
 
+  const envoyerBas = async () => {
+    if (!bas) return
+    setOccupe(bas.id)
+    setProbleme('')
+    try {
+      await reprocher(conv.cible, bas.id, bas.choix)
+      setReprochesDonnes((r) => ({ ...r, [bas.id]: bas.choix }))
+      setBas(null)
+    } catch (e) {
+      setProbleme(
+        e?.code === '54000'
+          ? "Tu as donné beaucoup de pouces vers le bas aujourd'hui. Réessaie demain."
+          : e?.code === 'P0002'
+            ? "Tu ne peux donner un pouce vers le bas qu'aux gens de ton groupe, tant que son chat existe."
+            : "Le pouce vers le bas n'a pas été enregistré. Réessaie dans un instant.",
+      )
+    } finally {
+      setOccupe('')
+    }
+  }
+
   return (
     <section className="recommandation pouces-fin" aria-label="Pouces de fin de soirée">
-      <p><strong>L’annonce est terminée.</strong> Donne un pouce à ceux avec qui ça a bien été: ça aide les autres à les choisir.</p>
+      <p><strong>L’annonce est terminée.</strong> Donne un pouce à ceux avec qui ça a bien été: ça aide les autres à les choisir.
+        {reprochesOk && ' Si quelqu’un a mal agi, tu peux aussi donner un pouce vers le bas.'}</p>
       <ul className="msg-membres">
         {autres.map((m) => (
           <li key={m.user_id}>
             <strong>{m.perso}</strong>
-            <ul className="infos"><ChipClasse classe={m.classe} specialisation={m.specialisation} /></ul>
+            <ul className="infos">
+              <ChipClasse classe={m.classe} specialisation={m.specialisation} />
+              {m.a_quitte && <li className="chip">A quitté le groupe</li>}
+            </ul>
             {donnes.includes(m.user_id) ? (
               <span className="ami-etat"><Icone nom="coche" taille={15} />Pouce donné</span>
             ) : (
@@ -798,6 +832,43 @@ function PoucesFin({ conv, moi }) {
                 <Icone nom="pouce" taille={15} />
                 Donner un pouce
               </button>
+            )}
+            {reprochesOk && bas?.id !== m.user_id && (
+              <button
+                type="button"
+                className="bouton petit bas"
+                aria-label={`Pouce vers le bas pour ${m.perso}`}
+                onClick={() => setBas({ id: m.user_id, choix: reprochesDonnes[m.user_id] ?? m.mes_reproches ?? [] })}
+              >
+                <Icone nom="pouce" taille={15} />
+                {(reprochesDonnes[m.user_id] ?? m.mes_reproches ?? []).length > 0 ? 'Changer mon pouce vers le bas' : 'Pouce vers le bas'}
+              </button>
+            )}
+            {bas?.id === m.user_id && (
+              <fieldset className="reproches-choix">
+                <legend>Qu’est-ce qui s’est passé avec {m.perso}?</legend>
+                {REPROCHES.map((r) => (
+                  <label key={r.id} className="case">
+                    <input
+                      type="checkbox"
+                      checked={bas.choix.includes(r.id)}
+                      onChange={(e) =>
+                        setBas((b) => ({ ...b, choix: e.target.checked ? [...b.choix, r.id] : b.choix.filter((x) => x !== r.id) }))
+                      }
+                    />
+                    <span><strong>{r.nom}</strong> <small>{r.aide}</small></span>
+                  </label>
+                ))}
+                <p className="aide">
+                  Ça n’apparaît sur son profil que si 4 personnes différentes donnent la même catégorie. Personne ne voit qui l’a donné.
+                </p>
+                <div className="reproches-actions">
+                  <button type="button" className="bouton petit principal" disabled={occupe === m.user_id} onClick={envoyerBas}>
+                    {bas.choix.length === 0 ? 'Retirer mon pouce vers le bas' : 'Donner le pouce vers le bas'}
+                  </button>
+                  <button type="button" className="bouton petit" onClick={() => setBas(null)}>Annuler</button>
+                </div>
+              </fieldset>
             )}
           </li>
         ))}

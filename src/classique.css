@@ -279,3 +279,66 @@ html .carte .ligne-copie code {
   text-shadow: -1px 0 #2a1808, 1px 0 #2a1808, 0 -1px #2a1808, 0 1px #2a1808, 0 2px 2px rgb(0 0 0 / 0.4);
   letter-spacing: 0.04em;
 }
+
+/* ----- Pouces vers le bas ----- */
+
+.reproches {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.reproche {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 9px 1px 7px;
+  border-radius: 999px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #fff4d6;
+  background: linear-gradient(180deg, #9a2a1c, #5d120a);
+  border: 1px solid #2a0a05;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25);
+}
+
+.reproche-pouce {
+  display: inline-flex;
+  transform: rotate(180deg);
+}
+
+.reproche .etiquette-n {
+  color: #ffd9a0;
+}
+
+.reproches-choix {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgb(140 40 20 / 0.55);
+  border-radius: 6px;
+  background: rgb(120 30 15 / 0.1);
+  text-align: left;
+}
+
+.reproches-choix legend {
+  padding: 0 6px;
+  font-weight: 700;
+}
+
+.reproches-choix .case small {
+  display: block;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.reproches-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bouton.bas svg {
+  transform: rotate(180deg);
+}

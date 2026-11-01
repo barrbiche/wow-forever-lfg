@@ -12,6 +12,8 @@ import {
   BATTLETAG_FORMAT,
   CLASSES,
   ETIQUETTES,
+  REPROCHES,
+  SEUIL_REPROCHES,
   FACTIONS,
   LANGUES,
   REGIONS,
@@ -366,6 +368,7 @@ function CarteApercu({ joueur: j, actif }) {
               <span key={id} className="etiquette">{nomDe(ETIQUETTES, id)} <span className="etiquette-n">×{n}</span></span>
             ))}
             {j.pouces === 0 && <span className="aide">Pas encore de pouce.</span>}
+            <Reproches j={j} />
           </div>
         )}
       </div>
@@ -492,6 +495,7 @@ function CarteJoueur({ joueur: j, commande, enLigne, lien, apresAmis, utilisateu
               <span key={id} className="etiquette">{nomDe(ETIQUETTES, id)} <span className="etiquette-n">×{n}</span></span>
             ))}
             {j.pouces === 0 && <span className="aide">Pas encore de pouce.</span>}
+            <Reproches j={j} />
           </div>
         )}
 
@@ -946,5 +950,21 @@ export function ProfilJoueur({
         )}
       </form>
     </dialog>
+  )
+}
+
+// Les pouces vers le bas: une catégorie n'apparaît qu'à partir de 4 personnes différentes (voir ameliorations18.sql).
+function Reproches({ j }) {
+  const visibles = REPROCHES.map((r) => [r, j.reproches?.[r.id] ?? 0]).filter(([, n]) => n >= SEUIL_REPROCHES)
+  if (visibles.length === 0) return null
+  return (
+    <span className="reproches" role="group" aria-label="Signalé par d'autres joueurs">
+      {visibles.map(([r, n]) => (
+        <span key={r.id} className="reproche" title={`${r.nom}: ${r.aide} (${n} joueurs)`}>
+          <span className="reproche-pouce" aria-hidden="true"><Icone nom="pouce" taille={13} /></span>
+          {r.nom} <span className="etiquette-n">×{n}</span>
+        </span>
+      ))}
+    </span>
   )
 }

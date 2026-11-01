@@ -496,6 +496,31 @@ export async function lireMembres(groupe) {
   return data ?? []
 }
 
+// Les membres à qui on peut donner un pouce ou un reproche: le chef, les acceptés et ceux qui ont quitté (sans moi).
+// Chacun: { user_id, perso, classe, specialisation, niveau, a_quitte, mes_reproches }
+export async function lireMembresReproches(groupe) {
+  if (modeDemo) {
+    return avecEtat((etat) => {
+      const g = exigerMembre(etat, groupe)
+      const joueurs = lireJoueursDemo()
+      const fiche = (id) => (id === MOI ? joueurs.find((j) => j.moi) : profilDemo(id))
+      const ligne = (id, aQuitte) => {
+        const p = fiche(id)
+        return { user_id: id, perso: p?.perso ?? (id === g.chef ? g.perso : 'Joueur'), classe: p?.classe ?? null, specialisation: p?.specialisation ?? '',
+          niveau: p?.niveau ?? null, a_quitte: aQuitte, mes_reproches: joueurs.find((j) => j.user_id === id)?.mes_reproches ?? [] }
+      }
+      const lui = g.chef !== MOI ? [ligne(g.chef, false)] : []
+      const autres = etat.demandes
+        .filter((d) => d.groupe_id === g.id && (d.statut === 'acceptee' || d.statut === 'quitte') && d.de !== MOI)
+        .map((d) => ligne(d.de, d.statut === 'quitte'))
+      return [...lui, ...autres]
+    })
+  }
+  const { data, error } = await supabase.rpc('membres_groupe_reproches', { p_groupe: groupe })
+  if (error) throw error
+  return data ?? []
+}
+
 // ---------- Messages ----------
 // Chaque message: { id, user_id, genre ('texte', 'rejoint', 'quitte', 'expulse'), texte, masque, created_at, perso, classe, moi }
 // `apres`: ne donne que les messages plus récents que cet identifiant (0 = les 100 derniers). Lire marque comme lu.

@@ -93,7 +93,9 @@ export default function Aide({ ouvert, fermer }) {
             </li>
             <li>
               Quand l'annonce est terminée, le chat te propose de donner un pouce aux joueurs avec qui ça a bien été: ça
-              compte dans leur réputation (page Joueurs).
+              compte dans leur réputation (page Joueurs). Si quelqu'un a mal agi (rageux, leave ninja, need sur tout,
+              irrespectueux), tu peux aussi lui donner un pouce vers le bas: seulement s'il était dans ton groupe, et ça
+              n'apparaît sur son profil que si 4 personnes différentes donnent la même catégorie.
             </li>
             <li>
               Les alertes sur l'appareil (onglet Messages, « Activer les alertes ») affichent une notification, même si
