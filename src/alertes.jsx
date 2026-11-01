@@ -10,7 +10,8 @@ import { pushConfigure } from './push.js'
 const CLE = 'forever-alerte'
 
 // Les filtres de l'onglet Groupes qu'une alerte retient.
-export const CLES_ALERTE = ['activite', 'faction', 'region', 'role', 'niveau', 'style', 'langue', 'genre', 'planifies']
+// `tousLesGroupes` faux (par défaut): l'alerte ne signale que les groupes que mes personnages peuvent rejoindre.
+export const CLES_ALERTE = ['activite', 'faction', 'region', 'role', 'niveau', 'style', 'langue', 'genre', 'planifies', 'tousLesGroupes']
 
 export function filtresDeAlerte(filtres) {
   return Object.fromEntries(CLES_ALERTE.map((k) => [k, filtres[k]]))
@@ -52,7 +53,9 @@ export function decrireFiltres(f) {
   return texte ? texte.charAt(0).toUpperCase() + texte.slice(1) : 'Toutes les annonces'
 }
 
-export const memesFiltres = (a, b) => CLES_ALERTE.every((k) => (a[k] ?? '') === (b[k] ?? ''))
+// Un filtre vrai/faux absent d'une ancienne alerte vaut « faux » (comme vide).
+const valeurFiltre = (v) => (v === false || v == null ? '' : v)
+export const memesFiltres = (a, b) => CLES_ALERTE.every((k) => valeurFiltre(a[k]) === valeurFiltre(b[k]))
 
 // ---------- Notifications du navigateur ----------
 

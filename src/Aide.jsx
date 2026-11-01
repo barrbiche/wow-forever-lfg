@@ -82,6 +82,11 @@ export default function Aide({ ouvert, fermer }) {
             Un personnage peut avoir deux noms (par exemple « King Quebec »), ou un seul (« King »): écris le deuxième
             dans « 2e nom ».
           </p>
+          <p>
+            Dans l'onglet Groupes, tu ne vois d'abord que les groupes que l'un de tes personnages peut rejoindre. La
+            pastille « Voir aussi les groupes que je ne peux pas rejoindre » montre les autres. Ton alerte suit la même
+            règle: elle te prévient seulement pour les groupes qui te conviennent.
+          </p>
         </section>
 
         <section>

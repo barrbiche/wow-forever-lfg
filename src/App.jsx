@@ -65,6 +65,7 @@ import {
   STYLES,
   champsManquants,
   couleurTexteClasse,
+  compatibilite,
   nomDe,
   nomRuleset,
   nomSpecialisation,
@@ -150,6 +151,7 @@ const FILTRES_VIDES = {
   langue: '',
   genre: '',
   planifies: false,
+  tousLesGroupes: false, // faux: on ne montre que les groupes que mes personnages peuvent rejoindre
   // Onglet Joueurs
   classe: '',
   recherche: '',
@@ -157,7 +159,7 @@ const FILTRES_VIDES = {
 }
 
 // Les filtres qui comptent dans chaque onglet (faction, langue, région et rôle sont partagés).
-const CLES_GROUPES = ['activite', 'faction', 'region', 'role', 'niveau', 'style', 'langue', 'genre', 'planifies']
+const CLES_GROUPES = ['activite', 'faction', 'region', 'role', 'niveau', 'style', 'langue', 'genre', 'planifies', 'tousLesGroupes']
 const CLES_JOUEURS = ['faction', 'langue', 'region', 'role', 'classe', 'recherche', 'horsLigne']
 
 function correspondJoueur(j, f, enLigne) {
@@ -171,8 +173,14 @@ function correspondJoueur(j, f, enLigne) {
   return true
 }
 
-function correspond(a, f) {
+// Un de mes personnages peut-il rejoindre cette annonce? (même région, type de serveur et faction). Sans personnage
+// connu (pas de profil, ou base pas à jour), on ne cache rien; mes propres annonces restent toujours visibles.
+const peutRejoindre = (a, persos, moi) =>
+  !persos || persos.length === 0 || (!!moi && a.user_id === moi) || persos.some((p) => compatibilite(p, a).ok)
+
+function correspond(a, f, persos = null, moi = null) {
   const niveau = Number(f.niveau)
+  if (!f.tousLesGroupes && !peutRejoindre(a, persos, moi)) return false
   if (f.activite !== 'tout' && a.activite !== f.activite) return false
   if (f.genre && (a.genre ?? 'groupe') !== f.genre) return false
   if (f.planifies && !a.debut) return false
@@ -293,6 +301,7 @@ export default function App() {
   const [avis, setAvis] = useState(null) // { texte, ids }
   const vuesRef = useRef(null)
   const alerteRef = useRef(alerte)
+  const persosRef = useRef(null)
   const utilisateurRef = useRef(null)
   const voirAvisRef = useRef(null)
   const nonLusRef = useRef(0)
@@ -392,6 +401,9 @@ export default function App() {
     alerteRef.current = alerte
   }, [alerte])
   useEffect(() => {
+    persosRef.current = persos
+  }, [persos])
+  useEffect(() => {
     utilisateurRef.current = utilisateur
   }, [utilisateur])
 
@@ -409,7 +421,7 @@ export default function App() {
     setNouvelles((avant) => new Set([...avant, ...autres.map((a) => a.id)]))
     const regle = alerteRef.current
     // Un petit son pour une nouvelle annonce: avec une alerte, seulement pour celles qui t'intéressent.
-    const concernees = regle ? autres.filter((a) => correspond(a, { ...FILTRES_VIDES, ...regle.filtres })) : autres
+    const concernees = regle ? autres.filter((a) => correspond(a, { ...FILTRES_VIDES, ...regle.filtres }, persosRef.current, miennes)) : autres
     if (concernees.length > 0) jouerSon('annonce')
     if (!regle || concernees.length === 0) return
     const ids = concernees.map((a) => a.id)
@@ -587,7 +599,7 @@ export default function App() {
       return
     }
     setVue(lien.type === 'guilde' ? 'guildes' : 'groupes')
-    setFiltres(FILTRES_VIDES)
+    setFiltres({ ...FILTRES_VIDES, tousLesGroupes: true })
     setCiblee({ type: lien.type, id: lien.id })
   }, [lien, lienTraite, chargement, annonces, guildes])
 
@@ -684,8 +696,8 @@ export default function App() {
 
   // Les compteurs Alliance / Horde tiennent compte de tous les filtres sauf la faction elle-même.
   const sansFaction = useMemo(
-    () => annonces.filter((a) => correspond(a, { ...filtres, faction: '' })),
-    [annonces, filtres],
+    () => annonces.filter((a) => correspond(a, { ...filtres, faction: '' }, persos, utilisateur?.id)),
+    [annonces, filtres, persos, utilisateur?.id],
   )
   const visibles = useMemo(() => {
     const liste = filtres.faction ? sansFaction.filter((a) => a.faction === filtres.faction) : sansFaction
@@ -737,8 +749,13 @@ export default function App() {
   const comptes = vue === 'guildes' ? guildesSansFaction : vue === 'joueurs' ? joueursSansFaction : sansFaction
   // Nombre d'annonces par type, avec tous les autres filtres appliqués.
   const sansActivite = useMemo(
-    () => annonces.filter((a) => correspond(a, { ...filtres, activite: 'tout' })),
-    [annonces, filtres],
+    () => annonces.filter((a) => correspond(a, { ...filtres, activite: 'tout' }, persos, utilisateur?.id)),
+    [annonces, filtres, persos, utilisateur?.id],
+  )
+  // Les groupes que mes personnages ne peuvent pas rejoindre (avec les autres filtres appliqués).
+  const nbFermes = useMemo(
+    () => (persos && persos.length > 0 ? annonces.filter((a) => correspond(a, { ...filtres, tousLesGroupes: true }, persos, utilisateur?.id) && !peutRejoindre(a, persos, utilisateur?.id)).length : 0),
+    [annonces, filtres, persos, utilisateur?.id],
   )
   const nombreActivite = (id) => (id === 'tout' ? sansActivite.length : sansActivite.filter((a) => a.activite === id).length)
   const nbPlanifies = useMemo(() => annonces.filter((a) => a.debut).length, [annonces])
@@ -791,7 +808,7 @@ export default function App() {
   // Depuis la carte d'un joueur: aller à son annonce, dans l'onglet Groupes.
   const voirAnnonce = (id) => {
     setVue('groupes')
-    setFiltres(FILTRES_VIDES)
+    setFiltres({ ...FILTRES_VIDES, tousLesGroupes: true }) // l'annonce visée doit s'afficher même si je ne peux pas la rejoindre
     setCiblee({ type: 'annonce', id })
   }
 
@@ -805,7 +822,7 @@ export default function App() {
   const voirAvis = (a) => {
     setAvis(null)
     setVue('groupes')
-    setFiltres(a.ids.length > 1 && alerte ? { ...FILTRES_VIDES, ...alerte.filtres } : FILTRES_VIDES)
+    setFiltres(a.ids.length > 1 && alerte ? { ...FILTRES_VIDES, ...alerte.filtres } : { ...FILTRES_VIDES, tousLesGroupes: true })
     setCiblee({ type: 'annonce', id: a.ids[0] })
   }
   voirAvisRef.current = voirAvis
@@ -1209,6 +1226,11 @@ export default function App() {
                 <button type="button" className="pastille" aria-pressed={filtres.genre === 'joueur'} onClick={() => basculer('genre', 'joueur')}>
                   Joueurs seuls
                 </button>
+                {persos && persos.length > 0 && (
+                  <button type="button" className="pastille" aria-pressed={filtres.tousLesGroupes} onClick={() => basculer('tousLesGroupes', true)}>
+                    Voir aussi les groupes que je ne peux pas rejoindre ({nbFermes})
+                  </button>
+                )}
               </div>
 
               <details className="plus">
@@ -1281,10 +1303,17 @@ export default function App() {
               <div className="vide">
                 <span className="vide-icone" aria-hidden="true"><Icone nom="raid" taille={30} /></span>
                 <p>
-                  {filtresActifs
-                    ? 'Aucune annonce avec ces filtres.'
-                    : "Personne n'a publié d'annonce pour l'instant."}
+                  {!filtres.tousLesGroupes && nbFermes > 0
+                    ? `Aucun groupe pour tes personnages en ce moment. Il y en a ${nbFermes} que tu ne peux pas rejoindre.`
+                    : filtresActifs
+                      ? 'Aucune annonce avec ces filtres.'
+                      : "Personne n'a publié d'annonce pour l'instant."}
                 </p>
+                {!filtres.tousLesGroupes && nbFermes > 0 && (
+                  <button type="button" className="bouton" onClick={() => basculer('tousLesGroupes', true)}>
+                    Voir ces groupes
+                  </button>
+                )}
                 <button type="button" className="bouton" onClick={ouvrirPublication}>
                   Publier la première annonce
                 </button>
