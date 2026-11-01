@@ -928,7 +928,7 @@ export default function App() {
               </a>
             </h1>
             <p className="sous-titre">
-              Trouve ton groupe pour les donjons, le PvP et les quêtes. Pour le Québec et la francophonie.
+              Du Québec à l'Europe, rassemblement ! Trouve des coéquipiers francophones pour tes donjons, raids, quêtes et battlegrounds sur WoW Forever dès aujourd'hui.
             </p>
             </div>
             <PlaqueLancement compte={compte} />
