@@ -1,6 +1,7 @@
 import { useContext, useState } from 'react'
 import { MESSAGE_COMPTE_SUSPENDU, agirAmi, compteSuspendu } from './store.js'
-import { FACTIONS, LANGUES, ROLES, STYLES, nomDe } from './data.js'
+import { CLASSES, FACTIONS, LANGUES, ROLES, STYLES, couleurTexteClasse, nomDe, nomSpecialisation } from './data.js'
+import { useLangueJeu } from './langue.jsx'
 import { ChipClasse, Icone, LigneCopie, OuvrirChat, depuis, vuTexte } from './commun.jsx'
 
 // ---------- Amis: demandes, liste, blocage (ameliorations6.sql) ----------
@@ -138,58 +139,53 @@ export function BoutonsAmi({ joueur: j, lien, aProfil, ouvrirProfil, apres, anno
 
 // ---------- Cartes de la section « Mes amis » ----------
 
-// Le haut d'une carte: plaque de niveau, nom, faction, puces, rôles, petit mot.
-function CorpsJoueur({ a, droite, children }) {
+// « Niv 38 · Mage Givre »: la ligne de détails d'un ami dans la liste.
+function resumeJoueur(a, langue) {
+  const classe = CLASSES.find((c) => c.id === a.classe)
+  const spec = nomSpecialisation(a.classe, a.specialisation, langue)
+  return [a.niveau ? `Niv ${a.niveau}` : null, classe ? `${classe.nom}${spec ? ` ${spec}` : ''}` : null].filter(Boolean).join(' · ')
+}
+
+function NomClasse({ a }) {
+  return <strong className="ami-nom" style={a.classe ? { color: couleurTexteClasse(a.classe) } : undefined}>{a.perso}</strong>
+}
+
+// Copie une commande en un geste (« /inviter Nom »), sans ouvrir de fenêtre.
+function BoutonCopierRapide({ valeur, titre, children }) {
+  const [copie, setCopie] = useState(false)
+  const copier = async () => {
+    try {
+      await navigator.clipboard.writeText(valeur)
+    } catch {
+      window.prompt('Copie ceci:', valeur)
+      return
+    }
+    setCopie(true)
+    setTimeout(() => setCopie(false), 2500)
+  }
   return (
-    <>
-      <div className="carte-plaque">
-        <Icone nom="joueur" taille={26} />
-        <strong className="plaque-niveau" aria-hidden="true">{a.niveau ?? '?'}</strong>
-        <span className="plaque-unite" aria-hidden="true">niveau</span>
-        <span className="sr">{a.niveau ? `Niveau ${a.niveau}` : 'Niveau non précisé'}</span>
-      </div>
-      <div className="carte-corps">
-        <div className="carte-haut">
-          <div className="carte-titre">
-            <h3>{a.perso}</h3>
-            <span className={`faction ${a.faction}`}>{nomDe(FACTIONS, a.faction)}</span>
-          </div>
-          {droite}
-        </div>
-        <ul className="infos">
-          <ChipClasse classe={a.classe} specialisation={a.specialisation} />
-          {a.guilde && <li className="chip fort">{a.guilde}</li>}
-          <li className="chip">{a.region}</li>
-          <li className="chip">{nomDe(STYLES, a.style)}</li>
-          <li className="chip">{nomDe(LANGUES, a.langue)}</li>
-        </ul>
-        {a.roles?.length > 0 && (
-          <p className="roles">
-            <span>Joue</span>
-            {ROLES.filter((r) => a.roles.includes(r.id)).map((r) => (
-              <span key={r.id} className={`role ${r.id}`}>
-                <Icone nom={r.id} taille={15} />
-                {r.nom}
-              </span>
-            ))}
-          </p>
-        )}
-        {a.bio && <p className="note">{a.bio}</p>}
-        {children}
-      </div>
-    </>
+    <button type="button" className="bouton petit" onClick={copier} aria-label={`${titre}: copier ${valeur}`} title={valeur}>
+      <Icone nom={copie ? 'coche' : 'joueur'} taille={15} />
+      {copie ? 'Copié' : children}
+    </button>
   )
 }
 
-function CarteDemande({ a, apres, annoncer }) {
+// Une demande reçue, en une ligne: on accepte ou on refuse sans quitter la liste.
+function RangDemande({ a, apres, annoncer }) {
   const { occupe, probleme, lancer } = useActionAmi({ apres, annoncer })
+  const [langue] = useLangueJeu()
   return (
-    <article className={`carte joueur ${a.faction}`} id={`ami-${a.user_id}`} tabIndex={-1}>
-      <CorpsJoueur a={a} droite={<span className="depuis">Demande {depuis(a.depuis)}</span>}>
-        <p className="aide">
-          Si tu acceptes, vous serez dans la liste d'amis l'un de l'autre. Si tu refuses, la personne n'est pas avertie.
-        </p>
-        <div className="joueur-actions">
+    <li className="ami-rang demande" id={`ami-${a.user_id}`} tabIndex={-1}>
+      <div className="ami-rang-ligne">
+        <span className="ami-avatar" aria-hidden="true">{(a.perso || '?').trim().charAt(0).toUpperCase()}</span>
+        <span className="ami-rang-texte">
+          <NomClasse a={a} />
+          <span className="aide">
+            {resumeJoueur(a, langue)} · Demande {depuis(a.depuis)}
+          </span>
+        </span>
+        <span className="ami-rang-actions">
           <button type="button" className="bouton petit principal" onClick={() => lancer(a.user_id, 'accepter')} disabled={occupe}>
             <Icone nom="coche" taille={15} />
             Accepter
@@ -200,72 +196,105 @@ function CarteDemande({ a, apres, annoncer }) {
           <button type="button" className="lien signaler bloquer" onClick={() => lancer(a.user_id, 'bloquer')} disabled={occupe}>
             Bloquer
           </button>
-        </div>
-        {probleme && <p className="msg-erreur" role="alert">{probleme}</p>}
-      </CorpsJoueur>
-    </article>
+        </span>
+      </div>
+      <p className="aide ami-rang-note">Si tu refuses, la personne n'est pas avertie.</p>
+      {probleme && <p className="msg-erreur" role="alert">{probleme}</p>}
+    </li>
   )
 }
 
-function CarteAmi({ a, enLigne, commande, apres, annoncer }) {
+// Un ami, en une ligne. On touche la ligne pour voir sa fiche (BattleTag, guilde, retirer, bloquer).
+function RangAmi({ a, enLigne, commande, apres, annoncer }) {
   const { occupe, probleme, lancer } = useActionAmi({ apres, annoncer })
   const { ouvrirAmi } = useContext(OuvrirChat)
+  const [langue] = useLangueJeu()
+  const [ouvert, setOuvert] = useState(false)
   const [confirmer, setConfirmer] = useState(false)
+  const statut = enLigne ? 'En ligne' : a.vu_le ? vuTexte(a.vu_le) : 'Hors ligne'
   return (
-    <article className={`carte joueur ${a.faction}`} id={`ami-${a.user_id}`} tabIndex={-1}>
-      <CorpsJoueur
-        a={a}
-        droite={
-          enLigne ? (
-            <span className="depuis en-ligne">
-              <span className="point" aria-hidden="true" />
-              En ligne
+    <li className={`ami-rang ${enLigne ? 'en-ligne' : 'hors-ligne'}`} id={`ami-${a.user_id}`} tabIndex={-1}>
+      <div className="ami-rang-ligne">
+        <button type="button" className="ami-rang-bouton" aria-expanded={ouvert} onClick={() => setOuvert((o) => !o)}>
+          <span className={`ami-point${enLigne ? ' actif' : ''}`} aria-hidden="true" />
+          <span className="ami-rang-texte">
+            <span className="ami-rang-nom">
+              <NomClasse a={a} />
+              <span className={`faction ${a.faction}`}>{nomDe(FACTIONS, a.faction)}</span>
             </span>
-          ) : a.vu_le ? (
-            <span className="depuis">{vuTexte(a.vu_le)}</span>
-          ) : null
-        }
-      >
-        <div className="inviter">
-          <LigneCopie
-            titre="Inviter dans le jeu"
-            valeur={`${commande} ${a.perso}`}
-            conseil="Dans le jeu: ouvre le chat (Entrée), colle, puis Entrée."
-          />
-          {a.battletag && (
-            <LigneCopie titre="BattleTag" valeur={a.battletag} conseil="Colle-le dans Battle.net pour l'ajouter comme ami." />
+            <span className="aide">{resumeJoueur(a, langue)}</span>
+          </span>
+          <span className={`ami-statut${enLigne ? ' en-ligne' : ''}`}>{statut}</span>
+          <span className="ami-chevron" aria-hidden="true" />
+        </button>
+        <span className="ami-rang-actions">
+          {ouvrirAmi && (
+            <button type="button" className="bouton petit principal" onClick={() => ouvrirAmi(a.user_id)} aria-label={`Écrire à ${a.perso}`}>
+              <Icone nom="discussion" taille={15} />
+              Écrire
+            </button>
+          )}
+          <BoutonCopierRapide valeur={`${commande} ${a.perso}`} titre={`Inviter ${a.perso} dans le jeu`}>
+            Inviter
+          </BoutonCopierRapide>
+        </span>
+      </div>
+      {ouvert && (
+        <div className="ami-fiche">
+          <ul className="infos">
+            <ChipClasse classe={a.classe} specialisation={a.specialisation} />
+            {a.guilde && <li className="chip fort">{a.guilde}</li>}
+            <li className="chip">{a.region}</li>
+            <li className="chip">{nomDe(STYLES, a.style)}</li>
+            <li className="chip">{nomDe(LANGUES, a.langue)}</li>
+          </ul>
+          {a.roles?.length > 0 && (
+            <p className="roles">
+              <span>Joue</span>
+              {ROLES.filter((r) => a.roles.includes(r.id)).map((r) => (
+                <span key={r.id} className={`role ${r.id}`}>
+                  <Icone nom={r.id} taille={15} />
+                  {r.nom}
+                </span>
+              ))}
+            </p>
+          )}
+          {a.bio && <p className="note">{a.bio}</p>}
+          <div className="inviter">
+            <LigneCopie
+              titre="Inviter dans le jeu"
+              valeur={`${commande} ${a.perso}`}
+              conseil="Dans le jeu: ouvre le chat (Entrée), colle, puis Entrée."
+            />
+            {a.battletag && (
+              <LigneCopie titre="BattleTag" valeur={a.battletag} conseil="Colle-le dans Battle.net pour l'ajouter comme ami." />
+            )}
+          </div>
+          {!a.visible && (
+            <p className="aide">Cette personne a caché son profil: tu ne vois ni son BattleTag ni quand elle est en ligne.</p>
+          )}
+          {confirmer ? (
+            <div className="joueur-actions">
+              <span className="aide">Retirer {a.perso} de tes amis? Il ou elle n'est pas averti.</span>
+              <button type="button" className="bouton petit danger" onClick={() => lancer(a.user_id, 'retirer')} disabled={occupe}>
+                Oui, retirer
+              </button>
+              <button type="button" className="bouton petit" onClick={() => setConfirmer(false)}>Annuler</button>
+            </div>
+          ) : (
+            <div className="joueur-actions">
+              <button type="button" className="bouton petit" onClick={() => setConfirmer(true)}>
+                Retirer de mes amis
+              </button>
+              <button type="button" className="lien signaler bloquer" onClick={() => lancer(a.user_id, 'bloquer')} disabled={occupe}>
+                Bloquer
+              </button>
+            </div>
           )}
         </div>
-        {!a.visible && (
-          <p className="aide">Cette personne a caché son profil: tu ne vois ni son BattleTag ni quand elle est en ligne.</p>
-        )}
-        {confirmer ? (
-          <div className="joueur-actions">
-            <span className="aide">Retirer {a.perso} de tes amis? Il ou elle n'est pas averti.</span>
-            <button type="button" className="bouton petit danger" onClick={() => lancer(a.user_id, 'retirer')} disabled={occupe}>
-              Oui, retirer
-            </button>
-            <button type="button" className="bouton petit" onClick={() => setConfirmer(false)}>Annuler</button>
-          </div>
-        ) : (
-          <div className="joueur-actions">
-            {ouvrirAmi && (
-              <button type="button" className="bouton petit principal" onClick={() => ouvrirAmi(a.user_id)}>
-                <Icone nom="discussion" taille={15} />
-                Écrire
-              </button>
-            )}
-            <button type="button" className="bouton petit" onClick={() => setConfirmer(true)}>
-              Retirer de mes amis
-            </button>
-            <button type="button" className="lien signaler bloquer" onClick={() => lancer(a.user_id, 'bloquer')} disabled={occupe}>
-              Bloquer
-            </button>
-          </div>
-        )}
-        {probleme && <p className="msg-erreur" role="alert">{probleme}</p>}
-      </CorpsJoueur>
-    </article>
+      )}
+      {probleme && <p className="msg-erreur" role="alert">{probleme}</p>}
+    </li>
   )
 }
 
@@ -293,6 +322,7 @@ function LigneSimple({ a, texte, actions, apres, annoncer }) {
 // ---------- La section « Mes amis » ----------
 
 export function SectionAmis({ amis, enLigne, commande, apres, annoncer, voirTous }) {
+  const [recherche, setRecherche] = useState('')
   if (amis === null) {
     return (
       <p className="erreur" role="status">
@@ -314,6 +344,12 @@ export function SectionAmis({ amis, enLigne, commande, apres, annoncer, voirTous
   const bloques = amis.filter((a) => a.lien === 'bloque')
   const nbEnLigne = amisListe.filter((a) => enLigne.has(a.user_id)).length
 
+  const q = recherche.trim().toLowerCase()
+  const filtre = (a) => !q || a.perso.toLowerCase().includes(q) || (a.guilde ?? '').toLowerCase().includes(q)
+  const visibles = amisListe.filter(filtre)
+  const enLigneListe = visibles.filter((a) => enLigne.has(a.user_id))
+  const horsLigne = visibles.filter((a) => !enLigne.has(a.user_id))
+
   return (
     <div className="amis">
       {recues.length > 0 && (
@@ -321,11 +357,9 @@ export function SectionAmis({ amis, enLigne, commande, apres, annoncer, voirTous
           <h2 className="amis-titre" id="amis-recues">
             Demandes reçues <span className="onglet-nombre">{recues.length}</span>
           </h2>
-          <ul className="liste">
+          <ul className="ami-liste">
             {recues.map((a) => (
-              <li key={a.user_id}>
-                <CarteDemande a={a} apres={apres} annoncer={annoncer} />
-              </li>
+              <RangDemande key={a.user_id} a={a} apres={apres} annoncer={annoncer} />
             ))}
           </ul>
         </section>
@@ -347,13 +381,41 @@ export function SectionAmis({ amis, enLigne, commande, apres, annoncer, voirTous
             <button type="button" className="bouton" onClick={voirTous}>Voir tous les joueurs</button>
           </div>
         ) : (
-          <ul className="liste">
-            {amisListe.map((a) => (
-              <li key={a.user_id}>
-                <CarteAmi a={a} enLigne={enLigne.has(a.user_id)} commande={commande} apres={apres} annoncer={annoncer} />
-              </li>
-            ))}
-          </ul>
+          <>
+            {amisListe.length >= 6 && (
+              <label className="champ ami-recherche">
+                <span>Chercher un ami</span>
+                <input
+                  type="text"
+                  inputMode="search"
+                  placeholder="Nom du personnage ou guilde"
+                  value={recherche}
+                  onChange={(e) => setRecherche(e.target.value)}
+                />
+              </label>
+            )}
+            {visibles.length === 0 && <p className="aide">Aucun ami ne correspond à « {recherche} ».</p>}
+            {enLigneListe.length > 0 && (
+              <>
+                <h3 className="ami-groupe">En ligne <span className="onglet-nombre">{enLigneListe.length}</span></h3>
+                <ul className="ami-liste">
+                  {enLigneListe.map((a) => (
+                    <RangAmi key={a.user_id} a={a} enLigne commande={commande} apres={apres} annoncer={annoncer} />
+                  ))}
+                </ul>
+              </>
+            )}
+            {horsLigne.length > 0 && (
+              <>
+                <h3 className="ami-groupe">Hors ligne <span className="onglet-nombre">{horsLigne.length}</span></h3>
+                <ul className="ami-liste">
+                  {horsLigne.map((a) => (
+                    <RangAmi key={a.user_id} a={a} enLigne={false} commande={commande} apres={apres} annoncer={annoncer} />
+                  ))}
+                </ul>
+              </>
+            )}
+          </>
         )}
       </section>
 

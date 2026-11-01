@@ -1,0 +1,208 @@
+/* La liste d'amis: un panneau social comme celui du jeu. Une ligne par ami (point vert si en ligne, nom dans la
+   couleur de sa classe, niveau et classe), « Écrire » et « Inviter » à portée de pouce, la fiche complète en touchant la ligne. */
+
+.ami-liste {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.ami-groupe {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 8px;
+  font-family: var(--fantasy);
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  color: #d9b26a;
+}
+
+.ami-rang {
+  display: grid;
+  gap: 8px;
+  padding: 8px 10px;
+  color: #ece6d6;
+  background: var(--cuir), linear-gradient(180deg, #34231a, #1d130c);
+  border: 2px solid transparent;
+  border-image: linear-gradient(180deg, #c9a05a, #6a4a1e 50%, #3d2a10) 1;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.55);
+}
+
+.ami-rang.hors-ligne {
+  background: var(--cuir), linear-gradient(180deg, #281b13, #170f0a);
+}
+
+.ami-rang.hors-ligne .ami-nom {
+  opacity: 0.78;
+}
+
+.ami-rang-ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.ami-rang-bouton {
+  flex: 1 1 260px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 4px 4px 2px;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.ami-rang-bouton:hover .ami-nom {
+  text-decoration: underline;
+}
+
+.ami-rang-texte {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.ami-rang-nom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.ami-nom {
+  font-family: var(--fantasy);
+  font-size: 1.12rem;
+  letter-spacing: 0.03em;
+  text-shadow: 0 1px 0 #000, 0 0 1px #000;
+}
+
+.ami-rang .aide {
+  margin: 0;
+  color: #b4ad9b;
+  font-size: 0.88rem;
+}
+
+.ami-rang .faction {
+  font-size: 0.8rem;
+}
+
+.ami-point {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #4a4a4a;
+  border: 1px solid #000;
+}
+
+.ami-point.actif {
+  background: #4ade80;
+  box-shadow: 0 0 8px #4ade80;
+}
+
+.ami-statut {
+  flex: none;
+  font-size: 0.85rem;
+  color: #b4ad9b;
+  text-align: right;
+}
+
+.ami-statut.en-ligne {
+  color: #6ee79a;
+  font-weight: 700;
+}
+
+.ami-chevron {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  margin-right: 4px;
+  border-right: 2px solid #d9b26a;
+  border-bottom: 2px solid #d9b26a;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 0.15s;
+}
+
+.ami-rang-bouton[aria-expanded='true'] .ami-chevron {
+  transform: rotate(-135deg) translate(-2px, -2px);
+}
+
+.ami-rang-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ami-rang.demande .ami-rang-ligne {
+  flex-wrap: wrap;
+}
+
+.ami-rang.demande .ami-rang-texte {
+  flex: 1 1 200px;
+}
+
+.ami-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-weight: 800;
+  color: #ffd100;
+  background: #2a1b0f;
+  border: 2px solid #c9a24a;
+}
+
+.ami-rang-note {
+  margin: 0;
+}
+
+.ami-fiche {
+  display: grid;
+  gap: 10px;
+  padding: 10px 4px 4px;
+  border-top: 1px dashed rgb(201 162 74 / 0.4);
+}
+
+.ami-recherche {
+  max-width: 360px;
+  margin-bottom: 8px;
+}
+
+/* Sur grand écran, la liste se range sur deux colonnes pour ne pas s'étirer. */
+@media (min-width: 1100px) {
+  .ami-liste {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .ami-liste:has(.demande) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 559px) {
+  .ami-rang-actions {
+    width: 100%;
+  }
+
+  .ami-rang-actions .bouton {
+    flex: 1;
+  }
+
+  .ami-statut {
+    font-size: 0.78rem;
+  }
+}
