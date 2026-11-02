@@ -267,7 +267,6 @@ export default function App() {
   const [enLigne, setEnLigne] = useState(() => new Set())
   const [apercuJoueurs, setApercuJoueurs] = useState(null) // visiteur non connecté: { liste, total } (null: indisponible)
   const [amis, setAmis] = useState([]) // null: pas encore disponibles (ameliorations6.sql pas roulé)
-  const [vueJoueurs, setVueJoueurs] = useState('tous') // 'tous' ou 'amis'
   const demandesVuesRef = useRef(null)
   const [profilOuvert, setProfilOuvert] = useState(false)
   // Vrai quand la fenêtre « Mon profil » s'est ouverte parce qu'il faut un profil complet pour publier.
@@ -682,7 +681,6 @@ export default function App() {
     demandesVuesRef.current = null // la première lecture des demandes d'un compte n'est pas « nouvelle »
     totauxChatRef.current = null
     setChatCible(null)
-    setVueJoueurs('tous')
     setJoueursPrets(false)
     setPublierApresProfil(false)
     charger()
@@ -846,7 +844,6 @@ export default function App() {
   // Depuis une annonce: aller au profil de son auteur, dans l'onglet Joueurs.
   const voirProfil = (id) => {
     setVue('joueurs')
-    setVueJoueurs('tous')
     setFiltres(FILTRES_VIDES)
     setCiblee({ type: 'joueur', id })
   }
@@ -1121,6 +1118,13 @@ export default function App() {
               <Icone nom="joueur" taille={22} />
               <span className="onglet-nom">Joueurs</span>
               {utilisateur && joueurs && <span className="onglet-nombre">{joueurs.length}</span>}
+            </button>
+            <button type="button" className="onglet" aria-pressed={vue === 'amis'} onClick={() => setVue('amis')}>
+              <Icone nom="coeur" taille={22} />
+              <span className="onglet-nom">Amis</span>
+              {utilisateur && amis && amis.some((a) => a.lien === 'ami') && (
+                <span className="onglet-nombre">{amis.filter((a) => a.lien === 'ami').length}</span>
+              )}
               {utilisateur && nbDemandesAmis > 0 && (
                 <span
                   className="onglet-alerte"
@@ -1146,7 +1150,7 @@ export default function App() {
             </button>
           </div>
 
-          {vue !== 'guides' && vue !== 'messages' && (
+          {vue !== 'guides' && vue !== 'messages' && vue !== 'amis' && (
             <div className="factions" role="group" aria-label="Filtrer par faction">
               {FACTIONS.map((f) => (
                 <button
@@ -1181,7 +1185,7 @@ export default function App() {
             aProfil={aProfil}
             ouvrirProfil={() => setProfilOuvert(true)}
           />
-        ) : vue === 'joueurs' ? (
+        ) : vue === 'joueurs' || vue === 'amis' ? (
           <SectionJoueurs
             apercu={apercuJoueurs}
             joueurs={joueurs}
@@ -1196,8 +1200,8 @@ export default function App() {
             voirAnnonce={voirAnnonce}
             amis={amis}
             liens={liensAmis}
-            sousVue={vueJoueurs}
-            changerSousVue={setVueJoueurs}
+            sousVue={vue === 'amis' ? 'amis' : 'tous'}
+            changerSousVue={(v) => setVue(v === 'amis' ? 'amis' : 'joueurs')}
             apresAmis={chargerAmis}
             filtres={filtres}
             changer={changer}

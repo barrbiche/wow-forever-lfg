@@ -85,7 +85,7 @@ export default function Aide({ ouvert, fermer }) {
           <p>
             Dans l'onglet Groupes, tu ne vois d'abord que les groupes que l'un de tes personnages peut rejoindre. La
             pastille « Voir aussi les groupes que je ne peux pas rejoindre » montre les autres. Ton alerte suit la même
-            règle: elle te prévient seulement pour les groupes qui te conviennent. Dans l'onglet Joueurs et dans tes amis,
+            règle: elle te prévient seulement pour les groupes qui te conviennent. Dans l'onglet Joueurs et dans l'onglet Amis,
             « Inviter dans le jeu » est remplacé par la raison quand tu ne peux pas grouper avec la personne.
           </p>
           <p>
@@ -113,7 +113,7 @@ export default function Aide({ ouvert, fermer }) {
               quitte l'annonce et passe dans Messages, sous « Groupes terminés »; il est effacé 24 heures plus tard.
             </li>
             <li>
-              Tu peux aussi écrire à tes amis: « Écrire » sur leur carte, dans l'onglet Joueurs. Ces messages-là sont
+              Tu peux aussi écrire à tes amis: « Écrire » sur leur ligne, dans l'onglet Amis. Ces messages-là sont
               gardés 30 jours. Tu peux effacer tes propres messages, et signaler ceux des autres: trois signalements de
               personnes différentes masquent un message, et les personnes qui modèrent le site peuvent le lire pour
               décider.
@@ -242,7 +242,7 @@ export default function Aide({ ouvert, fermer }) {
               accepté tout de suite. Il faut avoir créé ton profil.
             </li>
             <li>
-              Une fois amis, vous êtes dans la liste « Mes amis » l'un de l'autre (onglet Joueurs): qui est en ligne, la
+              Une fois amis, vous êtes dans l'onglet Amis l'un de l'autre: qui est en ligne, la
               commande pour l'inviter dans le jeu et son BattleTag s'il l'a écrit. Être ami ne donne pas accès à plus
               d'information qu'un profil visible. Si un ami cache son profil, il reste dans ta liste, mais tu ne vois plus son
               BattleTag ni quand il est en ligne.
@@ -250,7 +250,7 @@ export default function Aide({ ouvert, fermer }) {
             <li>
               Refuser n'avertit pas l'autre personne, qui ne peut pas redemander avant 30 jours. Bloquer retire l'amitié et
               empêche la personne de te redemander: elle ne le sait pas, sa demande n'arrive simplement pas. Tu peux
-              débloquer quelqu'un dans « Mes amis ».
+              débloquer quelqu'un dans l'onglet Amis.
             </li>
             <li>
               Pour éviter le spam: 10 nouvelles demandes par jour, 30 en attente et 100 amis au plus. Quelqu'un te harcèle

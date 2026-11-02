@@ -1252,7 +1252,7 @@ export function SectionMessages({ utilisateur, onConnexion, conversations, deman
         {discussions.length === 0 && amisSansConv.length === 0 && (
           <div className="vide">
             <span className="vide-icone" aria-hidden="true"><Icone nom="discussion" taille={30} /></span>
-            <p>Pas encore de conversation avec un ami. Ajoute des amis depuis l’onglet Joueurs, puis écris-leur ici.</p>
+            <p>Pas encore de conversation avec un ami. Ajoute des amis depuis l’onglet Joueurs (ils se retrouvent dans l’onglet Amis), puis écris-leur ici.</p>
           </div>
         )}
         <p className="aide msg-note-groupes">Le chat d’un groupe est sur son annonce, dans l’onglet Groupes.</p>

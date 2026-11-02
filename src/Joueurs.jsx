@@ -63,43 +63,24 @@ export default function SectionJoueurs({
 }) {
   const [langue] = useLangueJeu()
 
-  if (!utilisateur) {
-    return <ApercuJoueurs apercu={apercu} onConnexion={onConnexion} />
-  }
-
-  if (joueurs === null) {
+  if (!utilisateur && sousVue === 'amis') {
     return (
-      <p className="erreur" role="status">
-        La liste des joueurs n'est pas encore disponible. Réessaie dans un moment.
-      </p>
+      <div className="vide">
+        <span className="vide-icone" aria-hidden="true"><Icone nom="coeur" taille={30} /></span>
+        <p>Connecte-toi pour voir tes amis, accepter les demandes et les inviter dans le jeu.</p>
+        <button type="button" className="bouton principal" onClick={onConnexion}>Se connecter</button>
+      </div>
     )
   }
 
-  const nbEnLigne = joueurs.filter((j) => enLigne.has(j.user_id)).length
-  const nbDemandes = (amis ?? []).filter((a) => a.lien === 'recue').length
-  const nbAmis = (amis ?? []).filter((a) => a.lien === 'ami').length
-
-  const commutateur = (
-    <div className="pastilles sous-vues" role="group" aria-label="Tous les joueurs ou mes amis">
-      <button type="button" className="pastille" aria-pressed={sousVue === 'tous'} onClick={() => changerSousVue('tous')}>
-        Tous les joueurs
-      </button>
-      <button type="button" className="pastille" aria-pressed={sousVue === 'amis'} onClick={() => changerSousVue('amis')}>
-        Mes amis{nbAmis > 0 ? ` (${nbAmis})` : ''}
-        {nbDemandes > 0 && (
-          <span className="pastille-alerte" aria-label={`${nbDemandes} ${nbDemandes > 1 ? 'demandes' : 'demande'} d'ami`}>
-            {nbDemandes}
-          </span>
-        )}
-      </button>
-    </div>
-  )
+  if (!utilisateur) {
+    return <ApercuJoueurs apercu={apercu} onConnexion={onConnexion} />
+  }
 
   if (sousVue === 'amis') {
     return (
       <>
         <section className="filtres" aria-label="Mes amis">
-          {commutateur}
           <p className="intro-guildes">
             Tes amis d'un coup d'œil, avec ceux qui sont en ligne et la commande pour les inviter. Une demande d'ami doit
             être acceptée par l'autre personne.
@@ -118,10 +99,19 @@ export default function SectionJoueurs({
     )
   }
 
+  if (joueurs === null) {
+    return (
+      <p className="erreur" role="status">
+        La liste des joueurs n'est pas encore disponible. Réessaie dans un moment.
+      </p>
+    )
+  }
+
+  const nbEnLigne = joueurs.filter((j) => enLigne.has(j.user_id)).length
+
   return (
     <>
       <section className="filtres" aria-label="Filtres des joueurs">
-        {commutateur}
         {!monProfil && (
           <p className="intro-guildes">
             Crée ton profil pour apparaître dans la liste et recommander les joueurs avec qui tu as joué.
@@ -130,7 +120,7 @@ export default function SectionJoueurs({
         {amis !== null && (
           <p className="aide aide-amis">
             Pour ajouter un ami: trouve son personnage dans la liste et appuie sur « Ajouter en ami ». Il reçoit ta
-            demande et doit l'accepter. Tes amis se retrouvent ensuite dans « Mes amis ».
+            demande et doit l'accepter. Tes amis se retrouvent ensuite dans l'onglet Amis.
           </p>
         )}
         {monProfil && !monProfil.visible && (

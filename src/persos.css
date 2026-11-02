@@ -64,3 +64,36 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* Six onglets (avec Amis) dans la barre du bas d'un écran de 320 px: un peu plus serrés. */
+@media (max-width: 340px) {
+  .onglets {
+    padding-left: 3px;
+    padding-right: 3px;
+    gap: 1px;
+  }
+
+  .onglet {
+    font-size: 0.66rem;
+  }
+}
+
+/* Tablette: six onglets en ligne (avec Amis) doivent tenir sans défilement horizontal. */
+@media (min-width: 760px) and (max-width: 940px) {
+  .onglets {
+    gap: 2px;
+  }
+
+  .onglet {
+    gap: 5px;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}
+
+/* Tablette (iPad en hauteur): le grand titre en une ligne dépassait du parchemin entre 760 et 900 px. */
+@media (min-width: 760px) and (max-width: 940px) {
+  header.haut h1 {
+    font-size: min(3.5rem, calc((100vw - 200px) * 0.078));
+  }
+}

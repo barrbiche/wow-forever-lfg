@@ -13,7 +13,7 @@ const MESSAGES_OK = {
   refuser: 'Demande refusée. Personne n’est averti.',
   annuler: 'Demande annulée.',
   retirer: 'Retiré de tes amis.',
-  bloquer: 'Joueur bloqué. Tu peux le débloquer dans « Mes amis ».',
+  bloquer: "Joueur bloqué. Tu peux le débloquer dans l'onglet Amis.",
   debloquer: 'Joueur débloqué.',
 }
 
@@ -385,7 +385,7 @@ export function SectionAmis({ amis, enLigne, commande, apres, annoncer, voirTous
             <p>
               {recues.length > 0
                 ? "Tu n'as pas encore d'amis dans la liste. Accepte une demande ci-dessus."
-                : "Tu n'as pas encore d'amis dans la liste. Dans « Tous les joueurs », clique sur « Ajouter en ami »: la personne reçoit ta demande et décide."}
+                : "Tu n'as pas encore d'amis dans la liste. Dans l'onglet Joueurs, clique sur « Ajouter en ami »: la personne reçoit ta demande et décide."}
             </p>
             <button type="button" className="bouton" onClick={voirTous}>Voir tous les joueurs</button>
           </div>
