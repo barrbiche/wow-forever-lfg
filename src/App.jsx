@@ -1868,6 +1868,8 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
   const [erreurServeur, setErreurServeur] = useState('')
   const [langueJeu] = useLangueJeu()
   const persos = useContext(ContextePersos)
+  // Avec un profil, l'annonce se publie avec l'un de mes personnages: son nom, sa faction, sa région et son type de serveur.
+  const verrou = !!persos && persos.length > 0
   const raids = raidsOuverts()
   const premierPassage = useRef(true)
 
@@ -1903,8 +1905,9 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
       premierPassage.current = false
       return
     }
-    setChamps((c) => ({ ...c, faction: factionParDefaut }))
-  }, [factionParDefaut])
+    // Avec des personnages enregistrés, la faction vient du personnage choisi, pas du filtre.
+    if (!persos || persos.length === 0) setChamps((c) => ({ ...c, faction: factionParDefaut }))
+  }, [factionParDefaut]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (utilisateur?.contact) setChamps((c) => (c.contact ? c : { ...c, contact: utilisateur.contact }))
@@ -2098,7 +2101,13 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
       setErreurs({})
       await apresPublication(note)
     } catch (e) {
-      setErreurServeur(compteSuspendu(e) ? MESSAGE_COMPTE_SUSPENDU : "L'annonce n'a pas été publiée. Réessaie dans un instant.")
+      setErreurServeur(
+        compteSuspendu(e)
+          ? MESSAGE_COMPTE_SUSPENDU
+          : e?.code === '22023' && /personnage/.test(e?.message ?? '')
+            ? "Aucun de tes personnages n'est de cette faction, région et type de serveur. Choisis l'un de tes personnages."
+            : "L'annonce n'a pas été publiée. Réessaie dans un instant.",
+      )
     } finally {
       setEnvoi(false)
     }
@@ -2279,24 +2288,27 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
           <div className="deux court trois">
             <label className="champ">
               <span>Faction</span>
-              <select value={champs.faction} onChange={(e) => maj('faction', e.target.value)}>
+              <select value={champs.faction} onChange={(e) => maj('faction', e.target.value)} disabled={verrou}>
                 {FACTIONS.map((f) => <option key={f.id} value={f.id}>{f.nom}</option>)}
               </select>
             </label>
             <label className="champ">
               <span>Région</span>
-              <select value={champs.region} onChange={(e) => maj('region', e.target.value)}>
+              <select value={champs.region} onChange={(e) => maj('region', e.target.value)} disabled={verrou}>
                 {REGIONS.map((r) => <option key={r.id} value={r.id}>{r.nom}</option>)}
               </select>
             </label>
             <label className="champ">
               <span>Type de serveur</span>
-              <select value={champs.ruleset} onChange={(e) => maj('ruleset', e.target.value)}>
+              <select value={champs.ruleset} onChange={(e) => maj('ruleset', e.target.value)} disabled={verrou}>
                 {RULESETS.map((r) => <option key={r.id} value={r.id}>{r.nom}</option>)}
               </select>
             </label>
           </div>
           <p className="aide">
+            {verrou
+              ? 'Ces trois réglages viennent de ton personnage (pour les changer, modifie-le dans « Mon profil »). '
+              : ''}
             Seuls les joueurs de la même faction, de la même région et du même type de serveur peuvent demander à
             rejoindre. Les autres ne voient pas le bouton.
           </p>
@@ -2364,7 +2376,7 @@ function Formulaire({ factionParDefaut, utilisateur, ouvert, fermer, apresPublic
           <div className="deux">
             <label className="champ">
               <span>Nom de ton personnage</span>
-              <input type="text" maxLength={24} autoComplete="off" value={champs.perso} onChange={(e) => maj('perso', e.target.value)} aria-invalid={!!erreurs.perso} />
+              <input type="text" maxLength={24} autoComplete="off" value={champs.perso} onChange={(e) => maj('perso', e.target.value)} readOnly={verrou} aria-invalid={!!erreurs.perso} />
               {erreur('perso')}
             </label>
             <label className="champ">

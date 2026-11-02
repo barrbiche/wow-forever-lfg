@@ -292,18 +292,30 @@ export function DialogueDemande({ annonce, fermer, profil, ouvrirProfil, apres, 
             </div>
           ) : (
             <>
-              {persos && compatibles.length > 1 && (
+              {persos && persos.length > 1 && (
                 <fieldset className="champ groupe-choix">
                   <legend>Avec quel personnage?</legend>
                   <div className="pastilles">
-                    {compatibles.map((p) => (
-                      <button key={p.slot} type="button" className="pastille" aria-pressed={choisi?.slot === p.slot} onClick={() => setSlot(p.slot)}>
-                        {p.perso}
-                        {p.classe ? ` · ${nomDe(CLASSES, p.classe)}` : ''}
-                        {p.classe && p.specialisation ? ` ${nomSpecialisation(p.classe, p.specialisation, langueJeu)}` : ''}
-                        {p.niveau ? ` · niv ${p.niveau}` : ''}
-                      </button>
-                    ))}
+                    {persos.map((p) => {
+                      const { ok, raisons } = compatibilite(p, annonce)
+                      const motif = raisons.map((r) => (r === 'faction' ? 'autre faction' : r === 'region' ? 'autre région' : 'autre type de serveur')).join(', ')
+                      return (
+                        <button
+                          key={p.slot}
+                          type="button"
+                          className="pastille"
+                          aria-pressed={ok && choisi?.slot === p.slot}
+                          disabled={!ok}
+                          onClick={() => setSlot(p.slot)}
+                        >
+                          {p.perso}
+                          {p.classe ? ` · ${nomDe(CLASSES, p.classe)}` : ''}
+                          {p.classe && p.specialisation ? ` ${nomSpecialisation(p.classe, p.specialisation, langueJeu)}` : ''}
+                          {p.niveau ? ` · niv ${p.niveau}` : ''}
+                          {!ok ? ` · ne peut pas jouer avec ce groupe (${motif})` : ''}
+                        </button>
+                      )
+                    })}
                   </div>
                 </fieldset>
               )}

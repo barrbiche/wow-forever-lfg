@@ -88,6 +88,11 @@ export default function Aide({ ouvert, fermer }) {
             règle: elle te prévient seulement pour les groupes qui te conviennent. Dans l'onglet Joueurs et dans tes amis,
             « Inviter dans le jeu » est remplacé par la raison quand tu ne peux pas grouper avec la personne.
           </p>
+          <p>
+            Pour publier une annonce, tu choisis avec quel personnage: sa faction, sa région et son type de serveur sont
+            repris et ne se modifient pas à la main. Pour rejoindre un groupe, tu vois tous tes personnages; ceux qui ne
+            peuvent pas jouer avec ce groupe sont grisés, avec la raison.
+          </p>
         </section>
 
         <section>

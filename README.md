@@ -54,6 +54,7 @@ Sans configuration, le site tourne en **mode démo**: les annonces restent dans 
 23. SQL Editor > New query: colle `supabase/ameliorations19.sql`, puis Run (après `ameliorations10.sql` et `ameliorations18.sql`; trois personnages par joueur, 2e nom, quatre types de serveur Normal / PvP / RP / RP-PvP, et la règle pour rejoindre: même région, même type de serveur et même faction, vérifiée par la base; la spécialisation dans les annonces). Tant qu'il n'est pas roulé, le site marche comme avant: un seul personnage, et le bouton « Demander à rejoindre » n'est pas caché.
 24. SQL Editor > New query: colle `supabase/ameliorations20.sql`, puis Run (après `ameliorations16.sql` et `ameliorations19.sql`; les alertes site fermé ne préviennent que pour les groupes que l'un de tes personnages peut rejoindre, sauf si l'alerte a été créée avec « Voir aussi les groupes que je ne peux pas rejoindre »). Tant qu'il n'est pas roulé, les alertes site fermé marchent comme avant.
 25. SQL Editor > New query: colle `supabase/ameliorations21.sql`, puis Run (après `ameliorations19.sql`): la liste des joueurs et des amis donne aussi le type de serveur, ce qui permet de cacher « Inviter dans le jeu » quand on ne peut pas grouper.
+26. SQL Editor > New query: colle `supabase/ameliorations22.sql`, puis Run (après `ameliorations19.sql`): une annonce doit avoir la faction, la région et le type de serveur de l'un des personnages de la personne qui publie (déclencheur `annonce_selon_persos`).
 
 ## Aperçu des liens (Discord, Facebook, Messenger)
 

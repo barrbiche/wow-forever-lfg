@@ -58,3 +58,9 @@
 .reproche .etiquette-n {
   color: #ffd9a0;
 }
+
+/* Un personnage qui ne peut pas jouer avec le groupe: grisé, avec la raison écrite dedans. */
+.groupe-choix .pastille:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
