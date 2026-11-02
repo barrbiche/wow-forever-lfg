@@ -3947,3 +3947,8 @@ h2 {
   outline-offset: 6px;
   border-radius: 6px;
 }
+
+/* Raison pour laquelle on ne peut pas inviter ce joueur (autre faction, région ou type de serveur). */
+.inviter-bloque {
+  margin: 0;
+}

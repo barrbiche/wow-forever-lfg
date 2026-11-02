@@ -1,8 +1,8 @@
 import { useContext, useState } from 'react'
 import { MESSAGE_COMPTE_SUSPENDU, agirAmi, compteSuspendu } from './store.js'
-import { CLASSES, FACTIONS, LANGUES, ROLES, STYLES, couleurTexteClasse, nomDe, nomSpecialisation } from './data.js'
+import { CLASSES, FACTIONS, LANGUES, RULESETS, ROLES, STYLES, couleurTexteClasse, exigencesAnnonce, nomDe, nomSpecialisation, peutGrouperAvec } from './data.js'
 import { useLangueJeu } from './langue.jsx'
-import { ChipClasse, Icone, LigneCopie, OuvrirChat, depuis, vuTexte } from './commun.jsx'
+import { ChipClasse, ContextePersos, Icone, LigneCopie, OuvrirChat, depuis, vuTexte } from './commun.jsx'
 
 // ---------- Amis: demandes, liste, blocage (ameliorations6.sql) ----------
 // Le serveur décide de tout (limites, blocage, qui voit quoi). Ici on affiche les boutons et les messages.
@@ -209,6 +209,8 @@ function RangAmi({ a, enLigne, commande, apres, annoncer }) {
   const { occupe, probleme, lancer } = useActionAmi({ apres, annoncer })
   const { ouvrirAmi } = useContext(OuvrirChat)
   const [langue] = useLangueJeu()
+  const persos = useContext(ContextePersos)
+  const groupable = peutGrouperAvec(persos, a)
   const [ouvert, setOuvert] = useState(false)
   const [confirmer, setConfirmer] = useState(false)
   const statut = enLigne ? 'En ligne' : a.vu_le ? vuTexte(a.vu_le) : 'Hors ligne'
@@ -234,9 +236,11 @@ function RangAmi({ a, enLigne, commande, apres, annoncer }) {
               Écrire
             </button>
           )}
-          <BoutonCopierRapide valeur={`${commande} ${a.perso}`} titre={`Inviter ${a.perso} dans le jeu`}>
-            Inviter
-          </BoutonCopierRapide>
+          {groupable && (
+            <BoutonCopierRapide valeur={`${commande} ${a.perso}`} titre={`Inviter ${a.perso} dans le jeu`}>
+              Inviter
+            </BoutonCopierRapide>
+          )}
         </span>
       </div>
       {ouvert && (
@@ -245,6 +249,7 @@ function RangAmi({ a, enLigne, commande, apres, annoncer }) {
             <ChipClasse classe={a.classe} specialisation={a.specialisation} />
             {a.guilde && <li className="chip fort">{a.guilde}</li>}
             <li className="chip">{a.region}</li>
+            {a.ruleset && <li className="chip chip-serveur">{RULESETS.find((r) => r.id === a.ruleset)?.carte ?? a.ruleset}</li>}
             <li className="chip">{nomDe(STYLES, a.style)}</li>
             <li className="chip">{nomDe(LANGUES, a.langue)}</li>
           </ul>
@@ -261,11 +266,15 @@ function RangAmi({ a, enLigne, commande, apres, annoncer }) {
           )}
           {a.bio && <p className="note">{a.bio}</p>}
           <div className="inviter">
-            <LigneCopie
-              titre="Inviter dans le jeu"
-              valeur={`${commande} ${a.perso}`}
-              conseil="Dans le jeu: ouvre le chat (Entrée), colle, puis Entrée."
-            />
+            {groupable ? (
+              <LigneCopie
+                titre="Inviter dans le jeu"
+                valeur={`${commande} ${a.perso}`}
+                conseil="Dans le jeu: ouvre le chat (Entrée), colle, puis Entrée."
+              />
+            ) : (
+              <p className="aide inviter-bloque">Tu ne peux pas grouper avec cet ami. Il faut un personnage {exigencesAnnonce(a)}.</p>
+            )}
             {a.battletag && (
               <LigneCopie titre="BattleTag" valeur={a.battletag} conseil="Colle-le dans Battle.net pour l'ajouter comme ami." />
             )}

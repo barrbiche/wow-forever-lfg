@@ -1081,7 +1081,7 @@ export async function lireAmis() {
       return [
         {
           user_id: id, lien: l.lien, depuis: l.depuis,
-          perso: j.perso, classe: j.classe, specialisation: j.specialisation, niveau: j.niveau, roles: j.roles, faction: j.faction, region: j.region,
+          perso: j.perso, classe: j.classe, specialisation: j.specialisation, niveau: j.niveau, roles: j.roles, faction: j.faction, region: j.region, ruleset: j.ruleset,
           langue: j.langue, style: j.style, guilde: j.guilde, bio: j.bio, visible: j.visible,
           battletag: montrer ? j.battletag : '',
           vu_le: montrer ? j.vu_le : null,

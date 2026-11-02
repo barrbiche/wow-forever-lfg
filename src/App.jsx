@@ -159,6 +159,7 @@ const FILTRES_VIDES = {
 }
 
 // Les filtres qui comptent dans chaque onglet (faction, langue, région et rôle sont partagés).
+const PAQUET_ANNONCES = 30
 const CLES_GROUPES = ['activite', 'faction', 'region', 'role', 'niveau', 'style', 'langue', 'genre', 'planifies', 'tousLesGroupes']
 const CLES_JOUEURS = ['faction', 'langue', 'region', 'role', 'classe', 'recherche', 'horsLigne']
 
@@ -302,6 +303,7 @@ export default function App() {
   const vuesRef = useRef(null)
   const alerteRef = useRef(alerte)
   const persosRef = useRef(null)
+  const dernierCompletRef = useRef(0)
   const utilisateurRef = useRef(null)
   const voirAvisRef = useRef(null)
   const nonLusRef = useRef(0)
@@ -505,7 +507,11 @@ export default function App() {
     }
   }, [chargerPlaces])
 
-  const charger = useCallback(async () => {
+  // Lecture complète (tout) ou légère ({ leger: true }: les annonces, plus la liste ouverte à l'écran). La minuterie
+  // alterne les deux pour ménager la base de données quand beaucoup de monde est en ligne.
+  const charger = useCallback(async (options) => {
+    const leger = options?.leger === true
+    if (!leger) dernierCompletRef.current = Date.now()
     // Une lecture plus récente (par exemple après une connexion) remplace une plus ancienne qui finit en retard.
     const lecture = ++lectureRef.current
     try {
@@ -518,19 +524,27 @@ export default function App() {
     } finally {
       setChargement(false)
     }
-    try {
-      setGuildes(await lireGuildes())
-    } catch {
-      setGuildes(null)
-    }
-    try {
-      const liste = await lireJoueurs()
-      if (lecture === lectureRef.current) {
-        setJoueurs(liste)
-        setJoueursPrets(true)
+    if (!leger || vueRef.current === 'guildes') {
+      try {
+        setGuildes(await lireGuildes())
+      } catch {
+        setGuildes(null)
       }
-    } catch {
-      setJoueurs(null)
+    }
+    if (!leger || vueRef.current === 'joueurs') {
+      try {
+        const liste = await lireJoueurs()
+        if (lecture === lectureRef.current) {
+          setJoueurs(liste)
+          setJoueursPrets(true)
+        }
+      } catch {
+        setJoueurs(null)
+      }
+    }
+    if (leger) {
+      await chargerAmis() // les demandes d'amis reçues apparaissent vite (liste courte)
+      return
     }
     try {
       const mesPersos = (await estConnecte()) ? await lirePersos() : null
@@ -560,9 +574,27 @@ export default function App() {
     await chargerMessagerie()
   }, [detecterNouvelles, chargerAmis, chargerMessagerie])
 
+  // Relecture automatique: les annonces aux 45 s (aux 5 min si l'onglet est caché), le reste aux 3 min.
+  // En revenant sur l'onglet, on relit tout de suite si la dernière lecture est vieille.
   useEffect(() => {
-    const minuterie = setInterval(charger, 30000)
-    return () => clearInterval(minuterie)
+    let dernier = Date.now()
+    const lire = () => {
+      const maintenant = Date.now()
+      dernier = maintenant
+      charger(maintenant - dernierCompletRef.current > 180000 ? undefined : { leger: true })
+    }
+    const minuterie = setInterval(() => {
+      if (document.hidden && Date.now() - dernier < 300000) return
+      lire()
+    }, 45000)
+    const auRetour = () => {
+      if (!document.hidden && Date.now() - dernier > 45000) lire()
+    }
+    document.addEventListener('visibilitychange', auRetour)
+    return () => {
+      clearInterval(minuterie)
+      document.removeEventListener('visibilitychange', auRetour)
+    }
   }, [charger])
 
   useEffect(() => suivreUtilisateur(setUtilisateur), [])
@@ -603,20 +635,6 @@ export default function App() {
     setCiblee({ type: lien.type, id: lien.id })
   }, [lien, lienTraite, chargement, annonces, guildes])
 
-  useEffect(() => {
-    if (!ciblee) return
-    const carte = document.getElementById(`${ciblee.type}-${ciblee.id}`)
-    if (!carte) return
-    const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    carte.scrollIntoView({ block: 'center', behavior: reduit ? 'auto' : 'smooth' })
-    carte.focus({ preventScroll: true })
-    carte.classList.add('ciblee')
-    const minuterie = setTimeout(() => carte.classList.remove('ciblee'), 3500)
-    return () => {
-      clearTimeout(minuterie)
-      carte.classList.remove('ciblee')
-    }
-  }, [ciblee])
 
   // Ton profil de joueur (la liste te renvoie toujours le tien, même caché) et la présence « en ligne ».
   const monProfil = useMemo(() => (joueurs ?? []).find((j) => j.moi) ?? null, [joueurs])
@@ -719,10 +737,37 @@ export default function App() {
     const ids = new Set(soir.map((a) => a.id))
     return { ceSoir: soir, autres: visibles.filter((a) => !ids.has(a.id)) }
   }, [visibles, filtres.planifies])
+  // Seulement les premières annonces à l'écran (plus rapide sur cellulaire); « Voir plus » en ajoute.
+  const [nbAffiches, setNbAffiches] = useState(PAQUET_ANNONCES)
+  useEffect(() => setNbAffiches(PAQUET_ANNONCES), [filtres])
   const ordre = useMemo(() => (filtres.planifies ? visibles : [...ceSoir, ...autres]), [filtres.planifies, visibles, ceSoir, autres])
   // Une annonce seule dans sa section (« Ce soir », « Autres annonces », un jour de l'agenda) prend toute la largeur: pas de trou à côté.
   const sections = ordre.map((a, i) => (i < ceSoir.length ? 'soir' : filtres.planifies ? jourTexte(a.debut) : 'autres'))
   const seule = (i) => sections[i - 1] !== sections[i] && sections[i + 1] !== sections[i]
+  // L'annonce visée (lien direct, « Voir son annonce », alerte) peut être au-delà des premières: on en affiche assez.
+  const rangCiblee = ciblee?.type === 'annonce' ? ordre.findIndex((a) => a.id === ciblee.id) : -1
+  const cibleeAffichee = rangCiblee < 0 || rangCiblee < nbAffiches
+  useEffect(() => {
+    if (!cibleeAffichee) setNbAffiches(rangCiblee + 1)
+  }, [cibleeAffichee, rangCiblee])
+  useEffect(() => {
+    if (!ciblee) return
+    if (!cibleeAffichee) return // l'annonce visée est plus loin dans la liste: on en affiche assez, puis on revient ici
+    const carte = document.getElementById(`${ciblee.type}-${ciblee.id}`)
+    if (!carte) return
+    const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    carte.scrollIntoView({ block: 'center', behavior: reduit ? 'auto' : 'smooth' })
+    carte.focus({ preventScroll: true })
+    carte.classList.add('ciblee')
+    const minuterie = setTimeout(() => {
+      carte.classList.remove('ciblee')
+      setCiblee(null) // c'est fini: les changements de filtres ne doivent plus nous ramener là
+    }, 3500)
+    return () => {
+      clearTimeout(minuterie)
+      carte.classList.remove('ciblee')
+    }
+  }, [ciblee, cibleeAffichee])
 
   const guildesSansFaction = useMemo(
     () => (guildes ?? []).filter((g) => !filtres.langue || g.langue === filtres.langue),
@@ -1320,7 +1365,7 @@ export default function App() {
               </div>
             ) : (
               <ul className="liste">
-                {ordre.map((a, i) => (
+                {ordre.slice(0, nbAffiches).map((a, i) => (
                   <Fragment key={a.id}>
                     {filtres.planifies && (i === 0 || jourTexte(a.debut) !== jourTexte(ordre[i - 1].debut)) && (
                       <li className="jour"><h2>{jourTexte(a.debut)}</h2></li>
@@ -1360,6 +1405,13 @@ export default function App() {
                     </li>
                   </Fragment>
                 ))}
+                {ordre.length > nbAffiches && (
+                  <li className="voir-plus">
+                    <button type="button" className="bouton" onClick={() => setNbAffiches((n) => n + PAQUET_ANNONCES)}>
+                      Voir plus d'annonces ({ordre.length - nbAffiches})
+                    </button>
+                  </li>
+                )}
               </ul>
             )}
             <Pub masquer={!!utilisateur && supporters.has(utilisateur.id)} />

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import {
   ecrireProfil,
   enregistrerPersosExtra,
@@ -23,14 +23,16 @@ import {
   STYLES,
   champsManquants,
   couleurTexteClasse,
+  exigencesAnnonce,
   nomComplet,
   nomDe,
   nomSpecialisation,
   normaliserBattleTag,
+  peutGrouperAvec,
   separerNom,
   specialisationsDe,
 } from './data.js'
-import { BadgeSupporter, BoutonLienSite, ChipClasse, Icone, LigneCopie, Signalement, vuTexte } from './commun.jsx'
+import { BadgeSupporter, BoutonLienSite, ChipClasse, ContextePersos, Icone, LigneCopie, Signalement, vuTexte } from './commun.jsx'
 import { LangueJeu, commandeInviter, useLangueJeu } from './langue.jsx'
 import { BoutonsAmi, SectionAmis } from './Amis.jsx'
 
@@ -390,6 +392,8 @@ function CarteApercu({ joueur: j, actif }) {
 // ---------- Carte d'un joueur ----------
 
 function CarteJoueur({ joueur: j, commande, enLigne, lien, apresAmis, utilisateur, aProfil, ouvrirProfil, apres, annoncer, voirAnnonce, onConnexion }) {
+  const persos = useContext(ContextePersos)
+  const groupable = peutGrouperAvec(persos, j)
   const [choisir, setChoisir] = useState(false)
   const [choix, setChoix] = useState([])
   const [occupe, setOccupe] = useState(false)
@@ -471,6 +475,7 @@ function CarteJoueur({ joueur: j, commande, enLigne, lien, apresAmis, utilisateu
           <ChipClasse classe={j.classe} specialisation={j.specialisation} />
           {j.guilde && <li className="chip fort">{j.guilde}</li>}
           <li className="chip">{j.region}</li>
+          {j.ruleset && <li className="chip chip-serveur">{RULESETS.find((r) => r.id === j.ruleset)?.carte ?? j.ruleset}</li>}
           <li className="chip">{nomDe(STYLES, j.style)}</li>
           <li className="chip">{nomDe(LANGUES, j.langue)}</li>
         </ul>
@@ -512,7 +517,12 @@ function CarteJoueur({ joueur: j, commande, enLigne, lien, apresAmis, utilisateu
 
         {(!j.moi || j.battletag) && (
           <div className="inviter">
-            {!j.moi && (
+            {!j.moi && !groupable && (
+              <p className="aide inviter-bloque">
+                Tu ne peux pas grouper avec ce joueur. Il faut un personnage {exigencesAnnonce(j)}.
+              </p>
+            )}
+            {!j.moi && groupable && (
               <LigneCopie
                 titre="Inviter dans le jeu"
                 valeur={`${commande} ${j.perso}`}

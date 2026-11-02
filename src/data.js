@@ -166,6 +166,11 @@ export const nomRuleset = (id) => RULESETS.find((r) => r.id === (id || 'normal')
 // « Horde · PvP · US »: ce qu'il faut pour rejoindre.
 export const exigencesAnnonce = (a) => `${FACTIONS.find((f) => f.id === a.faction)?.nom ?? a.faction} · ${nomRuleset(a.ruleset)} · ${a.region}`
 
+// Peut-on grouper avec ce joueur (même faction, région et type de serveur que l'un de mes personnages)?
+// Tant que la liste ne donne pas son type de serveur (ameliorations21.sql pas roulé), ou sans personnage, on ne bloque rien.
+export const peutGrouperAvec = (persos, joueur) =>
+  !persos || persos.length === 0 || joueur.ruleset == null || persos.some((p) => compatibilite(p, joueur).ok)
+
 // Les mêmes quatre styles que l'outil de groupe du jeu (Blizzard ne les a pas encore définis).
 export const STYLES = [
   { id: 'apprentissage', nom: 'Apprentissage' },
