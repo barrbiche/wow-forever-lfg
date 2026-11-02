@@ -3,6 +3,7 @@ import {
   ecrireProfil,
   enregistrerPersosExtra,
   enregistrerProfil,
+  etreDisponible,
   lireProfil,
   modeDemo,
   recommander,
@@ -29,10 +30,11 @@ import {
   nomSpecialisation,
   normaliserBattleTag,
   peutGrouperAvec,
+  estDispo,
   separerNom,
   specialisationsDe,
 } from './data.js'
-import { BadgeSupporter, BoutonLienSite, ChipClasse, ContextePersos, Icone, LigneCopie, Signalement, vuTexte } from './commun.jsx'
+import { BadgeSupporter, BoutonLienSite, ChipClasse, ContextePersos, Icone, LigneCopie, Signalement, reste, vuTexte } from './commun.jsx'
 import { LangueJeu, commandeInviter, useLangueJeu } from './langue.jsx'
 import { BoutonsAmi, SectionAmis } from './Amis.jsx'
 
@@ -62,6 +64,7 @@ export default function SectionJoueurs({
   apresAmis,
 }) {
   const [langue] = useLangueJeu()
+  const mesPersos = useContext(ContextePersos)
 
   if (!utilisateur && sousVue === 'amis') {
     return (
@@ -108,6 +111,8 @@ export default function SectionJoueurs({
   }
 
   const nbEnLigne = joueurs.filter((j) => enLigne.has(j.user_id)).length
+  // Il faut au moins un personnage, et que la liste donne le type de serveur de chacun (ameliorations21.sql).
+  const peutFiltrerGroupables = !!mesPersos && mesPersos.length > 0 && joueurs.some((j) => j.ruleset != null)
 
   return (
     <>
@@ -146,6 +151,8 @@ export default function SectionJoueurs({
           </button>
         </div>
 
+        <BlocDispo moi={joueurs.find((j) => j.moi)} apres={apres} annoncer={annoncer} />
+
         <div className="pastilles">
           <button type="button" className="pastille" aria-pressed={filtres.horsLigne} onClick={() => basculer('horsLigne', true)}>
             Voir aussi les hors ligne ({joueurs.length - nbEnLigne})
@@ -153,6 +160,11 @@ export default function SectionJoueurs({
           <button type="button" className="pastille" aria-pressed={filtres.langue === 'fr'} onClick={() => basculer('langue', 'fr')}>
             Français seulement
           </button>
+          {peutFiltrerGroupables && (
+            <button type="button" className="pastille" aria-pressed={filtres.groupables} onClick={() => basculer('groupables', true)}>
+              Je peux grouper avec eux
+            </button>
+          )}
         </div>
 
         <details className="plus">
@@ -379,6 +391,55 @@ function CarteApercu({ joueur: j, actif }) {
   )
 }
 
+// ---------- « Je suis dispo maintenant » ----------
+
+function BlocDispo({ moi, apres, annoncer }) {
+  const [occupe, setOccupe] = useState(false)
+  // Il faut un profil visible, et la base à jour (ameliorations24.sql: la liste donne alors « dispo_jusqu_a »).
+  if (!moi || !moi.visible || !('dispo_jusqu_a' in moi)) return null
+  const dispo = estDispo(moi)
+
+  const changer = async (minutes) => {
+    setOccupe(true)
+    try {
+      await etreDisponible(minutes)
+      await apres?.()
+      annoncer?.(minutes > 0 ? 'Tu es dispo: tu apparais en haut de la liste.' : 'Statut retiré.')
+    } catch {
+      annoncer?.("Impossible de changer ton statut pour l'instant. Réessaie dans un moment.")
+    } finally {
+      setOccupe(false)
+    }
+  }
+
+  return (
+    <div className="dispo-bloc" role="group" aria-label="Je suis dispo maintenant">
+      {dispo ? (
+        <>
+          <p className="dispo-texte">
+            <span className="point" aria-hidden="true" /> Tu es dispo encore <strong>{reste(moi.dispo_jusqu_a)}</strong>. Tu es en haut de la
+            liste des joueurs.
+          </p>
+          <button type="button" className="bouton petit" disabled={occupe} onClick={() => changer(0)}>
+            Arrêter
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="dispo-texte">Tu cherches un groupe tout de suite? Remonte en haut de la liste:</p>
+          <div className="dispo-durees">
+            {[[30, '30 min'], [60, '1 h'], [120, '2 h']].map(([m, t]) => (
+              <button key={m} type="button" className="bouton petit" disabled={occupe} onClick={() => changer(m)}>
+                Dispo {t}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ---------- Carte d'un joueur ----------
 
 function CarteJoueur({ joueur: j, commande, enLigne, lien, apresAmis, utilisateur, aProfil, ouvrirProfil, apres, annoncer, voirAnnonce, onConnexion }) {
@@ -451,10 +512,10 @@ function CarteJoueur({ joueur: j, commande, enLigne, lien, apresAmis, utilisateu
             </h2>
             <span className={`faction ${j.faction}`}>{nomDe(FACTIONS, j.faction)}</span>
           </div>
-          {enLigne ? (
+          {enLigne || estDispo(j) ? (
             <span className="depuis en-ligne">
               <span className="point" aria-hidden="true" />
-              En ligne
+              {estDispo(j) ? 'Dispo maintenant' : 'En ligne'}
             </span>
           ) : (
             <span className="depuis">{vuTexte(j.vu_le)}</span>

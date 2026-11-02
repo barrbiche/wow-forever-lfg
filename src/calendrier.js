@@ -3,7 +3,7 @@
 // (un fichier de calendrier se partage facilement): seulement le nom du personnage et le lien de l'annonce.
 
 const DUREE_PREVUE_MS = 2 * 3600000 // le calendrier a besoin d'une fin: on réserve 2 h
-const ACTIVITES = { donjon: 'Donjon', raid: 'Raid', pvp: 'PvP', quete: 'Quêtes' }
+const ACTIVITES = { donjon: 'Donjon', raid: 'Raid', pvp: 'PvP', quete: 'Quêtes', soiree: 'Soirée' }
 const ROLES = { tank: 'tank', heal: 'heal', dps: 'DPS' }
 
 // Date au format iCalendar, en UTC: 20261104T200000Z
@@ -55,8 +55,8 @@ export function fabriquerIcs(annonce, origine, maintenant = new Date()) {
     roles.length ? `${joueurSeul ? 'Joue' : 'Cherche'}: ${roles.join(', ')}.` : '',
     annonce.perso ? `Personnage: ${annonce.perso}.` : '',
     annonce.note ? `Message: ${annonce.note}` : '',
-    annonce.id ? `Annonce: ${origine}/?annonce=${encodeURIComponent(annonce.id)}` : '',
-    "Le contact est sur l'annonce (connecte-toi pour le voir).",
+    annonce.id ? `${annonce.param_lien === 'evenement' ? 'Événement' : 'Annonce'}: ${origine}/?${annonce.param_lien ?? 'annonce'}=${encodeURIComponent(annonce.id)}` : '',
+    annonce.param_lien === 'evenement' ? "Le contact et la liste des inscrits sont sur le site (connecte-toi pour les voir)." : "Le contact est sur l'annonce (connecte-toi pour le voir).",
   ].filter(Boolean)
 
   const lignes = [
@@ -72,7 +72,7 @@ export function fabriquerIcs(annonce, origine, maintenant = new Date()) {
     `DTEND:${dateIcs(fin)}`,
     `SUMMARY:${echapperIcs(`${ACTIVITES[annonce.activite] ?? 'Groupe'}: ${annonce.cible}`)}`,
     `DESCRIPTION:${echapperIcs(lignesTexte.join('\n'))}`,
-    annonce.id ? `URL:${origine}/?annonce=${encodeURIComponent(annonce.id)}` : '',
+    annonce.id ? `URL:${origine}/?${annonce.param_lien ?? 'annonce'}=${encodeURIComponent(annonce.id)}` : '',
     'BEGIN:VALARM',
     'ACTION:DISPLAY',
     `DESCRIPTION:${echapperIcs(`Départ dans 15 minutes: ${annonce.cible}`)}`,

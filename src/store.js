@@ -24,6 +24,7 @@ const CLE_DEMO = 'forever-demo-annonces'
 const CLE_CONNEXION_DEMO = 'forever-demo-connecte'
 const EVENEMENT_DEMO = 'forever-demo-connexion'
 const CLE_GUILDES_DEMO = 'forever-demo-guildes'
+const CLE_EVENEMENTS_DEMO = 'forever-demo-evenements'
 const CLE_PROFIL = 'forever-profil'
 export const UTILISATEUR_DEMO = { id: 'demo', nom: 'Joueur démo', contact: 'ton_discord' }
 
@@ -758,6 +759,7 @@ export async function lireJoueurs() {
       .map((j) => ({
         ...j,
         annonce_id: actives.find((a) => a.user_id === j.user_id || a.perso === j.perso)?.id ?? null,
+        dispo_jusqu_a: j.dispo_jusqu_a && new Date(j.dispo_jusqu_a).getTime() > maintenant ? j.dispo_jusqu_a : null,
       }))
   }
   const { data, error } = await supabase.rpc('lister_joueurs')
@@ -829,6 +831,185 @@ export async function lireAchalandage() {
   try {
     const { data, error } = await supabase.rpc('stats_achalandage')
     return error ? null : { lignes: data ?? [], demo: false }
+  } catch {
+    return null
+  }
+}
+
+// ---------- Événements planifiés avec inscriptions (voir supabase/ameliorations25.sql) ----------
+
+function evenementsDemo() {
+  const jour = (n, h) => {
+    const d = new Date(Date.now() + n * 86400000)
+    d.setHours(h, 0, 0, 0)
+    return d.toISOString()
+  }
+  const base = { niveau_min: 60, niveau_max: 60, langue: 'fr', contact: '', guilde: '', description: '' }
+  return [
+    {
+      ...base, id: 'demo-e1', user_id: 'demo-j-mirabelle', created_at: minutes(300), debut: jour(1, 20), titre: 'Sortie de guilde: donjons de niveau 60',
+      type: 'donjon', faction: 'alliance', region: 'US', ruleset: 'normal', places: 5, perso: 'Mirabelle', guilde: 'Les Braves du Nord',
+      description: 'On part ensemble, ambiance relax. Apporte tes potions!', contact: 'https://discord.gg/exemple',
+      inscrits: [
+        { user_id: 'demo-j-mirabelle', perso: 'Mirabelle', role: 'heal', statut: 'oui' },
+        { user_id: 'demo-j-lyra', perso: 'Lyra', role: 'dps', statut: 'oui' },
+        { user_id: 'demo-j-thalyn', perso: 'Thalyn', role: 'tank', statut: 'peut_etre' },
+      ],
+    },
+    {
+      ...base, id: 'demo-e2', user_id: 'demo-j-lyra', created_at: minutes(120), debut: jour(3, 19), titre: 'Soirée PvP entre francophones',
+      type: 'pvp', faction: 'horde', region: 'EU', ruleset: 'pvp', places: null, perso: 'Lyra', niveau_min: 10, niveau_max: 60,
+      description: 'Champs de bataille jusqu’à minuit, tout le monde est bienvenu.', inscrits: [],
+    },
+  ]
+}
+
+function lireEvenementsDemoBrut() {
+  try {
+    const brut = localStorage.getItem(CLE_EVENEMENTS_DEMO)
+    const liste = brut ? JSON.parse(brut) : evenementsDemo()
+    if (!brut) localStorage.setItem(CLE_EVENEMENTS_DEMO, JSON.stringify(liste))
+    return liste
+  } catch {
+    return evenementsDemo()
+  }
+}
+
+function ecrireEvenementsDemo(liste) {
+  try {
+    localStorage.setItem(CLE_EVENEMENTS_DEMO, JSON.stringify(liste))
+  } catch {
+    // navigation privée: le changement n'est pas gardé
+  }
+}
+
+// Les événements à venir (et ceux commencés depuis moins de 3 h), avec les totaux et mon inscription.
+// null si la base n'est pas à jour (ameliorations25.sql).
+export async function lireEvenements() {
+  if (modeDemo) {
+    const connecte = await estConnecte()
+    const limite = Date.now() - 3 * 3600000
+    return lireEvenementsDemoBrut()
+      .filter((e) => new Date(e.debut).getTime() > limite)
+      .sort((a, b) => new Date(a.debut) - new Date(b.debut))
+      .map(({ inscrits = [], ...e }) => {
+        const oui = inscrits.filter((i) => i.statut === 'oui')
+        const mien = inscrits.find((i) => i.user_id === UTILISATEUR_DEMO.id)
+        return {
+          ...e,
+          contact: connecte ? e.contact : null,
+          nb_oui: oui.length,
+          nb_peut_etre: inscrits.filter((i) => i.statut === 'peut_etre').length,
+          nb_tank: oui.filter((i) => i.role === 'tank').length,
+          nb_heal: oui.filter((i) => i.role === 'heal').length,
+          nb_dps: oui.filter((i) => i.role === 'dps').length,
+          inscrits: connecte ? inscrits.map(({ user_id, ...i }) => i) : null,
+          mon_statut: connecte ? (mien?.statut ?? null) : null,
+          mon_role: connecte ? (mien?.role ?? null) : null,
+          mon_perso: connecte ? (mien?.perso ?? null) : null,
+        }
+      })
+  }
+  try {
+    const { data, error } = await supabase.rpc('lister_evenements')
+    return error ? null : (data ?? [])
+  } catch {
+    return null
+  }
+}
+
+export async function creerEvenement(c) {
+  if (modeDemo) {
+    if (!(await estConnecte())) throw new Error('connexion requise')
+    const liste = lireEvenementsDemoBrut()
+    if (liste.filter((e) => e.user_id === UTILISATEUR_DEMO.id && new Date(e.debut) > new Date()).length >= 3) {
+      throw new Error("trop d'événements à venir")
+    }
+    ecrireEvenementsDemo([
+      ...liste,
+      { id: `demo-e-${Date.now()}`, user_id: UTILISATEUR_DEMO.id, created_at: new Date().toISOString(), inscrits: [], ...c },
+    ])
+    return
+  }
+  const { error } = await supabase.rpc('creer_evenement', {
+    p_titre: c.titre,
+    p_type: c.type,
+    p_debut: c.debut,
+    p_faction: c.faction,
+    p_region: c.region,
+    p_ruleset: c.ruleset,
+    p_niveau_min: c.niveau_min,
+    p_niveau_max: c.niveau_max,
+    p_places: c.places,
+    p_description: c.description,
+    p_perso: c.perso,
+    p_guilde: c.guilde,
+    p_langue: c.langue,
+    p_contact: c.contact,
+  })
+  if (error) throw error
+}
+
+export async function annulerEvenement(id) {
+  if (modeDemo) {
+    ecrireEvenementsDemo(lireEvenementsDemoBrut().filter((e) => e.id !== id))
+    return
+  }
+  const { error } = await supabase.rpc('annuler_evenement', { p_evenement: id })
+  if (error) throw error
+}
+
+// statut: 'oui' ou 'peut_etre'; role: 'tank', 'heal' ou 'dps'. Refuse quand c'est complet.
+export async function inscrireEvenement(id, perso, role, statut) {
+  if (modeDemo) {
+    const liste = lireEvenementsDemoBrut()
+    const ev = liste.find((e) => e.id === id)
+    if (!ev) throw new Error('événement terminé ou introuvable')
+    const autres = (ev.inscrits ?? []).filter((i) => i.user_id !== UTILISATEUR_DEMO.id)
+    if (statut === 'oui' && ev.places != null && autres.filter((i) => i.statut === 'oui').length >= ev.places) throw new Error('complet')
+    ecrireEvenementsDemo(
+      liste.map((e) => (e.id === id ? { ...e, inscrits: [...autres, { user_id: UTILISATEUR_DEMO.id, perso, role, statut }] } : e)),
+    )
+    return
+  }
+  const { error } = await supabase.rpc('inscrire_evenement', { p_evenement: id, p_perso: perso, p_role: role, p_statut: statut })
+  if (error) throw error
+}
+
+export async function desinscrireEvenement(id) {
+  if (modeDemo) {
+    ecrireEvenementsDemo(
+      lireEvenementsDemoBrut().map((e) => (e.id === id ? { ...e, inscrits: (e.inscrits ?? []).filter((i) => i.user_id !== UTILISATEUR_DEMO.id) } : e)),
+    )
+    return
+  }
+  const { error } = await supabase.rpc('desinscrire_evenement', { p_evenement: id })
+  if (error) throw error
+}
+
+// Joueurs, groupes et guildes par région, type de serveur et faction: [{ region, ruleset, faction, joueurs, actifs, groupes, guildes }].
+// Public, que des totaux. null si la base n'est pas à jour (ameliorations23.sql).
+export async function lireStatsServeurs() {
+  if (modeDemo) {
+    const maintenant = Date.now()
+    const lignes = new Map()
+    const ligne = (o) => {
+      const cle = `${o.region}|${o.ruleset || 'normal'}|${o.faction}`
+      if (!lignes.has(cle)) lignes.set(cle, { region: o.region, ruleset: o.ruleset || 'normal', faction: o.faction, joueurs: 0, actifs: 0, groupes: 0, guildes: 0 })
+      return lignes.get(cle)
+    }
+    for (const j of lireJoueursDemo().filter((x) => x.visible || x.moi)) {
+      const l = ligne(j)
+      l.joueurs += 1
+      if (maintenant - new Date(j.vu_le).getTime() < 3600_000) l.actifs += 1
+    }
+    for (const a of lireDemo()) if (new Date(a.expires_at).getTime() > maintenant) ligne(a).groupes += 1
+    for (const g of lireGuildesDemo()) if (new Date(g.expires_at).getTime() > maintenant) ligne(g).guildes += 1
+    return [...lignes.values()]
+  }
+  try {
+    const { data, error } = await supabase.rpc('stats_serveurs')
+    return error ? null : (data ?? [])
   } catch {
     return null
   }
@@ -937,6 +1118,19 @@ export async function enregistrerPersosExtra(extras) {
   }
   const { error } = await supabase.rpc('definir_persos_extra', { p_extras: liste })
   if (error) throw error
+}
+
+// « Je suis dispo maintenant »: pour 30 à 120 minutes, ou 0 pour arrêter. Retourne la fin du statut (ou null).
+// Demande ameliorations24.sql sur la vraie base.
+export async function etreDisponible(minutes) {
+  if (modeDemo) {
+    const fin = minutes > 0 ? new Date(Date.now() + minutes * 60000).toISOString() : null
+    ecrireJoueursDemo(lireJoueursDemo().map((j) => (j.moi ? { ...j, dispo_jusqu_a: fin } : j)))
+    return fin
+  }
+  const { data, error } = await supabase.rpc('etre_disponible', { p_minutes: minutes })
+  if (error) throw error
+  return data
 }
 
 export async function supprimerProfil() {

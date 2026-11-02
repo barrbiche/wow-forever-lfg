@@ -110,3 +110,33 @@
   color: inherit;
   background: rgb(255 255 255 / 0.14);
 }
+
+/* ---------- Compteur par serveur ---------- */
+.serveurs { margin: 0 0 14px; }
+.serveurs summary { cursor: pointer; font-weight: 700; }
+.serveurs-liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; margin: 10px 0 0; padding: 0; list-style: none; }
+.serveur { padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--field); }
+.serveur.mien { border-color: var(--gold-line, var(--gold)); }
+.serveur-nom { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-bottom: 4px; }
+.serveur-chiffres { display: grid; gap: 2px; font-size: 0.9rem; color: var(--muted); }
+
+/* ---------- Heures des deux côtés de l'Atlantique ---------- */
+.depart-fuseaux { font-weight: 400; opacity: 0.85; }
+
+/* ---------- Je suis dispo maintenant ---------- */
+.dispo-bloc { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 0 0 10px; padding: 8px 12px; border: 1px dashed var(--line); border-radius: var(--radius); background: var(--field); }
+.dispo-texte { margin: 0; flex: 1 1 220px; }
+.dispo-texte .point { display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 50%; background: #34c759; }
+.dispo-durees { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ---------- Événements ---------- */
+.commutateur { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.inscription { display: grid; gap: 8px; margin-top: 10px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: var(--radius); background: var(--field); }
+.inscription-choix { display: flex; flex-wrap: wrap; gap: 8px 12px; }
+.inscription-choix .champ { flex: 1 1 150px; }
+.inscription-boutons { display: flex; flex-wrap: wrap; gap: 6px; }
+.inscription-etat { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 0; }
+.inscrits { margin-top: 8px; }
+.inscrits summary { cursor: pointer; font-weight: 700; }
+.inscrits ul { display: grid; gap: 4px; margin: 8px 0 0; padding: 0; list-style: none; }
+.inscrits li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }

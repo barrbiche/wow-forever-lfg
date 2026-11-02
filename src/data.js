@@ -171,6 +171,9 @@ export const exigencesAnnonce = (a) => `${FACTIONS.find((f) => f.id === a.factio
 export const peutGrouperAvec = (persos, joueur) =>
   !persos || persos.length === 0 || joueur.ruleset == null || persos.some((p) => compatibilite(p, joueur).ok)
 
+// « Je suis dispo maintenant »: le statut temporaire d'un joueur (voir supabase/ameliorations24.sql).
+export const estDispo = (j) => !!j?.dispo_jusqu_a && Date.parse(j.dispo_jusqu_a) > Date.now()
+
 // Les mêmes quatre styles que l'outil de groupe du jeu (Blizzard ne les a pas encore définis).
 export const STYLES = [
   { id: 'apprentissage', nom: 'Apprentissage' },

@@ -259,6 +259,42 @@ export function departTexte(iso) {
   return `${jour} ${heure}`
 }
 
+// Les deux côtés de l'Atlantique: « Montréal 20 h · Paris 2 h (le lendemain) ». Le fuseau de la personne qui regarde est déjà
+// dans « Départ … »: on ne le répète pas. `maintenant` sert aux tests.
+const FUSEAUX_DEPART = [
+  { nom: 'Montréal', zone: 'America/Toronto' },
+  { nom: 'Paris', zone: 'Europe/Paris' },
+]
+
+function heureDansFuseau(date, zone) {
+  const morceaux = new Intl.DateTimeFormat('en-CA', {
+    timeZone: zone,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).formatToParts(date)
+  const v = Object.fromEntries(morceaux.map((m) => [m.type, m.value]))
+  return { jour: `${v.year}-${v.month}-${v.day}`, h: Number(v.hour), m: Number(v.minute) }
+}
+
+export function departFuseaux(iso) {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const local = { jour: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`, h: d.getHours(), m: d.getMinutes() }
+  const texte = (x) => `${x.h} h${x.m ? ` ${String(x.m).padStart(2, '0')}` : ''}`
+  return FUSEAUX_DEPART.map(({ nom, zone }) => ({ nom, ...heureDansFuseau(d, zone) }))
+    .filter((x) => !(x.jour === local.jour && x.h === local.h && x.m === local.m))
+    .map((x) => {
+      const ecart = Math.round((Date.parse(`${x.jour}T00:00:00Z`) - Date.parse(`${local.jour}T00:00:00Z`)) / 86400000)
+      const jour = ecart > 0 ? ', le lendemain' : ecart < 0 ? ', la veille' : ''
+      return `${x.nom} ${texte(x)}${jour}`
+    })
+    .join(' · ')
+}
+
 export function avantDepart(iso) {
   return new Date(iso).getTime() <= Date.now() ? 'Départ en cours' : `Départ dans ${reste(iso)}`
 }
@@ -532,5 +568,19 @@ export function Signalement({ type, id, utilisateur, onConnexion }) {
         <p className="msg-erreur" role="alert">Tu as déjà fait beaucoup de signalements aujourd'hui. Réessaie demain.</p>
       )}
     </form>
+  )
+}
+
+// Petit commutateur « Groupes | Événements » affiché en haut des deux sections.
+export function CommutateurGroupes({ vue, changer }) {
+  return (
+    <div className="commutateur" role="group" aria-label="Groupes ou événements">
+      <button type="button" className="pastille" aria-pressed={vue === 'groupes'} onClick={() => changer('groupes')}>
+        Groupes
+      </button>
+      <button type="button" className="pastille" aria-pressed={vue === 'evenements'} onClick={() => changer('evenements')}>
+        Événements à venir
+      </button>
+    </div>
   )
 }

@@ -66,6 +66,8 @@ import {
   champsManquants,
   couleurTexteClasse,
   compatibilite,
+  peutGrouperAvec,
+  estDispo,
   nomDe,
   nomRuleset,
   nomSpecialisation,
@@ -90,6 +92,8 @@ import {
   depuis,
   departParDefaut,
   departTexte,
+  departFuseaux,
+  CommutateurGroupes,
   jourTexte,
   partRestante,
   SANS_ROLES,
@@ -97,6 +101,7 @@ import {
 } from './commun.jsx'
 import { telechargerIcs } from './calendrier.js'
 import Achalandage from './Achalandage.jsx'
+import Serveurs from './Serveurs.jsx'
 import { BandeauPubs, ChoixPubs, Pub, pubsActives } from './Pub.jsx'
 import {
   activerPush,
@@ -136,6 +141,7 @@ import SectionJoueurs, { ProfilJoueur } from './Joueurs.jsx'
 const Moderation = lazy(() => import('./Moderation.jsx').then((m) => ({ default: m.Moderation })))
 // Les guides de donjons (beaucoup de texte) ne sont chargés que quand on ouvre l'onglet.
 const Guides = lazy(() => import('./Guides.jsx'))
+const SectionEvenements = lazy(() => import('./Evenements.jsx'))
 // Tous les donjons de ces listes ont un guide (voir guides-data.js).
 const AVEC_GUIDE = new Set([...DONJONS_NOUVEAUX, ...DONJONS_CLASSIQUES])
 
@@ -156,19 +162,21 @@ const FILTRES_VIDES = {
   classe: '',
   recherche: '',
   horsLigne: false,
+  groupables: false, // onglet Joueurs: seulement ceux avec qui un de mes personnages peut grouper
 }
 
 // Les filtres qui comptent dans chaque onglet (faction, langue, région et rôle sont partagés).
 const PAQUET_ANNONCES = 30
 const CLES_GROUPES = ['activite', 'faction', 'region', 'role', 'niveau', 'style', 'langue', 'genre', 'planifies', 'tousLesGroupes']
-const CLES_JOUEURS = ['faction', 'langue', 'region', 'role', 'classe', 'recherche', 'horsLigne']
+const CLES_JOUEURS = ['faction', 'langue', 'region', 'role', 'classe', 'recherche', 'horsLigne', 'groupables']
 
-function correspondJoueur(j, f, enLigne) {
+function correspondJoueur(j, f, enLigne, persos = null) {
+  if (f.groupables && !peutGrouperAvec(persos, j)) return false
   if (f.langue && j.langue !== f.langue) return false
   if (f.region && j.region !== f.region) return false
   if (f.role && !j.roles.includes(f.role)) return false
   if (f.classe && j.classe !== f.classe) return false
-  if (!f.horsLigne && !enLigne.has(j.user_id)) return false
+  if (!f.horsLigne && !enLigne.has(j.user_id) && !estDispo(j)) return false
   const q = f.recherche.trim().toLowerCase()
   if (q && !j.perso.toLowerCase().includes(q)) return false
   return true
@@ -204,6 +212,7 @@ function lireLienDirect() {
   if (p.get('guide')) return { type: 'guide', id: p.get('guide') }
   if (p.get('annonce')) return { type: 'annonce', id: p.get('annonce') }
   if (p.get('guilde')) return { type: 'guilde', id: p.get('guilde') }
+  if (p.get('evenement')) return { type: 'evenement', id: p.get('evenement') }
   return null
 }
 
@@ -621,6 +630,12 @@ export default function App() {
       setGuideCible({ valeur: lien.id, n: 1 })
       return
     }
+    if (lien.type === 'evenement') {
+      // La section Événements charge sa propre liste et défile jusqu'à la carte.
+      setLienTraite(true)
+      setVue('evenements')
+      return
+    }
     if (chargement) return
     const liste = lien.type === 'guilde' ? guildes : annonces
     if (liste === null) return
@@ -776,14 +791,15 @@ export default function App() {
     [guildesSansFaction, filtres.faction],
   )
   const joueursSansFaction = useMemo(
-    () => (joueurs ?? []).filter((j) => correspondJoueur(j, filtres, enLigne)),
-    [joueurs, filtres, enLigne],
+    () => (joueurs ?? []).filter((j) => correspondJoueur(j, filtres, enLigne, persos)),
+    [joueurs, filtres, enLigne, persos],
   )
   // En ligne d'abord, puis les plus récemment vus, puis les mieux recommandés.
   const joueursVisibles = useMemo(() => {
     const liste = filtres.faction ? joueursSansFaction.filter((j) => j.faction === filtres.faction) : joueursSansFaction
     return [...liste].sort(
       (a, b) =>
+        Number(estDispo(b)) - Number(estDispo(a)) ||
         Number(enLigne.has(b.user_id)) - Number(enLigne.has(a.user_id)) ||
         new Date(b.vu_le) - new Date(a.vu_le) ||
         (b.pouces ?? -1) - (a.pouces ?? -1),
@@ -1101,7 +1117,7 @@ export default function App() {
 
         <div className="barre">
           <div className="onglets" role="group" aria-label="Section du site">
-            <button type="button" className="onglet" aria-pressed={vue === 'groupes'} onClick={() => setVue('groupes')}>
+            <button type="button" className="onglet" aria-pressed={vue === 'groupes' || vue === 'evenements'} onClick={() => setVue('groupes')}>
               <Icone nom="donjon" taille={22} />
               <span className="onglet-nom">Groupes</span> <span className="onglet-nombre">{annonces.length}</span>
               {utilisateur && nbGroupesAlerte > 0 && (
@@ -1150,7 +1166,7 @@ export default function App() {
             </button>
           </div>
 
-          {vue !== 'guides' && vue !== 'messages' && vue !== 'amis' && (
+          {vue !== 'guides' && vue !== 'messages' && vue !== 'amis' && vue !== 'evenements' && (
             <div className="factions" role="group" aria-label="Filtrer par faction">
               {FACTIONS.map((f) => (
                 <button
@@ -1211,6 +1227,17 @@ export default function App() {
               setFiltres((f) => ({ ...f, ...Object.fromEntries(CLES_JOUEURS.map((k) => [k, FILTRES_VIDES[k]])) }))
             }
           />
+        ) : vue === 'evenements' ? (
+          <Suspense fallback={<p className="aide" role="status">Chargement des événements…</p>}>
+            <SectionEvenements
+              utilisateur={utilisateur}
+              onConnexion={ouvrirConnexion}
+              ouvrirProfil={() => setProfilOuvert(true)}
+              annoncer={setMessage}
+              cible={lien?.type === 'evenement' ? lien.id : null}
+              commutateur={<CommutateurGroupes vue={vue} changer={setVue} />}
+            />
+          </Suspense>
         ) : vue === 'guildes' ? (
           <SectionGuildes
             guildes={guildesVisibles}
@@ -1226,6 +1253,8 @@ export default function App() {
           />
         ) : (
           <div className="vue-groupes">
+            <CommutateurGroupes vue={vue} changer={setVue} />
+            <Serveurs />
             <section className="filtres" aria-label="Filtres">
               <div className="filtres-ligne">
                 <div className={`segments${raids ? ' quatre' : ''}`} role="group" aria-label="Type d'activité">
@@ -1643,6 +1672,7 @@ function Carte({ annonce: a, nouvelle, profil, voirProfil, voirGuide, proprietai
             <li className="chip depart">
               <Icone nom="horloge" taille={14} />
               Départ {departTexte(a.debut)}
+              {departFuseaux(a.debut) && <span className="depart-fuseaux"> ({departFuseaux(a.debut)})</span>}
             </li>
           )}
           {a.debut && repetition && (

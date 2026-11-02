@@ -205,6 +205,17 @@ export default function Aide({ ouvert, fermer }) {
               averti sur ton cellulaire ou ton ordinateur même quand le site est fermé, jusqu'à ce que tu arrêtes l'alerte.
             </li>
             <li>
+              <strong>Événements.</strong> Dans l'onglet Groupes, « Événements à venir » sert pour un raid de guilde, une
+              soirée donjons ou un tournoi PvP prévus jusqu'à 60 jours d'avance. Tu t'inscris avec un de tes personnages
+              (même faction, région et type de serveur que l'événement), ton rôle, et « Je serai là » ou « Peut-être ».
+              Quand l'événement a un nombre de places, seuls les présents comptent. L'heure s'affiche dans ton fuseau, avec
+              celle de Montréal et de Paris à côté.
+            </li>
+            <li>
+              <strong>Dispo maintenant.</strong> Dans l'onglet Joueurs, « Dispo 30 min, 1 h ou 2 h » te met en haut de la liste
+              pour que les autres voient que tu cherches un groupe tout de suite. Ça s'arrête tout seul.
+            </li>
+            <li>
               <strong>Groupe planifié.</strong> « Ajouter à mon calendrier » télécharge un fichier qui s'ouvre dans Google
               Agenda, Apple Calendrier, Outlook et les autres. Il contient le jour, l'heure, le nom du personnage et le
               lien de l'annonce, jamais le contact.
