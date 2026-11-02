@@ -364,7 +364,7 @@ export function SectionAmis({ amis, enLigne, commande, apres, annoncer, voirTous
       {recues.length > 0 && (
         <section aria-labelledby="amis-recues">
           <h2 className="amis-titre" id="amis-recues">
-            Demandes reçues <span className="onglet-nombre">{recues.length}</span>
+            Demandes reçues <span className="titre-nombre">{recues.length}</span>
           </h2>
           <ul className="ami-liste">
             {recues.map((a) => (
@@ -376,7 +376,7 @@ export function SectionAmis({ amis, enLigne, commande, apres, annoncer, voirTous
 
       <section aria-labelledby="amis-liste">
         <h2 className="amis-titre" id="amis-liste">
-          Mes amis <span className="onglet-nombre">{amisListe.length}</span>
+          Mes amis <span className="titre-nombre">{amisListe.length}</span>
           {amisListe.length > 0 && <span className="resume-detail">{nbEnLigne} en ligne</span>}
         </h2>
         {amisListe.length === 0 ? (
@@ -406,7 +406,7 @@ export function SectionAmis({ amis, enLigne, commande, apres, annoncer, voirTous
             {visibles.length === 0 && <p className="aide">Aucun ami ne correspond à « {recherche} ».</p>}
             {enLigneListe.length > 0 && (
               <>
-                <h3 className="ami-groupe">En ligne <span className="onglet-nombre">{enLigneListe.length}</span></h3>
+                <h3 className="ami-groupe">En ligne <span className="titre-nombre">{enLigneListe.length}</span></h3>
                 <ul className="ami-liste">
                   {enLigneListe.map((a) => (
                     <RangAmi key={a.user_id} a={a} enLigne commande={commande} apres={apres} annoncer={annoncer} />
@@ -416,7 +416,7 @@ export function SectionAmis({ amis, enLigne, commande, apres, annoncer, voirTous
             )}
             {horsLigne.length > 0 && (
               <>
-                <h3 className="ami-groupe">Hors ligne <span className="onglet-nombre">{horsLigne.length}</span></h3>
+                <h3 className="ami-groupe">Hors ligne <span className="titre-nombre">{horsLigne.length}</span></h3>
                 <ul className="ami-liste">
                   {horsLigne.map((a) => (
                     <RangAmi key={a.user_id} a={a} enLigne={false} commande={commande} apres={apres} annoncer={annoncer} />
@@ -431,7 +431,7 @@ export function SectionAmis({ amis, enLigne, commande, apres, annoncer, voirTous
       {envoyees.length > 0 && (
         <section aria-labelledby="amis-envoyees">
           <h2 className="amis-titre" id="amis-envoyees">
-            Demandes envoyées <span className="onglet-nombre">{envoyees.length}</span>
+            Demandes envoyées <span className="titre-nombre">{envoyees.length}</span>
           </h2>
           <ul className="amis-lignes">
             {envoyees.map((a) => (

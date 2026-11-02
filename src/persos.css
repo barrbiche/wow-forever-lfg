@@ -97,3 +97,16 @@
     font-size: min(3.5rem, calc((100vw - 200px) * 0.078));
   }
 }
+
+/* Le petit nombre à côté d'un titre de la liste d'amis (« Mes amis 3 »). Il n'utilise plus la classe des onglets, qui sur
+   cellulaire le faisait flotter tout en haut de la page. */
+.titre-nombre {
+  margin-left: 6px;
+  font-family: var(--texte);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 999px;
+  color: inherit;
+  background: rgb(255 255 255 / 0.14);
+}
