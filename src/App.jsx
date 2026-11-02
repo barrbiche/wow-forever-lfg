@@ -1421,8 +1421,8 @@ export default function App() {
         <footer className="pied">
           <Achalandage />
           <p className="pied-note">
-            Les annonces disparaissent toutes seules quand leur durée est écoulée. Dans Forever, les groupes
-            Alliance et Horde ne se mélangent pas.
+            Les annonces disparaissent toutes seules quand leur durée est écoulée. Pour grouper, il faut la même
+            faction, la même région et le même type de serveur.
           </p>
           <div className="pied-zones">
             <nav className="pied-liens" aria-label="Aide et contact">

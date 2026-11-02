@@ -85,7 +85,8 @@ export default function Aide({ ouvert, fermer }) {
           <p>
             Dans l'onglet Groupes, tu ne vois d'abord que les groupes que l'un de tes personnages peut rejoindre. La
             pastille « Voir aussi les groupes que je ne peux pas rejoindre » montre les autres. Ton alerte suit la même
-            règle: elle te prévient seulement pour les groupes qui te conviennent.
+            règle: elle te prévient seulement pour les groupes qui te conviennent. Dans l'onglet Joueurs et dans tes amis,
+            « Inviter dans le jeu » est remplacé par la raison quand tu ne peux pas grouper avec la personne.
           </p>
         </section>
 
@@ -274,7 +275,7 @@ export default function Aide({ ouvert, fermer }) {
             <li>Pas de spam ni de publicité: une annonce, c'est un vrai groupe ou un vrai joueur.</li>
             <li>Écris un vrai BattleTag. Un faux contact fait perdre du temps à tout le monde.</li>
             <li>Pas de vente d'or, de comptes ou de services payants.</li>
-            <li>Dans Forever, l'Alliance et la Horde ne se mélangent pas: une annonce est pour un seul camp.</li>
+            <li>Pour grouper, il faut la même faction, la même région et le même type de serveur: une annonce est pour un seul camp.</li>
             <li>
               Les pouces sont pour les gens avec qui tu as vraiment joué. Pas de pouces échangés entre amis pour gonfler
               une réputation, ni avec de faux comptes.

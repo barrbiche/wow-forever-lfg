@@ -50,3 +50,11 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Le petit nombre des étiquettes (×9) était un peu pâle sur le parchemin (contraste 4,3 sur 4,5 demandé). */
+.etiquette .etiquette-n {
+  color: #5c4429;
+}
+.reproche .etiquette-n {
+  color: #ffd9a0;
+}
