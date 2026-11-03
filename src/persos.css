@@ -140,3 +140,6 @@
 .inscrits summary { cursor: pointer; font-weight: 700; }
 .inscrits ul { display: grid; gap: 4px; margin: 8px 0 0; padding: 0; list-style: none; }
 .inscrits li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+
+/* ---------- Pages de texte (guides, À propos) dans le pied de page ---------- */
+.pied-pages { margin-top: 6px; }

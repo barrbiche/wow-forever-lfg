@@ -1467,6 +1467,11 @@ export default function App() {
               </button>
               <BoutonInstaller />
             </nav>
+            <nav className="pied-liens pied-pages" aria-label="Pages du site">
+              <a className="lien" href="/guides/">Guides de donjons</a>
+              <a className="lien" href="/comment-ca-marche/">Explications détaillées</a>
+              <a className="lien" href="/a-propos/">À propos</a>
+            </nav>
             <div className="pied-soutien">
               <ChoixPubs />
               {lienDons && (

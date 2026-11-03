@@ -25,6 +25,22 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
+# Pages de texte écrites au build (scripts/pages-statiques.mjs): adresse sans barre finale -> avec barre.
+[[redirects]]
+  from = "/guides"
+  to = "/guides/"
+  status = 301
+
+[[redirects]]
+  from = "/a-propos"
+  to = "/a-propos/"
+  status = 301
+
+[[redirects]]
+  from = "/comment-ca-marche"
+  to = "/comment-ca-marche/"
+  status = 301
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

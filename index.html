@@ -24,9 +24,29 @@
     <meta property="og:image:alt" content="Babillard Forever, trouve ton groupe pour les donjons, le PvP et les quêtes" />
     <meta name="twitter:card" content="summary_large_image" />
     <title>Babillard Forever</title>
+    <style>
+      body { background: #07080c; }
+      .amorce { max-width: 680px; margin: 0 auto; padding: 40px 18px; color: #efe6d4; font: 17px/1.65 Georgia, serif; }
+      .amorce h1 { margin: 0 0 12px; color: #fff4dc; font-size: 2rem; }
+      .amorce a { color: #f3c969; }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Texte de départ pour les moteurs de recherche et les connexions lentes: React le remplace dès que le site démarre. -->
+      <main class="amorce">
+        <h1>Babillard Forever</h1>
+        <p>Du Québec à l'Europe, rassemblement ! Trouve des coéquipiers francophones pour tes donjons, raids, quêtes et battlegrounds sur WoW Forever dès aujourd'hui.</p>
+        <p>Babillard Forever est un babillard de groupes pour les joueurs francophones de WoW Forever: publie une annonce ou rejoins celle d'un autre joueur, trouve une guilde qui recrute, planifie un événement et consulte des guides de donjons en français. Pour grouper, il faut la même faction, la même région et le même type de serveur.</p>
+        <ul>
+          <li><a href="/guides/">Guides des donjons en français</a></li>
+          <li><a href="/comment-ca-marche/">Comment ça marche</a></li>
+          <li><a href="/a-propos/">À propos du site</a></li>
+          <li><a href="/confidentialite">Politique de confidentialité</a></li>
+        </ul>
+        <p>Chargement du site…</p>
+      </main>
+    </div>
     <noscript>Babillard Forever a besoin de JavaScript pour fonctionner. Active-le dans ton navigateur et recharge la page.</noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
