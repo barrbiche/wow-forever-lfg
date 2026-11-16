@@ -1,0 +1,13 @@
+## Interface: 16001
+## Title: lfgFR
+## Notes: Groupes et guildes en français: lit le chat, publie sur le canal lfgFR et exporte ton personnage vers babillard-forever.com.
+## Notes-frFR: Groupes et guildes en français: lit le chat, publie sur le canal lfgFR et exporte ton personnage vers babillard-forever.com.
+## Author: Barrbiche
+## Version: 0.1.0
+## SavedVariables: lfgFRDB
+## X-Website: https://babillard-forever.com
+
+Parser.lua
+Export.lua
+Core.lua
+UI.lua
