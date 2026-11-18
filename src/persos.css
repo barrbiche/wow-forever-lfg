@@ -143,3 +143,10 @@
 
 /* ---------- Pages de texte (guides, À propos) dans le pied de page ---------- */
 .pied-pages { margin-top: 6px; }
+
+/* ---------- Importer mon personnage du jeu (formulaire de profil) ---------- */
+.import-jeu { display: grid; gap: 8px; margin: 0 0 12px; padding: 8px 12px; border: 1px dashed var(--line); border-radius: var(--radius); background: var(--field); }
+.import-jeu summary { cursor: pointer; font-weight: 700; }
+.import-jeu textarea { width: 100%; min-height: 3.2rem; padding: 8px 10px; resize: vertical; font: inherit; font-size: 0.85rem; overflow-wrap: anywhere; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-champ, 8px); }
+.import-jeu .bouton { justify-self: start; }
+.import-jeu .aide, .import-jeu .msg-erreur { margin: 0; }

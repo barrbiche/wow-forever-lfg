@@ -261,6 +261,12 @@ Le site a un seul style, un « journal de quêtes » de WoW Classic (src/wow.css
 
 Tout ça vit dans deux fichiers: `src/textures.css` (les textures, en SVG dans le CSS, aucune image à télécharger) et `src/babillard.css` (couleurs et habillage). `src/index.css` garde la structure. Pour revenir au look sobre, retire les imports de `textures.css` et `babillard.css` dans `src/main.jsx`.
 
+## Importer son personnage depuis le jeu (addon Babillard Forever FR)
+
+Les addons de WoW n'ont pas accès à Internet: le pont entre le jeu et le site passe par le presse-papiers. Dans le jeu, `/bf perso` puis « Copier mon code » produit un texte `BFFR1;n=Nom;rg=EU;f=Horde;c=ROGUE;lv=60;g=Guilde;ro=TD;p=…`. Dans « Mon profil », la case « Remplir avec mon personnage du jeu » le lit (`src/codeJeu.js`) et remplit le formulaire; rien n'est enregistré avant que la personne clique « Enregistrer ». Le code vient du presse-papiers de n'importe qui: chaque champ est validé, et il ne prouve rien (il pré-remplit seulement). Les métiers et le niveau d'objet sont lus mais pas gardés: le site n'a pas de colonne pour eux.
+
+Le code source des addons est dans `addon/` (`addon/BabillardForeverFR`, `addon/lfgFR`). `python3 addon/tests/test_code_site.py` (lupa et node) fait générer un vrai code par l'addon et vérifie que le site le lit correctement.
+
 ## Limites de la version 1
 
 - Connexion obligatoire pour publier, par Google (activé par une variable Netlify; sans elle, par courriel) (5 annonces actives par joueur au maximum). La connexion Battle.net avec import du personnage viendra après, une fois qu'on aura confirmé que l'API de Blizzard voit les personnages de Forever.

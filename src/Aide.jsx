@@ -216,6 +216,12 @@ export default function Aide({ ouvert, fermer }) {
               pour que les autres voient que tu cherches un groupe tout de suite. Ça s'arrête tout seul.
             </li>
             <li>
+              <strong>Importer mon personnage du jeu.</strong> Avec l'addon Babillard Forever FR, tape /bf perso dans le jeu,
+              clique « Copier mon code », puis colle-le dans « Mon profil » (« Remplir avec mon personnage du jeu »). Le nom,
+              le niveau, la classe, la faction, la région, la guilde et les rôles se remplissent: tu vérifies, tu choisis ta
+              spécialisation et tu enregistres. Rien ne se met à jour tout seul.
+            </li>
+            <li>
               <strong>Groupe planifié.</strong> « Ajouter à mon calendrier » télécharge un fichier qui s'ouvre dans Google
               Agenda, Apple Calendrier, Outlook et les autres. Il contient le jour, l'heure, le nom du personnage et le
               lien de l'annonce, jamais le contact.

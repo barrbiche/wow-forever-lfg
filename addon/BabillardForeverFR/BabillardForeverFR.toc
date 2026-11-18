@@ -1,0 +1,16 @@
+## Interface: 16001
+## Title: Babillard Forever FR
+## Notes: Recherche de groupe et de guilde francophone pour WoW Forever - babillard-forever.com
+## Author: Barrbiche
+## Version: 1.0.1
+## X-Website: https://babillard-forever.com
+## IconTexture: Interface\Icons\INV_Misc_GroupNeedMore
+## SavedVariables: BabillardForeverFRDB
+## AddonCompartmentFunc: BabillardFR_OnCompartmentClick
+## AddonCompartmentFuncOnEnter: BabillardFR_OnCompartmentEnter
+## AddonCompartmentFuncOnLeave: BabillardFR_OnCompartmentLeave
+
+Data.lua
+Core.lua
+UI.lua
+Options.lua

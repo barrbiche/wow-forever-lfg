@@ -1,3 +1,5 @@
+> Ce dossier contient deux addons. **BabillardForeverFR** (`addon/BabillardForeverFR`) est celui qui parle au site: il génère le code d'import du profil (voir le README à la racine). **lfgFR** (`addon/lfgFR`, décrit plus bas) lit le chat et exporte un autre format que le site ne lit pas encore. Ne mets pas les deux dans le jeu en même temps: ils rejoignent chacun leur canal.
+
 # lfgFR — addon pour WoW Forever
 
 Addon en français pour trouver un groupe et partager son personnage. Il fait deux choses, indépendantes du site:

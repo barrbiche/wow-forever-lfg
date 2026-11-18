@@ -37,6 +37,7 @@ import {
 import { BadgeSupporter, BoutonLienSite, ChipClasse, ContextePersos, Icone, LigneCopie, Signalement, reste, vuTexte } from './commun.jsx'
 import { LangueJeu, commandeInviter, useLangueJeu } from './langue.jsx'
 import { BoutonsAmi, SectionAmis } from './Amis.jsx'
+import { lireCodeJeu } from './codeJeu.js'
 
 // ---------- Onglet « Joueurs »: les profils, qui est en ligne, la réputation ----------
 
@@ -700,6 +701,49 @@ const PROFIL_VIDE = {
 }
 
 // Ce qui est déjà connu du joueur: son profil s'il existe, sinon ce qu'il a écrit dans ses annonces.
+// Remplit le formulaire avec le code que l'addon Babillard Forever FR fait copier dans le jeu (/bf perso).
+// Rien n'est enregistré ici: la personne vérifie les champs, puis enregistre comme d'habitude.
+function ImporterDuJeu({ surImport }) {
+  const [texte, setTexte] = useState('')
+  const [message, setMessage] = useState(null)
+
+  const importer = () => {
+    const lu = lireCodeJeu(texte)
+    if (!lu.ok) {
+      setMessage({ ok: false, texte: lu.erreur })
+      return
+    }
+    setMessage({ ok: true, texte: surImport(lu) })
+    setTexte('')
+  }
+
+  return (
+    <details className="import-jeu">
+      <summary>Remplir avec mon personnage du jeu</summary>
+      <p className="aide">
+        Avec l’addon Babillard Forever FR: dans le jeu, tape <code>/bf perso</code>, clique « Copier mon code », puis colle le code ici.
+      </p>
+      <textarea
+        rows={2}
+        value={texte}
+        onChange={(e) => setTexte(e.target.value)}
+        placeholder="BFFR1;n=…"
+        aria-label="Code copié dans le jeu"
+        spellCheck={false}
+        autoComplete="off"
+      />
+      <button type="button" className="bouton petit" onClick={importer} disabled={!texte.trim()}>
+        Remplir mon profil
+      </button>
+      {message && (
+        <p className={message.ok ? 'aide' : 'msg-erreur'} role="status">
+          {message.texte}
+        </p>
+      )}
+    </details>
+  )
+}
+
 function champsInitiaux(profil, factionParDefaut, persos) {
   if (profil) {
     const { nom, nom2 } = separerNom(profil.perso)
@@ -795,6 +839,38 @@ export function ProfilJoueur({
   const basculerRole = (id) => {
     setChamps((c) => ({ ...c, roles: c.roles.includes(id) ? c.roles.filter((r) => r !== id) : [...c.roles, id] }))
     setErreurs((e) => (e.roles ? { ...e, roles: undefined } : e))
+  }
+
+  // Applique un code du jeu déjà lu et validé. Retourne le texte qui dit ce qui a été rempli.
+  const importerDuJeu = (lu) => {
+    const v = lu.valeurs
+    setChamps((c) => ({
+      ...c,
+      ...(v.perso && v.perso !== c.perso ? { perso: v.perso, perso2: '' } : {}),
+      ...(v.niveau ? { niveau: v.niveau } : {}),
+      ...(v.classe ? { classe: v.classe, specialisation: v.classe === c.classe ? c.specialisation : '' } : {}),
+      ...(v.faction ? { faction: v.faction } : {}),
+      ...(v.region ? { region: v.region } : {}),
+      ...(v.roles ? { roles: v.roles } : {}),
+      guilde: v.guilde,
+    }))
+    setErreurs({})
+    const rempli = [
+      v.perso,
+      v.niveau && `niveau ${v.niveau}`,
+      v.classe && CLASSES.find((x) => x.id === v.classe)?.nom,
+      v.faction && FACTIONS.find((x) => x.id === v.faction)?.nom,
+      v.region,
+      v.guilde ? `guilde ${v.guilde}` : 'aucune guilde',
+      v.roles && `rôles ${v.roles.map((r) => ROLES.find((x) => x.id === r)?.nom).join(', ')}`,
+    ].filter(Boolean)
+    const noms = { niveau: 'le niveau', classe: 'la classe', faction: 'la faction', region: 'la région (le site gère US et EU)' }
+    const aChoisir = lu.avertissements.map((a) => noms[a]).filter(Boolean)
+    return (
+      `Rempli: ${rempli.join(', ')}.` +
+      (aChoisir.length > 0 ? ` À choisir toi-même: ${aChoisir.join(', ')}.` : '') +
+      ' Le code ne contient pas ta spécialisation. Vérifie le tout, puis enregistre.'
+    )
   }
 
   const majExtra = (i, cle, valeur) => {
@@ -915,6 +991,8 @@ export function ProfilJoueur({
             Une fois enregistré, tu pourras publier tout de suite.
           </p>
         )}
+
+        <ImporterDuJeu surImport={importerDuJeu} />
 
         <div className="deux court trois">
           <label className="champ">
