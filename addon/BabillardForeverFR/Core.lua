@@ -22,7 +22,13 @@ local DEFAULTS = {
         sameFaction     = true,
         sameRuleset     = true,
         levelOnly       = true,
+        chatReading     = true,    -- lire les annonces du chat (« [chat] »)
+        alertChat       = false,   -- alertes aussi pour les annonces lues dans le chat
+        alsoChat        = false,   -- publier aussi dans le chat (au clic seulement)
+        autoUpdate      = true,    -- mettre à jour tout seul le nombre de joueurs et les rôles manquants
+        favsOnly        = false,   -- alertes seulement pour mes activités favorites
     },
+    favs     = {},     -- activités favorites : [cléActivité] = true
     known    = {},     -- joueurs qui ont l'addon : [Nom-Royaume] = date
     welcomed = false,
 }
@@ -140,6 +146,25 @@ function ns.RulesetOK(r)
     return r == mine
 end
 
+-- « 1.2.0 » -> 10200. Les versions viennent d'autres joueurs: seul ce format exact est accepté.
+function ns.VersionNumber(v)
+    local a, b, c = tostring(v or ""):match("^(%d+)%.(%d+)%.(%d+)$")
+    if not a or #a > 3 or #b > 3 or #c > 3 then return nil end
+    return tonumber(a) * 1000000 + tonumber(b) * 1000 + tonumber(c)
+end
+
+-- Un autre joueur a une version plus récente: on le dit une seule fois par version.
+function ns.CheckVersion(v)
+    local theirs, mine = ns.VersionNumber(v), ns.VersionNumber(ns.VERSION)
+    if not theirs or not mine or theirs <= mine or not ns.db then return end
+    if theirs > (ns.db.newestSeen or 0) then
+        ns.db.newestSeen, ns.db.newestText = theirs, v
+        ns.newVersion = v
+        ns.Print("une nouvelle version de l'addon est disponible (" .. v .. "). Tape |cffffd100/bf site|r pour le lien de téléchargement.")
+        ns.Refresh()
+    end
+end
+
 function ns.MyLevel()   return UnitLevel("player") or 0 end
 function ns.MyFaction() return UnitFactionGroup("player") or "" end
 
@@ -249,12 +274,12 @@ end
 local function ListingMessage(l)
     local age = math.max(0, math.floor(GetTime() - l.time))
     return table.concat({ "L2", l.type, l.cat, l.akey, ns.EncodeRoles(l.roles), l.class,
-        l.level, l.faction, l.size, l.groupCount, age, l.note, l.ruleset or "" }, ";")
+        l.level, l.faction, l.size, l.groupCount, age, l.note, l.ruleset or "", ns.VERSION }, ";")
 end
 
 local function GuildMessage(g)
     local age = math.max(0, math.floor(GetTime() - g.time))
-    return table.concat({ "G2", g.guild, g.focus, g.faction, g.class, g.level, age, g.note, g.ruleset or "" }, ";")
+    return table.concat({ "G2", g.guild, g.focus, g.faction, g.class, g.level, age, g.note, g.ruleset or "", ns.VERSION }, ";")
 end
 
 local function SaveMyState()
@@ -262,6 +287,7 @@ local function SaveMyState()
     local now = time()
     if ns.my then
         ns.db.myListing = { type = ns.my.type, akey = ns.my.akey, roles = CopyTable(ns.my.roles),
+            baseRoles = CopyTable(ns.my.baseRoles or ns.my.roles),
             note = ns.my.note, epoch = now - math.floor(GetTime() - ns.my.time) }
     else
         ns.db.myListing = nil
@@ -301,7 +327,7 @@ function ns.PublishListing(p)
     local _, class = UnitClass("player")
     local l = {
         sender = ns.Me(), type = p.type, cat = a.cat, akey = a.key, roles = CopyTable(p.roles),
-        class = class or "", level = ns.MyLevel(), faction = ns.MyFaction(), size = a.size,
+        baseRoles = CopyTable(p.roles), class = class or "", level = ns.MyLevel(), faction = ns.MyFaction(), size = a.size,
         groupCount = math.max(1, GetNumGroupMembers()), note = ns.Clean(p.note):sub(1, 120),
         time = GetTime(), ruleset = ns.MyRuleset() or "",
     }
@@ -324,7 +350,7 @@ end
 function ns.Republish()
     if not ns.my then return end
     lastPublish = 0
-    ns.PublishListing({ type = ns.my.type, akey = ns.my.akey, roles = ns.my.roles, note = ns.my.note })
+    ns.PublishListing({ type = ns.my.type, akey = ns.my.akey, roles = ns.my.baseRoles or ns.my.roles, note = ns.my.note })
 end
 
 function ns.WithdrawListing(reason)
@@ -411,6 +437,15 @@ function ns.Prune()
     for k, g in pairs(ns.guilds) do
         if now - g.time > ns.GUILD_EXPIRE then ns.guilds[k] = nil end
     end
+    -- Les annonces lues dans le chat sont nombreuses: on garde les plus récentes seulement.
+    local chat = {}
+    for k, l in pairs(ns.listings) do
+        if l.source == "chat" then tinsert(chat, { k, l.time }) end
+    end
+    if #chat > ns.CHAT_MAX then
+        table.sort(chat, function(x, y) return x[2] > y[2] end)
+        for i = ns.CHAT_MAX + 1, #chat do ns.listings[chat[i][1]] = nil end
+    end
     if ns.my and now - ns.my.time > ns.EXPIRE then
         ns.my = nil
         SaveMyState()
@@ -435,6 +470,8 @@ end
 function ns.CheckAlert(l)
     local o = ns.db and ns.db.opts
     if not o or not o.alerts or ns.IsMe(l.sender) then return end
+    if l.source == "chat" and not o.alertChat then return end
+    if o.favsOnly and ns.db.favs and next(ns.db.favs) and not ns.db.favs[l.akey] then return end
     if InCombatLockdown() then return end
     if IsInInstance() and not o.alertInInstance then return end
     if o.sameFaction and l.faction ~= ns.MyFaction() then return end
@@ -693,13 +730,20 @@ local function OnMessage(msg, sender)
         local roles = ns.DecodeRoles(f[5])
         if not next(roles) then return end
         local prev = ns.listings[sender]
+        -- Une annonce de l'addon remplace celle qu'on avait lue dans le chat pour le même joueur.
+        local short = ns.ShortName(sender):lower()
+        for k, old in pairs(ns.listings) do
+            if old.source == "chat" and ns.ShortName(old.sender):lower() == short then ns.listings[k] = nil end
+        end
         local l = {
             sender = sender, type = typ, cat = a.cat, akey = a.key, roles = roles,
             class = f[6] or "", level = tonumber(f[7]) or 0, faction = f[8] or "",
             size = tonumber(f[9]) or a.size, groupCount = tonumber(f[10]) or 1,
             note = f[12] or "", time = GetTime() - ClampAge(f[11], ns.EXPIRE),
             ruleset = ns.RULESETS[f[13] or ""] and f[13] or "",
+            baseRoles = roles,
         }
+        ns.CheckVersion(f[14])
         ns.listings[sender] = l
         if not prev or prev.akey ~= l.akey or prev.type ~= l.type then
             ns.CheckAlert(l)
@@ -715,6 +759,7 @@ local function OnMessage(msg, sender)
             time = GetTime() - ClampAge(f[7], ns.GUILD_EXPIRE),
             ruleset = ns.RULESETS[f[9] or ""] and f[9] or "",
         }
+        ns.CheckVersion(f[10])
 
     elseif cmd == "D2" then
         if f[2] == "L" then
@@ -728,9 +773,136 @@ local function OnMessage(msg, sender)
     elseif cmd == "Q2" then
         if sender ~= ns.Me() then ReplyToRequest() end
     end
-    -- H2 (bonjour) : rien d'autre à faire que MarkKnown
+    if cmd == "H2" then ns.CheckVersion(f[4]) end
 
     ns.Refresh()
+end
+
+---------------------------------------------------------------------------
+-- Annonces lues dans le chat (général, recherche de groupe, cris...)
+-- Elles remplissent le babillard quand peu de joueurs ont l'addon. Elles portent « source = "chat" »:
+-- une annonce venue de l'addon (plus fiable: classe, niveau, rôles) les remplace toujours.
+---------------------------------------------------------------------------
+function ns.OnChat(text, sender, channelBase)
+    local o = ns.db and ns.db.opts
+    if not o or not o.chatReading then return end
+    if issecretvalue and (issecretvalue(text) or issecretvalue(sender) or issecretvalue(channelBase)) then return end
+    if type(text) ~= "string" or type(sender) ~= "string" or sender == "" then return end
+    if ns.IsMe(sender) then return end
+    -- La défense locale ne contient pas d'annonces de groupe.
+    local base = ns.NormalizeText(tostring(channelBase or ""))
+    if base:find("defense", 1, true) or base:find("defence", 1, true) then return end
+
+    local p = ns.ParseChat(text)
+    local a = p and ns.ACT_BY_KEY[p.akey or ""]
+    if not a then return end
+
+    sender = ns.NormalizeName(sender)
+    local short = ns.ShortName(sender):lower()
+    for _, l in pairs(ns.listings) do
+        if l.source ~= "chat" and ns.ShortName(l.sender):lower() == short then return end   -- l'addon a déjà la bonne annonce
+    end
+    local note = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h(.-)|h", "%1"):gsub("|", "")
+    local prev = ns.listings[sender]
+    local l = {
+        sender = sender, type = p.type, cat = a.cat, akey = a.key, roles = p.roles, class = "",
+        level = p.level or 0, faction = ns.MyFaction(), size = a.size, groupCount = 1,
+        note = ns.Clean(note):sub(1, 100), time = GetTime(), ruleset = "", source = "chat",
+    }
+    ns.listings[sender] = l
+    if not prev or prev.akey ~= l.akey or prev.type ~= l.type then
+        ns.CheckAlert(l)
+    end
+    ns.Refresh()
+end
+
+-- Canal où publier : « Recherche de groupe » d'abord, sinon « Général ».
+local function FindChatChannel()
+    if not GetChannelList then return end
+    local list = { GetChannelList() }
+    local general
+    for i = 1, #list, 3 do
+        local id, name, disabled = list[i], list[i + 1], list[i + 2]
+        if type(id) == "number" and type(name) == "string" and not disabled then
+            local n = ns.NormalizeText(name)
+            if n:find("recherche de groupe", 1, true) or n:find("lookingforgroup", 1, true)
+               or n:find("looking for group", 1, true) then
+                return id
+            end
+            if not general and n:find(" general ", 1, true) then general = id end
+        end
+    end
+    return general
+end
+
+local lastChatPost = -1000
+
+-- Publie mon annonce aussi dans le chat. Appelé seulement par un clic du joueur, jamais en arrière-plan.
+function ns.PostToChat(l)
+    l = l or ns.my
+    if not l then return false end
+    local wait = ns.CHAT_POST_GAP - (GetTime() - lastChatPost)
+    if wait > 0 then
+        ns.Print("annonce non publiée dans le chat (attends encore " .. math.ceil(wait) .. " s pour ne pas faire de spam).")
+        return false
+    end
+    local id = FindChatChannel()
+    if not id then
+        ns.Print("aucun canal « Recherche de groupe » ou « Général » trouvé: ton annonce n'est pas dans le chat.")
+        return false
+    end
+    local send = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
+    local ok = pcall(send, ns.ChatText(l), "CHANNEL", nil, id)
+    if not ok then
+        ns.Print("le jeu a refusé d'envoyer l'annonce dans le chat.")
+        return false
+    end
+    lastChatPost = GetTime()
+    return true
+end
+
+---------------------------------------------------------------------------
+-- Mise à jour automatique de mon groupe (nombre de joueurs, rôles qui manquent)
+---------------------------------------------------------------------------
+-- Tank et soigneur sont des places uniques: si quelqu'un du groupe a ce rôle d'assigné, on ne le cherche plus.
+-- Le jeu ne donne le rôle que si les joueurs l'ont choisi: sans rôle assigné, on garde ce que tu as demandé.
+local function MissingRoles(base)
+    local wanted = CopyTable(base)
+    if not IsInRaid() and UnitGroupRolesAssigned then
+        local units = { "player", "party1", "party2", "party3", "party4" }
+        for _, unit in ipairs(units) do
+            if UnitExists(unit) then
+                local role = UnitGroupRolesAssigned(unit)
+                if role == "TANK" then wanted.TANK = nil
+                elseif role == "HEALER" then wanted.HEAL = nil end
+            end
+        end
+    end
+    if not next(wanted) then return CopyTable(base) end
+    return wanted
+end
+
+local resendPending, lastResend = false, -1000
+
+function ns.AutoUpdateGroup()
+    local o = ns.db and ns.db.opts
+    if not ns.my or not o or not o.autoUpdate or ns.my.type ~= "LFM" then return end
+    local count = math.max(1, GetNumGroupMembers())
+    local roles = MissingRoles(ns.my.baseRoles or ns.my.roles)
+    if count == ns.my.groupCount and ns.EncodeRoles(roles) == ns.EncodeRoles(ns.my.roles) then return end
+    ns.my.groupCount, ns.my.roles = count, roles
+    SaveMyState()
+    ns.Refresh()
+    if resendPending then return end
+    resendPending = true
+    -- On attend un peu: plusieurs joueurs peuvent arriver d'un coup, et le canal limite les messages.
+    C_Timer.After(math.max(3, 10 - (GetTime() - lastResend)), function()
+        resendPending = false
+        if ns.my then
+            lastResend = GetTime()
+            ns.Send(ListingMessage(ns.my))
+        end
+    end)
 end
 
 ---------------------------------------------------------------------------
@@ -746,6 +918,7 @@ local function RestoreMyState()
         local _, class = UnitClass("player")
         ns.my = {
             sender = ns.Me(), type = saved.type, cat = a.cat, akey = a.key, roles = saved.roles or {},
+            baseRoles = saved.baseRoles or saved.roles or {},
             class = class or "", level = ns.MyLevel(), faction = ns.MyFaction(), size = a.size,
             groupCount = math.max(1, GetNumGroupMembers()), note = saved.note or "",
             time = GetTime() - (now - saved.epoch), ruleset = ns.MyRuleset() or "",
@@ -784,6 +957,9 @@ ev:RegisterEvent("CHAT_MSG_ADDON")
 ev:RegisterEvent("GROUP_ROSTER_UPDATE")
 ev:RegisterEvent("PLAYER_LEVEL_UP")
 ev:RegisterEvent("PLAYER_GUILD_UPDATE")
+ev:RegisterEvent("CHAT_MSG_CHANNEL")
+ev:RegisterEvent("CHAT_MSG_YELL")
+pcall(ev.RegisterEvent, ev, "PLAYER_ROLES_ASSIGNED")   -- n'existe pas dans toutes les versions du jeu
 
 ev:SetScript("OnEvent", function(_, event, ...)
     if event == "ADDON_LOADED" then
@@ -796,12 +972,15 @@ ev:SetScript("OnEvent", function(_, event, ...)
 
     elseif event == "PLAYER_LOGIN" then
         RestoreMyState()
+        -- Une version plus récente vue lors d'une session passée reste affichée tant qu'on ne met pas à jour.
+        local newest, mine = ns.VersionNumber(ns.db.newestText), ns.VersionNumber(ns.VERSION)
+        if newest and mine and newest > mine then ns.newVersion = ns.db.newestText else ns.db.newestSeen, ns.db.newestText = nil, nil end
         -- Les canaux ne sont pas prêts tout de suite à la connexion
         C_Timer.After(5, function()
             ns.EnsureChannel()
             C_Timer.After(3, function()
                 local _, class = UnitClass("player")
-                ns.Send("H2;" .. ns.MyLevel() .. ";" .. (class or ""))
+                ns.Send("H2;" .. ns.MyLevel() .. ";" .. (class or "") .. ";" .. ns.VERSION)
                 ns.RequestAll()
             end)
         end)
@@ -830,8 +1009,17 @@ ev:SetScript("OnEvent", function(_, event, ...)
             OnMessage(msg, sender)
         end
 
-    elseif event == "GROUP_ROSTER_UPDATE" then
+    elseif event == "CHAT_MSG_CHANNEL" then
+        local text, sender, _, _, _, _, _, _, channelBase = ...
+        ns.OnChat(text, sender, channelBase)
+
+    elseif event == "CHAT_MSG_YELL" then
+        local text, sender = ...
+        ns.OnChat(text, sender, "")
+
+    elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" then
         CheckAutoRemove()
+        ns.AutoUpdateGroup()
         ns.Refresh()
 
     elseif event == "PLAYER_LEVEL_UP" then
@@ -855,6 +1043,8 @@ SlashCmdList.BABILLARDFR = function(arg)
         ns.ShowSiteLink()
     elseif arg == "options" then
         if ns.OpenOptions then ns.OpenOptions() end
+    elseif arg == "favoris" then
+        ns.OpenFavMenu()
     elseif arg == "guildes" then
         if ns.UI then ns.UI.Open(2) end
     elseif arg == "perso" or arg == "code" then
@@ -865,6 +1055,7 @@ SlashCmdList.BABILLARDFR = function(arg)
         print("  |cffffd100/bf guildes|r : guildes francophones")
         print("  |cffffd100/bf perso|r : mon personnage et code pour le site")
         print("  |cffffd100/bf site|r : lien du site")
+        print("  |cffffd100/bf favoris|r : choisir les activités qui déclenchent une alerte")
         print("  |cffffd100/bf options|r : options")
     else
         if ns.UI then ns.UI.Toggle() end

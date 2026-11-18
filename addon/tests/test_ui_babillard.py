@@ -58,6 +58,7 @@ CreateFrame = function() return nouveau() end
 UIParent, Minimap, GameTooltip = nouveau(), nouveau(), nouveau()
 GameTooltip_Hide = function() end
 StaticPopupDialogs, SlashCmdList, UISpecialFrames = {}, {}, {}
+StaticPopup_Show, StaticPopup_Hide = function() end, function() end
 C_Timer = { After = function() end, NewTicker = function() end }
 C_ChatInfo = { RegisterAddonMessagePrefix = function() end, SendAddonMessage = function() return 0 end }
 strtrim = function(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end
@@ -95,8 +96,9 @@ local imprimes = {}
 print = function(...) imprimes[#imprimes + 1] = table.concat({ ... }, " ") end
 
 local ns = {}
-for _, f in ipairs({ "Data.lua", "Core.lua", "UI.lua", "Options.lua" }) do
+for _, f in ipairs({ "Data.lua", "Chat.lua", "Core.lua", "UI.lua", "Options.lua" }) do
   local chunk, e = loadfile(ADDON_DIR .. "/" .. f)
+  if not chunk and f == "Chat.lua" then chunk = function() end end   -- absent des anciennes versions
   if not chunk then error(e) end
   local ok, e2 = pcall(chunk, "BabillardForeverFR", ns)
   if not ok then erreur("chargement de " .. f .. ": " .. tostring(e2)) end
@@ -159,6 +161,65 @@ if not bouton then erreur("le bouton « Choisis ton type de serveur » est intro
   if ns.db.ruleset ~= "rp_pvp" then erreur("4 clics: « rp_pvp » attendu") end
   bouton._scripts.OnClick(bouton)
   if ns.db.ruleset ~= "normal" then erreur("le cycle devrait revenir à « normal »") end
+end
+
+-- Annonce lue dans le chat: affichée avec [chat], niveau « - », et les boutons ne plantent pas
+if ns.OnChat then
+  ns.db.ruleset = "normal"
+  cadre(nil, "CHAT_MSG_CHANNEL", "LFM RFC tank heal", "Zoe-ForeverRealm", "", "2. Recherche de groupe", "", "", 0, 2, "LookingForGroup")
+  cadre(nil, "CHAT_MSG_CHANNEL", "LFM wc tank", "Yan-ForeverRealm", "", "2. Recherche de groupe", "", "", 0, 2, "LookingForGroup")
+  ok, e = pcall(ns.UI.Open, 1)
+  if not ok then erreur("UI.Open(1) avec annonce du chat: " .. tostring(e)) end
+  local vuChat, vuTexte = false, false
+  for _, o in ipairs(objets) do
+    if o.data and o.data.source == "chat" and o.IsShown(o) then vuChat = true end
+    if o._texte and o._texte:find("%[chat%]") then vuTexte = true end
+  end
+  if not vuChat then erreur("l'annonce du chat n'est dans aucune ligne visible") end
+  if not vuTexte then erreur("la mention [chat] n'est pas affichée") end
+  ns.db.opts.chatReading = false
+  ok, e = pcall(ns.UI.Refresh)
+  if not ok then erreur("Refresh chat coupé: " .. tostring(e)) end
+  for _, o in ipairs(objets) do
+    if o.data and o.data.source == "chat" and o.IsShown(o) then erreur("annonce du chat visible alors que la lecture est coupée") end
+  end
+  ns.db.opts.chatReading = true
+  -- Menu des activités favorites (faux menu du jeu qui garde les cases à cocher)
+do
+  local cases = {}
+  local function faux() local m = {}
+    m.CreateTitle = function() end
+    m.CreateButton = function(self, texte, f) if f then f() end return faux() end
+    m.CreateCheckbox = function(self, texte, estCoche, change) cases[#cases + 1] = { texte = texte, estCoche = estCoche, change = change } end
+    return m end
+  MenuUtil = { CreateContextMenu = function(_, generateur) generateur(nil, faux()) end }
+  wipe = function(t) for k in pairs(t) do t[k] = nil end end
+  local ok3, e3 = pcall(ns.OpenFavMenu)
+  if not ok3 then erreur("menu des favoris: " .. tostring(e3)) end
+  if #cases < 30 then erreur("le menu des favoris devrait lister toutes les activités, il en a " .. #cases) end
+  local wc
+  for _, c in ipairs(cases) do if c.texte == "Cavernes des Lamentations" then wc = c end end
+  if not wc then erreur("Cavernes des Lamentations absente du menu") else
+    if wc.estCoche() then erreur("case cochée au départ") end
+    wc.change()
+    if not (wc.estCoche() and ns.db.favs.WC) then erreur("la case WC devrait être cochée") end
+    wc.change()
+    if wc.estCoche() or ns.db.favs.WC then erreur("la case WC devrait se décocher") end
+  end
+  MenuUtil = nil
+  ok3, e3 = pcall(ns.OpenFavMenu)
+  if not ok3 then erreur("menu des favoris sans MenuUtil: " .. tostring(e3)) end
+end
+
+-- Toutes les cases et tous les boutons de la fenêtre et des options
+  for _, o in ipairs(objets) do
+    local clic = o._scripts.OnClick
+    if clic then
+      local ok2, e2 = pcall(clic, o, "LeftButton")
+      -- Les boutons des lignes vides n'existent pas à l'écran: un clic sans données n'est pas une erreur.
+      if not ok2 and not tostring(e2):find("local 'd'", 1, true) then erreur("clic: " .. tostring(e2)) end
+    end
+  end
 end
 
 return table.concat(erreurs, "\n") .. "\n@@" .. visibles_normal .. "@@" .. visibles_pvp .. "@@" .. visibles_tous

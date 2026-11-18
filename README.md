@@ -265,6 +265,16 @@ Tout ça vit dans deux fichiers: `src/textures.css` (les textures, en SVG dans l
 
 Les addons de WoW n'ont pas accès à Internet: le pont entre le jeu et le site passe par le presse-papiers. Dans le jeu, `/bf perso` puis « Copier mon code » produit un texte `BFFR1;n=Nom;rg=EU;f=Horde;c=ROGUE;lv=60;g=Guilde;ro=TD;rs=pvp;p=…`. Dans « Mon profil », la case « Remplir avec mon personnage du jeu » le lit (`src/codeJeu.js`) et remplit le formulaire; rien n'est enregistré avant que la personne clique « Enregistrer ». Le type de serveur (`rs=`: normal, pvp, rp, rp_pvp) est choisi par le joueur dans l'addon, qui ne peut pas le lire seul; dans le jeu, l'addon cache les annonces d'un autre type, comme le site. Le code vient du presse-papiers de n'importe qui: chaque champ est validé, et il ne prouve rien (il pré-remplit seulement). Les métiers et le niveau d'objet sont lus mais pas gardés: le site n'a pas de colonne pour eux.
 
+### Addon 1.2.0: ce qui s'ajoute
+
+- **Chat → babillard**: les annonces « LFM / LFG » du chat (général, recherche de groupe, cris; français et anglais) apparaissent avec la mention `[chat]`. Elles sont seulement lues. Une annonce venue de l'addon (classe, niveau, rôles exacts) remplace toujours celle lue dans le chat pour le même joueur. Options: lecture du chat (activée), alertes pour le chat (désactivée).
+- **Publier aussi dans le chat**: case « Aussi dans le chat » à côté de Publier. L'annonce part dans « Recherche de groupe » (sinon « Général ») avec la mention `[Babillard FR]`, **seulement au clic**, une fois par minute au maximum.
+- **Nouvelle version**: la version de l'addon voyage dans les messages (champ en plus, les anciennes versions l'ignorent). Quand quelqu'un a une version plus récente, un message le dit une fois, et le pied de fenêtre l'affiche.
+- **Activités favorites**: `/bf favoris` (ou Options) choisit les activités qui déclenchent une alerte; si aucune n'est choisie, toutes alertent.
+- **Groupe à jour tout seul**: le nombre de joueurs se met à jour, et le rôle tank ou soigneur n'est plus cherché quand quelqu'un du groupe l'a d'assigné (le jeu ne donne le rôle que si les joueurs l'ont choisi). Un seul renvoi toutes les 10 secondes au plus.
+
+Tests: `python3 addon/tests/test_v12_addon.py`.
+
 Le code source des addons est dans `addon/` (`addon/BabillardForeverFR`, `addon/lfgFR`). `python3 addon/tests/test_code_site.py` (lupa et node) fait générer un vrai code par l'addon et vérifie que le site le lit correctement.
 
 ## Limites de la version 1

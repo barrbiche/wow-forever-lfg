@@ -421,6 +421,15 @@ G.roles = MakeRoleIcons(my, 332, -66, 28, MyRolesSet)
 
 G.note = MakeInput(my, "Note (optionnel) : ex. QC, vocal Discord, débutants bienvenus", 410, 60, 18, -110)
 
+G.alsoChat = MakeCheck(my, "Aussi dans le chat")
+G.alsoChat:SetPoint("TOPLEFT", 316, -8)
+G.alsoChat:SetScript("OnClick", function(self)
+    ns.db.opts.alsoChat = self:GetChecked() and true or false
+    ns.PlayClick()
+end)
+Tooltip(G.alsoChat, "Aussi dans le chat",
+    "Au clic sur Publier, l'annonce est aussi envoyée dans « Recherche de groupe » (ou « Général »). Une fois par minute au maximum.")
+
 G.pub = MakeButton(my, "Publier", 120, 30)
 G.pub:SetPoint("TOPRIGHT", -10, -10)
 G.del = MakeButton(my, "Retirer", 120, 22)
@@ -438,9 +447,10 @@ G.pub:SetScript("OnClick", function()
     if state.mode == "LFM" and IsInGroup() and not UnitIsGroupLeader("player") then
         ns.Print("c'est mieux que le chef du groupe publie l'annonce.")
     end
-    ns.PublishListing({
+    local published = ns.PublishListing({
         type = state.mode, akey = state.akey, roles = MyRolesSet(), note = G.note:GetText(),
     })
+    if published and ns.db.opts.alsoChat then ns.PostToChat(ns.my) end
 end)
 G.del:SetScript("OnClick", function()
     ns.PlayClick()
@@ -483,16 +493,21 @@ local function GroupTooltip(d)
     local a = ns.ACT_BY_KEY[d.akey]
     local t = ns.TYPES[d.type]
     GameTooltip:AddLine("|c" .. ns.ClassHex(d.class) .. ns.ShortName(d.sender) .. "|r" .. FactionTag(d.faction))
-    GameTooltip:AddLine("Niveau " .. d.level .. "  ·  " .. d.faction, 0.8, 0.8, 0.8)
+    if d.source == "chat" then
+        GameTooltip:AddLine("Lu dans le chat" .. (d.level > 0 and (" · niveau " .. d.level) or "") .. "  ·  " .. d.faction, 0.8, 0.8, 0.8)
+    else
+        GameTooltip:AddLine("Niveau " .. d.level .. "  ·  " .. d.faction, 0.8, 0.8, 0.8)
+    end
     if ns.RulesetName(d.ruleset) then GameTooltip:AddLine("Serveur : " .. ns.RulesetName(d.ruleset), 0.8, 0.8, 0.8) end
     GameTooltip:AddLine(" ")
     GameTooltip:AddLine("|c" .. t.color .. t.name .. "|r")
     GameTooltip:AddLine("|c" .. (ns.CAT_COLORS[d.cat] or "ffffffff") .. d.cat .. "|r : " .. a.name, 1, 1, 1, true)
     GameTooltip:AddLine("Niveaux " .. a.min .. " à " .. a.max, 0.6, 0.8, 1)
+    local hasRoles = next(d.roles) ~= nil
     if d.type == "LFM" then
-        GameTooltip:AddLine("Recherche : " .. ns.RolesText(d.roles), 1, 0.82, 0)
-        GameTooltip:AddLine("Groupe : " .. d.groupCount .. "/" .. d.size, 0.8, 0.8, 0.8)
-    else
+        if hasRoles then GameTooltip:AddLine("Recherche : " .. ns.RolesText(d.roles), 1, 0.82, 0) end
+        if d.source ~= "chat" then GameTooltip:AddLine("Groupe : " .. d.groupCount .. "/" .. d.size, 0.8, 0.8, 0.8) end
+    elseif hasRoles then
         GameTooltip:AddLine("Peut jouer : " .. ns.RolesText(d.roles), 1, 0.82, 0)
     end
     if d.note ~= "" then GameTooltip:AddLine(d.note, 0.7, 0.7, 0.7, true) end
@@ -556,6 +571,7 @@ function UI.UpdateMyPanel(rebuild)
     G.cat.Update()
     G.roles.Update()
     G.rolesLabel:SetText(state.mode == "LFG" and "Mes rôles" or "Rôles recherchés")
+    G.alsoChat:SetChecked(ns.db.opts.alsoChat)
     if rebuild ~= false then G.picker:Rebuild() end
     if ns.my then
         local left = math.max(0, math.ceil((ns.EXPIRE - (GetTime() - ns.my.time)) / 60))
@@ -577,7 +593,7 @@ local function RestoreFormFromListing()
         state.mode = ns.my.type
         state.cat = ns.my.cat
         state.akey = ns.my.akey
-        if ns.my.type == "LFM" then state.lfmRoles = CopyTable(ns.my.roles) end
+        if ns.my.type == "LFM" then state.lfmRoles = CopyTable(ns.my.baseRoles or ns.my.roles) end
         G.note:SetText(ns.my.note or "")
         G.note:UpdatePh()
     end
@@ -599,6 +615,7 @@ local function RefreshGroups()
     for _, l in pairs(latest) do
         local a = ns.ACT_BY_KEY[l.akey]
         local show = a ~= nil
+        if show and l.source == "chat" and not o.chatReading then show = false end
         if show and o.levelOnly and not ns.ActivityFits(a, myLevel) then show = false end
         if show and o.sameFaction and l.faction ~= myFaction then show = false end
         if show and not ns.RulesetOK(l.ruleset) then show = false end
@@ -645,14 +662,18 @@ local function RefreshGroups()
             local nameText = "|c" .. ns.ClassHex(d.class) .. ns.ShortName(d.sender) .. "|r" .. FactionTag(d.faction)
             if ns.IsMe(d.sender) then nameText = nameText .. " |cff888888(toi)|r" end
             row.name:SetText(nameText)
-            row.level:SetText(d.level)
+            row.level:SetText(d.level > 0 and d.level or "-")
             local txt = ""
             if state.filterCat == "Tous" then
                 txt = "|c" .. (ns.CAT_COLORS[d.cat] or "ffffffff") .. d.cat .. "|r  "
             end
             txt = txt .. a.name
-            if d.type == "LFM" then txt = txt .. " |cffaaaaaa(" .. d.groupCount .. "/" .. d.size .. ")|r" end
-            if d.note ~= "" then txt = txt .. "  |cff888888" .. d.note .. "|r" end
+            if d.source == "chat" then
+                txt = txt .. "  |cff33aaff[chat]|r"
+            else
+                if d.type == "LFM" then txt = txt .. " |cffaaaaaa(" .. d.groupCount .. "/" .. d.size .. ")|r" end
+                if d.note ~= "" then txt = txt .. "  |cff888888" .. d.note .. "|r" end
+            end
             row.activity:SetText(txt)
             row.age:SetText(ns.Ago(d.time))
             row:Show()
@@ -927,13 +948,16 @@ end
 function UI.Refresh()
     if not f:IsShown() or not ns.db then return end
     ns.Prune()
+    local status
     if ns.ChannelIndex() then
-        channelStatus:SetText("|cff33dd55●|r Connecté")
+        status = "|cff33dd55●|r Connecté"
     elseif ns.channelFailed then
-        channelStatus:SetText("|cffff5555●|r Canal indisponible")
+        status = "|cffff5555●|r Canal indisponible"
     else
-        channelStatus:SetText("|cffffd100●|r Connexion...")
+        status = "|cffffd100●|r Connexion..."
     end
+    if ns.newVersion then status = status .. "  |cffff8800v" .. ns.newVersion .. " disponible|r" end
+    channelStatus:SetText(status)
     if state.view == 1 then
         RefreshGroups()
     elseif state.view == 2 then

@@ -1,7 +1,7 @@
 -- Babillard Forever FR - Données (activités, rôles, constantes)
 local ADDON, ns = ...
 
-ns.VERSION       = "1.1.0"
+ns.VERSION       = "1.2.0"
 ns.PREFIX        = "BabillardFR"          -- préfixe des messages d'addon
 ns.CHANNEL       = "BabillardFR"          -- canal caché partagé
 ns.SITE_URL      = "https://babillard-forever.com"
@@ -10,6 +10,8 @@ ns.ICON          = "Interface\\Icons\\INV_Misc_GroupNeedMore"
 ns.EXPIRE        = 15 * 60                -- durée d'une annonce de groupe
 ns.GUILD_EXPIRE  = 60 * 60                -- durée d'une annonce de guilde
 ns.REMIND_BEFORE = 2 * 60                 -- rappel avant expiration
+ns.CHAT_MAX      = 120                    -- annonces lues dans le chat qu'on garde en mémoire
+ns.CHAT_POST_GAP = 60                     -- secondes minimum entre deux publications dans le chat
 
 ns.CATEGORIES = { "Donjons", "Raids", "PvP", "Autre" }
 ns.CAT_COLORS = { Donjons = "ffffd100", Raids = "ffff8000", PvP = "ffc41e3a", Autre = "ffaaaaaa" }

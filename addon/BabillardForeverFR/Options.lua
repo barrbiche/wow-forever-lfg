@@ -22,10 +22,21 @@ local OPTIONS = {
       "Message à l'écran quand un groupe cherche ton rôle pour une activité à ton niveau, ou quand quelqu'un cherche un groupe pour ce que ton groupe fait." },
     { "alertSound",      "Jouer un son avec les alertes" },
     { "alertInInstance", "Alertes même dans un donjon, un raid ou un champ de bataille" },
+    { "favsOnly",        "Alertes seulement pour mes activités favorites",
+      "Choisis-les avec le bouton « Activités favorites » plus bas, ou avec /bf favoris. Si tu n'en as choisi aucune, toutes les activités déclenchent une alerte." },
+    { "alertChat",       "Alertes aussi pour les annonces lues dans le chat",
+      "Par défaut, seules les annonces des joueurs qui ont l'addon déclenchent une alerte: le chat contient beaucoup d'annonces." },
+    { "header", "Chat" },
+    { "chatReading",     "Lire les annonces du chat et les ajouter au babillard",
+      "Les annonces « LFM / LFG » du chat (général, recherche de groupe, cris) apparaissent avec la mention [chat]. Elles sont lues à l'écran seulement: rien n'est envoyé." },
+    { "alsoChat",        "Publier aussi mon annonce dans le chat",
+      "Quand tu cliques sur Publier, l'annonce est aussi envoyée dans « Recherche de groupe » (ou « Général »). Une fois par minute au maximum, seulement quand tu cliques." },
     { "header", "Mon annonce" },
     { "autoRemove",      "Retirer mon annonce automatiquement",
       "Quand tu rejoins un groupe, quand ton groupe est complet ou quand tu entres dans une instance." },
     { "remind",          "Me rappeler 2 minutes avant que mon annonce expire" },
+    { "autoUpdate",      "Mettre à jour mon annonce quand des joueurs rejoignent mon groupe",
+      "Met à jour le nombre de joueurs et retire le rôle tank ou soigneur quand quelqu'un du groupe l'a d'assigné." },
     { "header", "Affichage" },
     { "sameFaction",     "Montrer seulement ma faction" },
     { "sameRuleset",     "Montrer seulement mon type de serveur (PvE, PvP, RP)",
@@ -77,9 +88,36 @@ for _, opt in ipairs(OPTIONS) do
     end
 end
 
+-- Activités favorites (menu à cases à cocher)
+function ns.OpenFavMenu(owner)
+    if not ns.db then return end
+    if not (MenuUtil and MenuUtil.CreateContextMenu) then
+        ns.Print("le menu des favoris n'est pas disponible dans cette version du jeu.")
+        return
+    end
+    MenuUtil.CreateContextMenu(owner or UIParent, function(_, root)
+        root:CreateTitle("Alertes : activités favorites")
+        for _, cat in ipairs(ns.CATEGORIES) do
+            local sub = root:CreateButton(cat)
+            for _, a in ipairs(ns.ACTIVITIES[cat]) do
+                sub:CreateCheckbox(a.name,
+                    function() return ns.db.favs[a.key] and true or false end,
+                    function() ns.db.favs[a.key] = (not ns.db.favs[a.key]) or nil end)
+            end
+        end
+        root:CreateButton("Tout décocher", function() wipe(ns.db.favs) end)
+    end)
+end
+
+local favBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+favBtn:SetSize(200, 24)
+favBtn:SetPoint("TOPLEFT", 20, y - 16)
+favBtn:SetText("Activités favorites")
+favBtn:SetScript("OnClick", function(self) ns.OpenFavMenu(self) end)
+
 local siteBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
 siteBtn:SetSize(200, 24)
-siteBtn:SetPoint("TOPLEFT", 20, y - 16)
+siteBtn:SetPoint("TOPLEFT", 230, y - 16)
 siteBtn:SetText("Lien du site")
 siteBtn:SetScript("OnClick", function() ns.ShowSiteLink() end)
 
