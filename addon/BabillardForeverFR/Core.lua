@@ -20,6 +20,7 @@ local DEFAULTS = {
         remind          = true,
         tooltipFlag     = true,
         sameFaction     = true,
+        sameRuleset     = true,
         levelOnly       = true,
     },
     known    = {},     -- joueurs qui ont l'addon : [Nom-Royaume] = date
@@ -109,6 +110,34 @@ end
 
 function ns.ShortName(name)
     return Ambiguate(name or "?", "none")
+end
+
+-- Est-ce moi? Le jeu écrit parfois le royaume autrement dans les messages reçus (« Nom-Royaume »):
+-- on compare seulement le nom, sinon sa propre annonce revenait en double.
+function ns.IsMe(name)
+    if not name then return false end
+    local short = strsplit("-", name)
+    return short == UnitName("player")
+end
+
+-- Type de serveur choisi par le joueur (nil tant qu'il ne l'a pas choisi).
+function ns.MyRuleset()
+    local r = ns.db and ns.db.ruleset
+    if r and ns.RULESETS[r] then return r end
+end
+
+function ns.RulesetName(id)
+    return ns.RULESETS[id or ""]
+end
+
+-- Les annonces d'un autre type de serveur (ex. PvP quand je suis PvE) sont cachées: on ne peut pas grouper ensemble.
+-- Si l'un des deux ne connaît pas son type (ancienne version de l'addon, choix pas fait), on montre quand même.
+function ns.RulesetOK(r)
+    local o = ns.db and ns.db.opts
+    if not o or not o.sameRuleset then return true end
+    local mine = ns.MyRuleset()
+    if not mine or not r or r == "" then return true end
+    return r == mine
 end
 
 function ns.MyLevel()   return UnitLevel("player") or 0 end
@@ -220,12 +249,12 @@ end
 local function ListingMessage(l)
     local age = math.max(0, math.floor(GetTime() - l.time))
     return table.concat({ "L2", l.type, l.cat, l.akey, ns.EncodeRoles(l.roles), l.class,
-        l.level, l.faction, l.size, l.groupCount, age, l.note }, ";")
+        l.level, l.faction, l.size, l.groupCount, age, l.note, l.ruleset or "" }, ";")
 end
 
 local function GuildMessage(g)
     local age = math.max(0, math.floor(GetTime() - g.time))
-    return table.concat({ "G2", g.guild, g.focus, g.faction, g.class, g.level, age, g.note }, ";")
+    return table.concat({ "G2", g.guild, g.focus, g.faction, g.class, g.level, age, g.note, g.ruleset or "" }, ";")
 end
 
 local function SaveMyState()
@@ -274,8 +303,11 @@ function ns.PublishListing(p)
         sender = ns.Me(), type = p.type, cat = a.cat, akey = a.key, roles = CopyTable(p.roles),
         class = class or "", level = ns.MyLevel(), faction = ns.MyFaction(), size = a.size,
         groupCount = math.max(1, GetNumGroupMembers()), note = ns.Clean(p.note):sub(1, 120),
-        time = GetTime(),
+        time = GetTime(), ruleset = ns.MyRuleset() or "",
     }
+    if l.ruleset == "" then
+        ns.Print("tu n'as pas choisi ton type de serveur (onglet Mon perso): les autres ne pourront pas filtrer ton annonce.")
+    end
     if not ns.Send(ListingMessage(l)) then
         ns.Print("connexion au canal en cours, réessaie dans quelques secondes.")
         return false
@@ -322,6 +354,7 @@ function ns.PublishGuild(focus, note)
     local g = {
         sender = ns.Me(), guild = ns.Clean(guild), focus = focus, faction = ns.MyFaction(),
         class = class or "", level = ns.MyLevel(), note = ns.Clean(note):sub(1, 120), time = GetTime(),
+        ruleset = ns.MyRuleset() or "",
     }
     if not ns.Send(GuildMessage(g)) then
         ns.Print("connexion au canal en cours, réessaie dans quelques secondes.")
@@ -401,10 +434,11 @@ end
 
 function ns.CheckAlert(l)
     local o = ns.db and ns.db.opts
-    if not o or not o.alerts or l.sender == ns.Me() then return end
+    if not o or not o.alerts or ns.IsMe(l.sender) then return end
     if InCombatLockdown() then return end
     if IsInInstance() and not o.alertInInstance then return end
     if o.sameFaction and l.faction ~= ns.MyFaction() then return end
+    if not ns.RulesetOK(l.ruleset) then return end
     if GetTime() - lastAlert < 15 then return end
 
     local a = ns.ACT_BY_KEY[l.akey]
@@ -594,6 +628,7 @@ function ns.BuildExportCode()
         "g=" .. F(c.guild),
         "il=" .. (c.ilvl or ""),
         "ro=" .. ns.EncodeRoles(ns.db.myRoles),
+        "rs=" .. F(ns.MyRuleset() or ""),
         "p=" .. table.concat(profs, ","),
         "t=" .. time(),
     }
@@ -644,6 +679,8 @@ local function OnMessage(msg, sender)
     if issecretvalue and (issecretvalue(msg) or issecretvalue(sender)) then return end
     sender = ns.NormalizeName(sender)
     if not sender then return end
+    -- Mes propres messages reviennent par le canal: mon annonce est déjà dans la liste, on les ignore.
+    if ns.IsMe(sender) then return end
     msg = msg:gsub("|", "")
     local f = { strsplit(";", msg) }
     local cmd = f[1]
@@ -661,6 +698,7 @@ local function OnMessage(msg, sender)
             class = f[6] or "", level = tonumber(f[7]) or 0, faction = f[8] or "",
             size = tonumber(f[9]) or a.size, groupCount = tonumber(f[10]) or 1,
             note = f[12] or "", time = GetTime() - ClampAge(f[11], ns.EXPIRE),
+            ruleset = ns.RULESETS[f[13] or ""] and f[13] or "",
         }
         ns.listings[sender] = l
         if not prev or prev.akey ~= l.akey or prev.type ~= l.type then
@@ -675,6 +713,7 @@ local function OnMessage(msg, sender)
             sender = sender, guild = guild, focus = focus, faction = faction,
             class = f[5] or "", level = tonumber(f[6]) or 0, note = f[8] or "",
             time = GetTime() - ClampAge(f[7], ns.GUILD_EXPIRE),
+            ruleset = ns.RULESETS[f[9] or ""] and f[9] or "",
         }
 
     elseif cmd == "D2" then
@@ -709,7 +748,7 @@ local function RestoreMyState()
             sender = ns.Me(), type = saved.type, cat = a.cat, akey = a.key, roles = saved.roles or {},
             class = class or "", level = ns.MyLevel(), faction = ns.MyFaction(), size = a.size,
             groupCount = math.max(1, GetNumGroupMembers()), note = saved.note or "",
-            time = GetTime() - (now - saved.epoch),
+            time = GetTime() - (now - saved.epoch), ruleset = ns.MyRuleset() or "",
         }
         ns.listings[ns.my.sender] = ns.my
     else
@@ -722,7 +761,7 @@ local function RestoreMyState()
         ns.myGuild = {
             sender = ns.Me(), guild = ns.Clean(guild), focus = sg.focus, faction = ns.MyFaction(),
             class = class or "", level = ns.MyLevel(), note = sg.note or "",
-            time = GetTime() - (now - sg.epoch),
+            time = GetTime() - (now - sg.epoch), ruleset = ns.MyRuleset() or "",
         }
         ns.guilds[ns.myGuild.guild .. "-" .. ns.myGuild.faction] = ns.myGuild
     else

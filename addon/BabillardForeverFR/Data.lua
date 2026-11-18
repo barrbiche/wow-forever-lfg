@@ -1,7 +1,7 @@
 -- Babillard Forever FR - Données (activités, rôles, constantes)
 local ADDON, ns = ...
 
-ns.VERSION       = "1.0.1"
+ns.VERSION       = "1.1.0"
 ns.PREFIX        = "BabillardFR"          -- préfixe des messages d'addon
 ns.CHANNEL       = "BabillardFR"          -- canal caché partagé
 ns.SITE_URL      = "https://babillard-forever.com"
@@ -27,6 +27,15 @@ ns.ROLE_BY_LETTER = { T = "TANK", H = "HEAL", D = "DPS" }
 ns.TYPES = {
     LFG = { name = "Cherche un groupe",   short = "Cherche groupe", color = "ff66ccff" },
     LFM = { name = "Groupe cherche",      short = "Groupe cherche", color = "ffffd100" },
+}
+
+-- Types de serveur (mêmes identifiants que le site): on ne groupe qu'avec le même type.
+ns.RULESET_ORDER = { "normal", "pvp", "rp", "rp_pvp" }
+ns.RULESETS = {
+    normal = "Normal (PvE)",
+    pvp    = "PvP",
+    rp     = "Jeu de rôle (RP)",
+    rp_pvp = "Jeu de rôle PvP (RP-PvP)",
 }
 
 -- Orientation des guildes

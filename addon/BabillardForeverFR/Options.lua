@@ -28,6 +28,8 @@ local OPTIONS = {
     { "remind",          "Me rappeler 2 minutes avant que mon annonce expire" },
     { "header", "Affichage" },
     { "sameFaction",     "Montrer seulement ma faction" },
+    { "sameRuleset",     "Montrer seulement mon type de serveur (PvE, PvP, RP)",
+      "Cache les annonces d'un autre type de serveur: on ne peut pas grouper ensemble. Choisis ton type dans l'onglet Mon perso." },
     { "levelOnly",       "Montrer seulement les activités à mon niveau" },
     { "tooltipFlag",     "Afficher [FR] dans l'info-bulle des joueurs qui ont l'addon" },
     { "minimap",         "Afficher le bouton de la minimap" },

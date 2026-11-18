@@ -852,6 +852,7 @@ export function ProfilJoueur({
       ...(v.faction ? { faction: v.faction } : {}),
       ...(v.region ? { region: v.region } : {}),
       ...(v.roles ? { roles: v.roles } : {}),
+      ...(v.ruleset ? { ruleset: v.ruleset } : {}),
       guilde: v.guilde,
     }))
     setErreurs({})
@@ -861,6 +862,7 @@ export function ProfilJoueur({
       v.classe && CLASSES.find((x) => x.id === v.classe)?.nom,
       v.faction && FACTIONS.find((x) => x.id === v.faction)?.nom,
       v.region,
+      v.ruleset && `serveur ${RULESETS.find((x) => x.id === v.ruleset)?.court}`,
       v.guilde ? `guilde ${v.guilde}` : 'aucune guilde',
       v.roles && `rôles ${v.roles.map((r) => ROLES.find((x) => x.id === r)?.nom).join(', ')}`,
     ].filter(Boolean)

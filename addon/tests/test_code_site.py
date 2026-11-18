@@ -71,7 +71,7 @@ local ns = {}
 for _, f in ipairs({ "Data.lua", "Core.lua" }) do
   assert(loadfile(ADDON_DIR .. "/" .. f))("BabillardForeverFR", ns)
 end
-ns.db = { myRoles = PERSO.roles or {} }
+ns.db = { myRoles = PERSO.roles or {}, ruleset = PERSO.ruleset }
 return ns.BuildExportCode()
 """, ADDON)
 
@@ -81,9 +81,9 @@ CAS = [
         "nom": "personnage complet",
         "perso": dict(nom="Barrbiche", royaume="Forever", region="EU", faction="Horde", classe="ROGUE", niveau=60,
                       guilde="Les Pas Fins", metiers=[["Herboristerie", 225, 300], ["Pêche", 75, 150]],
-                      roles={"TANK": True, "DPS": True}),
+                      roles={"TANK": True, "DPS": True}, ruleset="pvp"),
         "attendu": dict(perso="Barrbiche", niveau="60", classe="voleur", faction="horde", region="EU",
-                        guilde="Les Pas Fins", roles=["tank", "dps"]),
+                        guilde="Les Pas Fins", roles=["tank", "dps"], ruleset="pvp"),
         "metiers": 2,
     },
     {
@@ -125,7 +125,8 @@ MAIN = [
     "BFFR1;n=" + "A" * 30 + ";lv=10",
     "BFFR1;n=Tester;lv=99;c=ROGUE;f=Horde;rg=EU",
     "BFFR1;n=Tester;lv=abc;c=ROGUE;f=Horde;rg=EU",
-    "  BFFR1;n=Tester;lv=12;c=hunter;f=HORDE;rg=eu;ro=TXZ;g=" + "G" * 80 + "  \n",
+    "  BFFR1;n=Tester;lv=12;c=hunter;f=HORDE;rg=eu;ro=TXZ;rs=RP_PVP;g=" + "G" * 80 + "  \n",
+    "BFFR1;n=Tester;lv=12;rs=hacker",
     "BFFR1;n=Tester;lv=12;p=Mine:1:2:3,:5:6,Forge:10:50",
     "BFFR1;" + "n=Tester;" * 400,
 ]
@@ -142,7 +143,7 @@ for c, lu in zip(CAS, lus[: len(CAS)]):
         continue
     for cle, valeur in c["attendu"].items():
         verifier(lu["valeurs"].get(cle) == valeur, f"{c['nom']}: {cle} = {lu['valeurs'].get(cle)!r}, attendu {valeur!r}")
-    for cle in ("classe", "region", "faction", "niveau"):
+    for cle in ("classe", "region", "faction", "niveau", "ruleset"):
         if cle not in c["attendu"]:
             verifier(cle not in lu["valeurs"], f"{c['nom']}: {cle} ne devrait pas être rempli")
     verifier(len(lu["metiers"]) == c["metiers"], f"{c['nom']}: {len(lu['metiers'])} métiers au lieu de {c['metiers']}")
@@ -159,8 +160,10 @@ r = refuses[10]
 verifier(r["ok"] and r["valeurs"]["classe"] == "chasseur" and r["valeurs"]["faction"] == "horde" and r["valeurs"]["region"] == "EU",
          "espaces autour, majuscules et minuscules acceptés")
 verifier(r["valeurs"]["roles"] == ["tank"] and len(r["valeurs"]["guilde"]) == 40, "rôles inconnus ignorés, guilde coupée à 40")
-verifier(refuses[11]["ok"] and refuses[11]["metiers"] == [{"nom": "Forge", "rang": 10, "max": 50}], "métiers mal formés ignorés")
-verifier(not refuses[12]["ok"], "texte trop long refusé")
+verifier(r["valeurs"]["ruleset"] == "rp_pvp", "type de serveur en majuscules accepté")
+verifier(refuses[11]["ok"] and "ruleset" not in refuses[11]["valeurs"], "type de serveur inconnu ignoré")
+verifier(refuses[12]["ok"] and refuses[12]["metiers"] == [{"nom": "Forge", "rang": 10, "max": 50}], "métiers mal formés ignorés")
+verifier(not refuses[13]["ok"], "texte trop long refusé")
 
 print(f"{total - len(echecs)}/{total} vérifications réussies")
 sys.exit(1 if echecs else 0)

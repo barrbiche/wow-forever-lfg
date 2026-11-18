@@ -484,6 +484,7 @@ local function GroupTooltip(d)
     local t = ns.TYPES[d.type]
     GameTooltip:AddLine("|c" .. ns.ClassHex(d.class) .. ns.ShortName(d.sender) .. "|r" .. FactionTag(d.faction))
     GameTooltip:AddLine("Niveau " .. d.level .. "  ·  " .. d.faction, 0.8, 0.8, 0.8)
+    if ns.RulesetName(d.ruleset) then GameTooltip:AddLine("Serveur : " .. ns.RulesetName(d.ruleset), 0.8, 0.8, 0.8) end
     GameTooltip:AddLine(" ")
     GameTooltip:AddLine("|c" .. t.color .. t.name .. "|r")
     GameTooltip:AddLine("|c" .. (ns.CAT_COLORS[d.cat] or "ffffffff") .. d.cat .. "|r : " .. a.name, 1, 1, 1, true)
@@ -530,10 +531,10 @@ for i = 1, GROUP_ROWS do
     row.age:SetPoint("RIGHT", -6, 0)
     -- Boutons au survol (le premier ajouté est le plus à droite)
     AddRowAction(row, "Inviter", 64,
-        function(d) return d.type == "LFG" and d.sender ~= ns.Me() end,
+        function(d) return d.type == "LFG" and not ns.IsMe(d.sender) end,
         function(d) DoInvite(d.sender) end)
     AddRowAction(row, "Chuchoter", 80,
-        function(d) return d.sender ~= ns.Me() end,
+        function(d) return not ns.IsMe(d.sender) end,
         function(d) DoWhisper(d.sender) end)
     G.rows[i] = row
 end
@@ -584,16 +585,24 @@ end
 
 local function RefreshGroups()
     local o = ns.db.opts
-    local me, myLevel, myFaction = ns.Me(), ns.MyLevel(), ns.MyFaction()
+    local myLevel, myFaction = ns.MyLevel(), ns.MyFaction()
     local counts = { Tous = 0 }
     local visible = {}
 
-    for sender, l in pairs(ns.listings) do
+    -- Une seule annonce par joueur (la plus récente), même si le jeu a écrit son royaume de deux façons.
+    local latest = {}
+    for _, l in pairs(ns.listings) do
+        local key = ns.ShortName(l.sender):lower()
+        if not latest[key] or l.time > latest[key].time then latest[key] = l end
+    end
+
+    for _, l in pairs(latest) do
         local a = ns.ACT_BY_KEY[l.akey]
         local show = a ~= nil
         if show and o.levelOnly and not ns.ActivityFits(a, myLevel) then show = false end
         if show and o.sameFaction and l.faction ~= myFaction then show = false end
-        if sender == me then show = true end
+        if show and not ns.RulesetOK(l.ruleset) then show = false end
+        if ns.IsMe(l.sender) then show = true end
         if show then
             counts.Tous = counts.Tous + 1
             counts[l.cat] = (counts[l.cat] or 0) + 1
@@ -603,7 +612,7 @@ local function RefreshGroups()
         end
     end
     table.sort(visible, function(x, y)
-        if (x.sender == me) ~= (y.sender == me) then return x.sender == me end
+        if ns.IsMe(x.sender) ~= ns.IsMe(y.sender) then return ns.IsMe(x.sender) end
         return x.time > y.time
     end)
 
@@ -634,7 +643,7 @@ local function RefreshGroups()
             end
             for k = j, 3 do row.roleIcons[k]:Hide() end
             local nameText = "|c" .. ns.ClassHex(d.class) .. ns.ShortName(d.sender) .. "|r" .. FactionTag(d.faction)
-            if d.sender == me then nameText = nameText .. " |cff888888(toi)|r" end
+            if ns.IsMe(d.sender) then nameText = nameText .. " |cff888888(toi)|r" end
             row.name:SetText(nameText)
             row.level:SetText(d.level)
             local txt = ""
@@ -664,6 +673,9 @@ local function RefreshGroups()
             math.min(state.scroll + GROUP_ROWS, #visible), #visible))
     else
         G.scrollText:SetText(#visible > 0 and (#visible .. " annonce(s)") or "")
+    end
+    if o.sameRuleset and not ns.MyRuleset() then
+        G.scrollText:SetText("|cffff8800Choisis ton type de serveur dans Mon perso|r")
     end
 
     UI.UpdateMyPanel(false)
@@ -722,6 +734,7 @@ HeaderLine(gulist)
 local function GuildTooltip(d)
     GameTooltip:AddLine("|cff40ff40<" .. d.guild .. ">|r" .. FactionTag(d.faction))
     GameTooltip:AddLine(ns.GUILD_FOCUS[d.focus] .. "  ·  " .. d.faction, 0.8, 0.8, 0.8)
+    if ns.RulesetName(d.ruleset) then GameTooltip:AddLine("Serveur : " .. ns.RulesetName(d.ruleset), 0.8, 0.8, 0.8) end
     if d.note ~= "" then
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine(d.note, 1, 1, 1, true)
@@ -754,7 +767,7 @@ for i = 1, GUILD_ROWS do
     row.desc:SetJustifyH("LEFT")
     row.desc:SetWordWrap(false)
     AddRowAction(row, "Chuchoter", 80,
-        function(d) return d.sender ~= ns.Me() end,
+        function(d) return not ns.IsMe(d.sender) end,
         function(d) DoWhisper(d.sender) end)
     GU.rows[i] = row
 end
@@ -794,7 +807,7 @@ local function RefreshGuilds()
     local o = ns.db.opts
     local visible = {}
     for _, g in pairs(ns.guilds) do
-        if not o.sameFaction or g.faction == ns.MyFaction() then tinsert(visible, g) end
+        if (not o.sameFaction or g.faction == ns.MyFaction()) and ns.RulesetOK(g.ruleset) then tinsert(visible, g) end
     end
     table.sort(visible, function(x, y) return x.time > y.time end)
 
@@ -840,6 +853,21 @@ for i, label in ipairs(LABELS) do
     M.values[i] = v
 end
 
+-- Type de serveur: le jeu n'a pas de fonction pour le lire, alors le joueur le choisit (un clic change).
+M.ruleset = MakeButton(mp, "", 250, 22)
+M.ruleset:SetPoint("TOPLEFT", 290, -14 - 2 * 22 + 4)
+M.ruleset:SetScript("OnClick", function()
+    local order, current = ns.RULESET_ORDER, ns.MyRuleset()
+    local nextIndex = 1
+    for i, id in ipairs(order) do
+        if id == current then nextIndex = i % #order + 1 end
+    end
+    ns.db.ruleset = order[nextIndex]
+    ns.PlayClick()
+    ns.Refresh()
+end)
+Tooltip(M.ruleset, "Type de serveur", "Normal (PvE), PvP, RP ou RP-PvP. On ne groupe qu'avec le même type: les annonces des autres types sont cachées. Clique pour changer.")
+
 local rl = mp:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 rl:SetPoint("TOPLEFT", 14, -160)
 rl:SetText("Mes rôles")
@@ -876,6 +904,8 @@ local function RefreshMe()
     M.values[1]:SetText("|c" .. ns.ClassHex(c.classFile) .. c.name .. "|r - " .. c.realm .. (c.region ~= "" and (" (" .. c.region .. ")") or ""))
     M.values[2]:SetText(c.level .. "  ·  " .. c.race .. " " .. c.className)
     M.values[3]:SetText(c.faction)
+    local rs = ns.MyRuleset()
+    M.ruleset:SetText(rs and ("Serveur : " .. ns.RulesetName(rs)) or "|cffff8800Choisis ton type de serveur|r")
     M.values[4]:SetText(c.guild ~= "" and ("<" .. c.guild .. ">") or "|cff888888Aucune|r")
     M.values[5]:SetText(c.ilvl and tostring(c.ilvl) or "|cff888888Inconnu|r")
     local profs = {}

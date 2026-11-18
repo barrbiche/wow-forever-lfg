@@ -1,5 +1,5 @@
 // Lit le « code » que l'addon Babillard Forever FR (commande /bf perso) fait copier au joueur.
-// Format de l'addon (voir ns.BuildExportCode): BFFR1;n=Nom;r=Royaume;rg=EU;f=Horde;c=ROGUE;ra=Orc;lv=60;g=Guilde;il=;ro=TD;p=Métier:rang:max,...;t=1790000000
+// Format de l'addon (voir ns.BuildExportCode): BFFR1;n=Nom;r=Royaume;rg=EU;f=Horde;c=ROGUE;ra=Orc;lv=60;g=Guilde;il=;ro=TD;rs=pvp;p=Métier:rang:max,...;t=1790000000
 // Ce texte vient du presse-papiers de quelqu'un: on ne lui fait jamais confiance. Chaque champ est validé, et un
 // code illisible donne une erreur claire plutôt qu'un profil à moitié rempli. Le code n'est pas une preuve:
 // n'importe qui peut en écrire un à la main, donc le résultat sert seulement à pré-remplir le formulaire.
@@ -24,6 +24,9 @@ const CLASSES_DU_JEU = {
 const ROLES_DU_JEU = { T: 'tank', H: 'heal', D: 'dps' }
 
 const FACTIONS_DU_JEU = { alliance: 'alliance', horde: 'horde' }
+
+// Type de serveur choisi dans l'addon (mêmes identifiants que le site, voir RULESETS dans data.js).
+const TYPES_DE_SERVEUR = ['normal', 'pvp', 'rp', 'rp_pvp']
 
 // Retourne { ok: true, valeurs, metiers, ilvl, avertissements } ou { ok: false, erreur }.
 // `valeurs` ne contient que les champs reconnus et valides, avec les identifiants du site.
@@ -63,6 +66,10 @@ export function lireCodeJeu(texte) {
   const faction = FACTIONS_DU_JEU[(champs.f ?? '').toLowerCase()]
   if (faction) valeurs.faction = faction
   else avertissements.push('faction')
+
+  // Le type de serveur est facultatif: l'addon ne peut pas le lire seul, le joueur le choisit.
+  const ruleset = (champs.rs ?? '').toLowerCase()
+  if (TYPES_DE_SERVEUR.includes(ruleset)) valeurs.ruleset = ruleset
 
   // Le site ne gère que les régions US et EU.
   const region = (champs.rg ?? '').toUpperCase()
