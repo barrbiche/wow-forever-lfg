@@ -209,12 +209,32 @@ avancer(ns.EXPIRE + 10)
 ns.Prune()
 egal(compter(ns.listings), 0, "les annonces du chat expirent")
 
+-- ---------- 3b. Mon annonce ne doit jamais revenir en double (capture d'écran en jeu: « Barrbiche-Dote » et « Barrbiche Dote ») ----------
+vider()
+for _, forme in ipairs({ "Barrbiche-Dote", "Barrbiche Dote", "Barrbiche", "barrbiche-ForeverRealm", "Barrbiche-Dote Realm" }) do
+  verifier(ns.IsMe(forme), "IsMe doit reconnaître: " .. forme)
+  recevoir("L2;LFM;Donjons;VC;T;ROGUE;20;Horde;5;1;0;;normal;1.2.2", forme)
+  chat("LFM VC tank", forme)
+end
+egal(compter(ns.listings), 0, "mes propres annonces reçues sous toutes les formes de nom sont ignorées")
+verifier(not ns.IsMe("Barrbiche2-Dote") and not ns.IsMe("Alice-Dote") and not ns.IsMe(nil), "IsMe ne confond pas les autres joueurs")
+egal(ns.ShortName("Alice Dote"), "Alice", "ShortName garde seulement le nom")
+egal(ns.WhisperName("Alice Dote"), "Alice-Dote", "chuchoter à « Nom Royaume » devient Nom-Royaume")
+egal(ns.WhisperName("Alice-Dote"), "Alice-Dote", "Nom-Royaume inchangé")
+-- Même joueur étranger, royaume écrit de deux façons, l'annonce de l'addon remplace celle du chat
+chat("LFM WC tank", "Zed Dote")
+recevoir("L2;LFM;Donjons;VC;T;ROGUE;20;Horde;5;1;0;;normal;1.2.2", "Zed-Dote")
+local nbZed = 0
+for _, l in pairs(ns.listings) do if ns.BareName(l.sender) == "zed" then nbZed = nbZed + 1 end end
+egal(nbZed, 1, "un seul Zed après l'annonce de l'addon")
+vider()
+
 -- ---------- 4. Avis de nouvelle version ----------
 egal(ns.VersionNumber("1.2.0"), 1002000, "numéro de version")
 verifier(ns.VersionNumber("1.2") == nil and ns.VersionNumber("a.b.c") == nil and ns.VersionNumber("1.2.0;x") == nil
   and ns.VersionNumber(nil) == nil and ns.VersionNumber("1.2.99999") == nil, "versions invalides refusées")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.1.0", "Vieux-ForeverRealm")
-recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.2.2", "Pareil-ForeverRealm")
+recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.2.3", "Pareil-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;pirate", "Faux-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal", "SansVersion-ForeverRealm")
 egal(ns.newVersion, nil, "pas d'avis pour une version égale, ancienne ou invalide")
@@ -233,7 +253,7 @@ ns.db.opts.autoRemove = false
 vider()
 avancer(100)
 ns.PublishListing({ type = "LFM", akey = "WC", roles = { TANK = true, HEAL = true, DPS = true }, note = "essai" })
-egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.2.2", "L2 publié termine par la version")
+egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.2.3", "L2 publié termine par la version")
 verifier(#CHAT == 0, "publier ne parle jamais dans le chat tout seul")
 
 -- ---------- 5. Alertes par activités favorites ----------

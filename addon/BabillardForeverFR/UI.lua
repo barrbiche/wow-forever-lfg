@@ -226,6 +226,7 @@ end
 
 -- Chuchoter / inviter
 local function DoWhisper(name)
+    name = ns.WhisperName(name)
     if ChatFrame_SendTell then
         ChatFrame_SendTell(name)
     elseif ChatFrameUtil and ChatFrameUtil.SendTell then
@@ -234,6 +235,7 @@ local function DoWhisper(name)
 end
 
 local function DoInvite(name)
+    name = ns.WhisperName(name)
     if C_PartyInfo and C_PartyInfo.InviteUnit then
         C_PartyInfo.InviteUnit(name)
     elseif InviteUnit then
@@ -676,7 +678,7 @@ local function RefreshGroups()
     -- Une seule annonce par joueur (la plus récente), même si le jeu a écrit son royaume de deux façons.
     local latest = {}
     for _, l in pairs(ns.listings) do
-        local key = ns.ShortName(l.sender):lower()
+        local key = ns.BareName(l.sender)
         if not latest[key] or l.time > latest[key].time then latest[key] = l end
     end
 

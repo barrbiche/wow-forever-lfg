@@ -116,15 +116,30 @@ function ns.NormalizeName(name)
 end
 
 function ns.ShortName(name)
-    return Ambiguate(name or "?", "none")
+    local short = Ambiguate(name or "?", "none")
+    -- Le jeu écrit parfois « Nom Royaume » (espace) au lieu de « Nom-Royaume »: un nom de personnage n'a jamais d'espace.
+    return (short:gsub("%s.*$", ""))
+end
+
+-- Le nom du personnage seul, en minuscules: sert à comparer deux joueurs même si le royaume est écrit
+-- « Nom-Royaume », « Nom Royaume » ou pas du tout.
+function ns.BareName(name)
+    if type(name) ~= "string" then return "" end
+    return (name:match("^[^%-%s]+") or name):lower()
+end
+
+-- Nom utilisable pour chuchoter ou inviter: « Nom Royaume » redevient « Nom-Royaume ».
+function ns.WhisperName(name)
+    if type(name) ~= "string" then return name end
+    if name:find("-", 1, true) then return name end
+    return (name:gsub("%s+", "-", 1))
 end
 
 -- Est-ce moi? Le jeu écrit parfois le royaume autrement dans les messages reçus (« Nom-Royaume »):
 -- on compare seulement le nom, sinon sa propre annonce revenait en double.
 function ns.IsMe(name)
     if not name then return false end
-    local short = strsplit("-", name)
-    return short == UnitName("player")
+    return ns.BareName(name) == ns.BareName(UnitName("player"))
 end
 
 -- Type de serveur choisi par le joueur (nil tant qu'il ne l'a pas choisi).
@@ -732,9 +747,9 @@ local function OnMessage(msg, sender)
         if not next(roles) then return end
         local prev = ns.listings[sender]
         -- Une annonce de l'addon remplace celle qu'on avait lue dans le chat pour le même joueur.
-        local short = ns.ShortName(sender):lower()
+        local short = ns.BareName(sender)
         for k, old in pairs(ns.listings) do
-            if old.source == "chat" and ns.ShortName(old.sender):lower() == short then ns.listings[k] = nil end
+            if old.source == "chat" and ns.BareName(old.sender) == short then ns.listings[k] = nil end
         end
         local l = {
             sender = sender, type = typ, cat = a.cat, akey = a.key, roles = roles,
@@ -799,9 +814,9 @@ function ns.OnChat(text, sender, channelBase)
     if not a then return end
 
     sender = ns.NormalizeName(sender)
-    local short = ns.ShortName(sender):lower()
+    local short = ns.BareName(sender)
     for _, l in pairs(ns.listings) do
-        if l.source ~= "chat" and ns.ShortName(l.sender):lower() == short then return end   -- l'addon a déjà la bonne annonce
+        if l.source ~= "chat" and ns.BareName(l.sender) == short then return end   -- l'addon a déjà la bonne annonce
     end
     local note = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h(.-)|h", "%1"):gsub("|", "")
     local prev = ns.listings[sender]
