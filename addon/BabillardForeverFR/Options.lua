@@ -28,7 +28,7 @@ local OPTIONS = {
       "Par défaut, seules les annonces des joueurs qui ont l'addon déclenchent une alerte: le chat contient beaucoup d'annonces." },
     { "header", "Chat" },
     { "chatReading",     "Lire les annonces du chat et les ajouter au babillard",
-      "Les annonces « LFM / LFG » du chat (général, recherche de groupe, cris) apparaissent avec la mention [chat]. Elles sont lues à l'écran seulement: rien n'est envoyé." },
+      "Les annonces « LFM » du chat (un groupe qui cherche des joueurs: général, recherche de groupe, cris) apparaissent avec la mention [chat]. Elles sont lues à l'écran seulement: rien n'est envoyé." },
     { "alsoChat",        "Publier aussi mon annonce dans le chat",
       "Quand tu cliques sur Publier, l'annonce est aussi envoyée dans « Recherche de groupe » (ou « Général »). Une fois par minute au maximum, seulement quand tu cliques." },
     { "chatTag",         "Ajouter « [Babillard FR] » à la fin de mes annonces du chat",

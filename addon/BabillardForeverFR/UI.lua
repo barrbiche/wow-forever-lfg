@@ -9,7 +9,7 @@ local GUILD_ROWS = 12
 
 local state = {
     view        = 1,
-    mode        = "LFG",
+    mode        = "LFM",   -- l'addon sert à former des groupes: il n'y a plus de mode « je cherche un groupe »
     cat         = "Donjons",
     akey        = nil,
     lfmRoles    = { DPS = true },
@@ -412,7 +412,6 @@ SectionTitle(gv, "Mon annonce", 70, -40)
 local my = MakePanel(gv, -60, -208)
 
 local function MyRolesSet()
-    if state.mode == "LFG" then return ns.db.myRoles end
     return state.lfmRoles
 end
 
@@ -468,13 +467,9 @@ local function MakeActivityPicker(parent, x, y, width)
     return dd
 end
 
-G.mode = MakeSegmented(my,
-    { { label = "Je cherche un groupe", value = "LFG" }, { label = "Mon groupe cherche", value = "LFM" } },
-    150, 12, -10,
-    function(v) return state.mode == v end,
-    function(v) state.mode = v; UI.UpdateMyPanel() end)
-Tooltip(G.mode[1], "Je cherche un groupe", "Tu es seul et tu veux te joindre à un groupe.")
-Tooltip(G.mode[2], "Mon groupe cherche", "Tu formes un groupe et il te manque des joueurs.")
+G.mode = my:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+G.mode:SetPoint("TOPLEFT", 16, -14)
+G.mode:SetText("Je forme un groupe")
 
 local catItems = {}
 for _, c in ipairs(ns.CATEGORIES) do tinsert(catItems, { label = c, value = c }) end
@@ -510,11 +505,7 @@ G.status:SetWidth(130)
 
 G.pub:SetScript("OnClick", function()
     ns.EnsureChannel()
-    if state.mode == "LFG" and IsInGroup() then
-        ns.Print("tu es déjà dans un groupe. Choisis plutôt « Mon groupe cherche ».")
-        return
-    end
-    if state.mode == "LFM" and IsInGroup() and not UnitIsGroupLeader("player") then
+    if IsInGroup() and not UnitIsGroupLeader("player") then
         ns.Print("c'est mieux que le chef du groupe publie l'annonce.")
     end
     local published = ns.PublishListing({
@@ -615,9 +606,6 @@ for i = 1, GROUP_ROWS do
     row.age = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     row.age:SetPoint("RIGHT", -6, 0)
     -- Boutons au survol (le premier ajouté est le plus à droite)
-    AddRowAction(row, "Inviter", 64,
-        function(d) return d.type == "LFG" and not ns.IsMe(d.sender) end,
-        function(d) DoInvite(d.sender) end)
     AddRowAction(row, "Chuchoter", 80,
         function(d) return not ns.IsMe(d.sender) end,
         function(d) DoWhisper(d.sender) end)
@@ -637,10 +625,9 @@ end)
 function UI.UpdateMyPanel(rebuild)
     if not ns.db then return end
     ValidateActivity()
-    G.mode.Update()
     G.cat.Update()
     G.roles.Update()
-    G.rolesLabel:SetText(state.mode == "LFG" and "Mes rôles" or "Rôles recherchés")
+    G.rolesLabel:SetText("Rôles recherchés")
     G.alsoChat:SetChecked(ns.db.opts.alsoChat)
     if rebuild ~= false then G.picker:Rebuild() end
     if ns.my then
@@ -660,7 +647,6 @@ end
 local function RestoreFormFromListing()
     if ns.my and state.restoredFor ~= ns.my then
         state.restoredFor = ns.my
-        state.mode = ns.my.type
         state.cat = ns.my.cat
         state.akey = ns.my.akey
         if ns.my.type == "LFM" then state.lfmRoles = CopyTable(ns.my.baseRoles or ns.my.roles) end
@@ -679,7 +665,7 @@ local function RefreshGroups()
     local latest = {}
     for _, l in pairs(ns.listings) do
         local key = ns.BareName(l.sender)
-        if not latest[key] or l.time > latest[key].time then latest[key] = l end
+        if l.type == "LFM" and (not latest[key] or l.time > latest[key].time) then latest[key] = l end
     end
 
     for _, l in pairs(latest) do
@@ -967,7 +953,7 @@ local rh = mp:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 rh:SetPoint("TOPLEFT", 280, -160)
 rh:SetWidth(270)
 rh:SetJustifyH("LEFT")
-rh:SetText("Utilisés pour « Je cherche un groupe » et pour les alertes.")
+rh:SetText("Utilisés pour les alertes: l'addon te prévient quand un groupe cherche un de tes rôles.")
 
 SectionTitle(mv, "Lier mon personnage au site", 18, -270)
 local ep = MakePanel(mv, -288, 32)

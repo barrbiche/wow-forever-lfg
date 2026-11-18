@@ -336,6 +336,7 @@ function ns.PublishListing(p)
         ns.Print("attends quelques secondes avant de republier.")
         return false
     end
+    p.type = "LFM"   -- l'addon sert à former des groupes, pas à en chercher un
     local a = ns.ACT_BY_KEY[p.akey or ""]
     if not a then
         ns.Print("choisis une activité avant de publier.")
@@ -513,12 +514,6 @@ function ns.CheckAlert(l)
         if r then
             text = string.format("%s cherche un %s pour %s", who, ns.ROLE_INFO[r].name:lower(), a.name)
         end
-    elseif l.type == "LFG" and ns.my and ns.my.type == "LFM" and ns.my.akey == l.akey then
-        -- Quelqu'un cherche un groupe pour ce que mon groupe fait
-        local r = FirstCommonRole(l.roles, ns.my.roles)
-        if r then
-            text = string.format("%s (%s) cherche un groupe pour %s", who, ns.ROLE_INFO[r].name, a.name)
-        end
     end
     if not text then return end
 
@@ -536,9 +531,7 @@ end
 ---------------------------------------------------------------------------
 local function CheckAutoRemove()
     if not ns.my or not ns.db or not ns.db.opts.autoRemove then return end
-    if ns.my.type == "LFG" and IsInGroup() then
-        ns.WithdrawListing("annonce retirée : tu as rejoint un groupe.")
-    elseif ns.my.type == "LFM" and GetNumGroupMembers() >= (ns.my.size or 5) then
+    if ns.my.type == "LFM" and GetNumGroupMembers() >= (ns.my.size or 5) then
         ns.WithdrawListing("annonce retirée : ton groupe est complet!")
     end
 end
@@ -751,6 +744,8 @@ local function OnMessage(msg, sender)
         local typ, akey = f[2], f[4]
         local a = ns.ACT_BY_KEY[akey or ""]
         if not ns.TYPES[typ or ""] or not a then return end
+        -- L'addon ne sert qu'à former des groupes: les « je cherche un groupe » des anciennes versions sont ignorés.
+        if typ ~= "LFM" then return end
         local roles = ns.DecodeRoles(f[5])
         if not next(roles) then return end
         local prev = ns.listings[sender]
@@ -818,7 +813,7 @@ function ns.OnChat(text, sender, channelBase)
     if base:find("defense", 1, true) or base:find("defence", 1, true) then return end
 
     local p = ns.ParseChat(text)
-    local a = p and ns.ACT_BY_KEY[p.akey or ""]
+    local a = p and p.type == "LFM" and ns.ACT_BY_KEY[p.akey or ""]   -- seulement les groupes qui cherchent des joueurs
     if not a then return end
 
     sender = ns.NormalizeName(sender)
@@ -937,7 +932,7 @@ pcall(C_ChatInfo.RegisterAddonMessagePrefix, ns.PREFIX)
 local function RestoreMyState()
     local now = time()
     local saved = ns.db.myListing
-    if saved and ns.ACT_BY_KEY[saved.akey or ""] and now - (saved.epoch or 0) < ns.EXPIRE then
+    if saved and saved.type == "LFM" and ns.ACT_BY_KEY[saved.akey or ""] and now - (saved.epoch or 0) < ns.EXPIRE then
         local a = ns.ACT_BY_KEY[saved.akey]
         local _, class = UnitClass("player")
         ns.my = {

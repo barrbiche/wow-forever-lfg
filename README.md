@@ -277,6 +277,8 @@ Les addons de WoW n'ont pas accès à Internet: le pont entre le jeu et le site 
 
 **1.2.3 / 1.2.4**: ta propre annonce ne revient plus en double quand le jeu écrit ton nom « Nom Royaume ». **Publier exige maintenant le type de serveur** (PvE, PvP, RP ou RP-PvP, onglet Mon perso): dans Forever on ne groupe pas avec un autre type, et sans ce choix l'annonce partait sans étiquette. Les joueurs qui ont choisi un autre type ne la voient pas. Les annonces lues dans le chat viennent de ton propre serveur, donc du même type.
 
+**1.2.5**: l'addon ne sert plus qu'à **former des groupes** (tu publies un groupe, ou tu chuchotes à un groupe pour le rejoindre). Le mode « Je cherche un groupe » est retiré: les annonces de ce genre (venues de l'addon ou du chat) sont ignorées.
+
 Tests: `python3 addon/tests/test_v12_addon.py`.
 
 Le code source des addons est dans `addon/` (`addon/BabillardForeverFR`, `addon/lfgFR`). `python3 addon/tests/test_code_site.py` (lupa et node) fait générer un vrai code par l'addon et vérifie que le site le lit correctement.

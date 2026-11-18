@@ -165,15 +165,20 @@ if a then
   egal(a.faction, "Horde", "faction supposée la mienne")
   egal(a.level, 0, "niveau inconnu")
 end
-chat("Cherche groupe Mortemines niv 19", "Bob")                       -- sans royaume
-verifier(ns.listings["Bob-ForeverRealm"] ~= nil and ns.listings["Bob-ForeverRealm"].level == 19, "royaume ajouté, niveau lu")
+chat("LFM Mortemines tank niv 19", "Bob")                             -- sans royaume
+verifier(ns.listings["Bob-ForeverRealm"] ~= nil, "royaume ajouté au nom sans royaume")
+-- L'addon ne sert qu'à former des groupes: « je cherche un groupe » est ignoré (chat et addon)
+chat("Cherche groupe Mortemines niv 19", "Cleo")
+chat("LFG Mortemines dps", "Cleo")
+recevoir("L2;LFG;Donjons;VC;D;MAGE;20;Horde;5;1;0;;normal;1.2.0", "Cleo-ForeverRealm")
+verifier(ns.listings["Cleo-ForeverRealm"] == nil and ns.listings["Cleo"] == nil, "les « je cherche un groupe » sont ignorés")
 chat("LFM RFC tank", "Gardien-ForeverRealm", "3. Défense locale", "LocalDefense")
 verifier(ns.listings["Gardien-ForeverRealm"] == nil, "défense locale ignorée")
 chat("LFM RFC tank", "Barrbiche-ForeverRealm")
 verifier(ns.listings["Barrbiche-ForeverRealm"] == nil, "mes propres messages ignorés")
 chat("SECRET", "Eve-ForeverRealm")
 chat("LFM WC tank", "SECRET")
-verifier(ns.listings["Eve-ForeverRealm"] == nil and compter(ns.listings) == 2, "valeurs secrètes ignorées")
+verifier(ns.listings["Eve-ForeverRealm"] == nil and compter(ns.listings) == 2, "valeurs secrètes ignorées")  -- Alice + Bob
 chat("bonjour", "Fred-ForeverRealm")
 verifier(ns.listings["Fred-ForeverRealm"] == nil, "bavardage ignoré")
 chat("LFM |cffffffff|Hitem:1:2|h[Épée]|h|r WC tank", "Gus-ForeverRealm")
@@ -255,7 +260,7 @@ egal(ns.VersionNumber("1.2.0"), 1002000, "numéro de version")
 verifier(ns.VersionNumber("1.2") == nil and ns.VersionNumber("a.b.c") == nil and ns.VersionNumber("1.2.0;x") == nil
   and ns.VersionNumber(nil) == nil and ns.VersionNumber("1.2.99999") == nil, "versions invalides refusées")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.1.0", "Vieux-ForeverRealm")
-recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.2.4", "Pareil-ForeverRealm")
+recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.2.5", "Pareil-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;pirate", "Faux-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal", "SansVersion-ForeverRealm")
 egal(ns.newVersion, nil, "pas d'avis pour une version égale, ancienne ou invalide")
@@ -274,7 +279,7 @@ ns.db.opts.autoRemove = false
 vider()
 avancer(100)
 ns.PublishListing({ type = "LFM", akey = "WC", roles = { TANK = true, HEAL = true, DPS = true }, note = "essai" })
-egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.2.4", "L2 publié termine par la version")
+egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.2.5", "L2 publié termine par la version")
 verifier(#CHAT == 0, "publier ne parle jamais dans le chat tout seul")
 
 -- ---------- 5. Alertes par activités favorites ----------
@@ -393,9 +398,8 @@ vider()
 avancer(100)
 membres = 1
 ns.PublishListing({ type = "LFG", akey = "WC", roles = { DPS = true }, note = "" })
-membres = 3
-cadre(nil, "GROUP_ROSTER_UPDATE")
-verifier(ns.my == nil or ns.my.groupCount ~= 3, "LFG: pas de mise à jour du nombre")
+egal(ns.my and ns.my.type, "LFM", "même si on demande « LFG », l'annonce publiée est toujours un groupe qui cherche")
+verifier(ENVOYES[#ENVOYES]:find("^L2;LFM;") ~= nil, "le message envoyé est un LFM")
 
 return table.concat(echecs, "\n")
 """, ADDON)
