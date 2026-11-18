@@ -1,7 +1,7 @@
 -- Babillard Forever FR - Données (activités, rôles, constantes)
 local ADDON, ns = ...
 
-ns.VERSION       = "1.2.0"
+ns.VERSION       = "1.2.1"
 ns.PREFIX        = "BabillardFR"          -- préfixe des messages d'addon
 ns.CHANNEL       = "BabillardFR"          -- canal caché partagé
 ns.SITE_URL      = "https://babillard-forever.com"
@@ -14,7 +14,8 @@ ns.CHAT_MAX      = 120                    -- annonces lues dans le chat qu'on ga
 ns.CHAT_POST_GAP = 60                     -- secondes minimum entre deux publications dans le chat
 
 ns.CATEGORIES = { "Donjons", "Raids", "PvP", "Autre" }
-ns.CAT_COLORS = { Donjons = "ffffd100", Raids = "ffff8000", PvP = "ffc41e3a", Autre = "ffaaaaaa" }
+-- Couleurs de rareté des objets du jeu, comme sur le site: donjon bleu, raid orange, PvP violet, autre vert
+ns.CAT_COLORS = { Donjons = "ff4aa8ff", Raids = "ffff8000", PvP = "ffb35cf5", Autre = "ff3fe03f" }
 ns.DEFAULT_SIZE = { Donjons = 5, Raids = 40, PvP = 10, Autre = 5 }
 
 ns.ROLE_ORDER = { "TANK", "HEAL", "DPS" }

@@ -163,6 +163,10 @@ if not bouton then erreur("le bouton « Choisis ton type de serveur » est intro
   if ns.db.ruleset ~= "normal" then erreur("le cycle devrait revenir à « normal »") end
 end
 
+-- Le look (fond nuit, cadres dorés): aucune étape ne doit avoir échoué avec la fausse API
+if ns.skinErrors ~= 0 then erreur("le look du site a eu " .. tostring(ns.skinErrors) .. " erreur(s)") end
+if not ns.Skin or not ns.Skin.Button then erreur("ns.Skin absent") end
+
 -- Annonce lue dans le chat: affichée avec [chat], niveau « - », et les boutons ne plantent pas
 if ns.OnChat then
   ns.db.ruleset = "normal"

@@ -21,10 +21,69 @@ local state = {
 }
 
 ---------------------------------------------------------------------------
+-- Look du site (fond nuit, cadres et titres dorés). Tout est protégé par pcall: si le jeu refuse une
+-- étape (modèle de bouton différent, par exemple), le reste de l'interface s'affiche quand même.
+---------------------------------------------------------------------------
+local Skin = {}
+ns.Skin = Skin
+ns.skinErrors = 0
+local WHITE = "Interface\\Buttons\\WHITE8X8"
+local GOLD  = { 0.79, 0.64, 0.29 }    -- #c9a24a, le doré des cadres du site
+local NIGHT = { 0.04, 0.05, 0.08 }    -- fond des panneaux
+
+local function Try(f, ...)
+    local ok = pcall(f, ...)
+    if not ok then ns.skinErrors = ns.skinErrors + 1 end
+    return ok
+end
+
+-- Fond uni derrière le contenu
+function Skin.Fill(frame, r, g, b, a, layer, sublevel)
+    local t = frame:CreateTexture(nil, layer or "BACKGROUND", nil, sublevel or 0)
+    t:SetAllPoints()
+    t:SetColorTexture(r, g, b, a)
+    return t
+end
+
+-- Cadre d'un pixel
+function Skin.Border(frame, c, a)
+    local lines = {}
+    for i = 1, 4 do
+        lines[i] = frame:CreateTexture(nil, "BORDER")
+        lines[i]:SetColorTexture(c[1], c[2], c[3], a)
+    end
+    lines[1]:SetPoint("TOPLEFT");     lines[1]:SetPoint("TOPRIGHT");    lines[1]:SetHeight(1)
+    lines[2]:SetPoint("BOTTOMLEFT");  lines[2]:SetPoint("BOTTOMRIGHT"); lines[2]:SetHeight(1)
+    lines[3]:SetPoint("TOPLEFT");     lines[3]:SetPoint("BOTTOMLEFT");  lines[3]:SetWidth(1)
+    lines[4]:SetPoint("TOPRIGHT");    lines[4]:SetPoint("BOTTOMRIGHT"); lines[4]:SetWidth(1)
+    return lines
+end
+
+function Skin.Button(b)
+    Try(function()
+        for _, k in ipairs({ "Left", "Middle", "Center", "Right" }) do
+            if type(b[k]) == "table" then b[k]:Hide() end
+        end
+        b:SetNormalTexture(nil)
+        b:SetPushedTexture(nil)
+        b:SetDisabledTexture(nil)
+        b:SetHighlightTexture(WHITE)
+        local h = b:GetHighlightTexture()
+        if h then h:SetColorTexture(1, 0.82, 0, 0.2) end
+        Skin.Fill(b, 0.10, 0.115, 0.17, 1)
+        Skin.Border(b, GOLD, 0.6)
+    end)
+end
+
+---------------------------------------------------------------------------
 -- Petits outils pour bâtir l'interface
 ---------------------------------------------------------------------------
 local function MakePanel(parent, top, bottom)
-    local p = ns.SafeCreate("Frame", nil, parent, "InsetFrameTemplate", "BackdropTemplate")
+    local p = CreateFrame("Frame", nil, parent)
+    Try(function()
+        Skin.Fill(p, NIGHT[1], NIGHT[2], NIGHT[3], 0.96)
+        Skin.Border(p, GOLD, 0.45)
+    end)
     p:SetPoint("TOPLEFT", 12, top)
     if bottom < 0 then
         p:SetPoint("BOTTOMRIGHT", parent, "TOPRIGHT", -12, bottom)
@@ -56,6 +115,7 @@ local function MakeSegmented(parent, items, width, x, y, isSelected, onSelect, s
     local buttons = {}
     for i, it in ipairs(items) do
         local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+        Skin.Button(b)
         b:SetSize(width, 22)
         b:SetPoint("TOPLEFT", x + (i - 1) * (width + 4), y)
         b:SetText(it.label)
@@ -149,6 +209,7 @@ end
 
 local function MakeButton(parent, text, w, h)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    Skin.Button(b)
     b:SetSize(w, h)
     b:SetText(text)
     return b
@@ -197,10 +258,10 @@ local function MakeRow(list, i, onTooltip)
     row:EnableMouse(true)
     row.bg = row:CreateTexture(nil, "BACKGROUND")
     row.bg:SetAllPoints()
-    row.bg:SetColorTexture(1, 1, 1, (i % 2 == 0) and 0.03 or 0)
+    row.bg:SetColorTexture(1, 0.9, 0.6, (i % 2 == 0) and 0.035 or 0)
     row.hl = row:CreateTexture(nil, "BORDER")
     row.hl:SetAllPoints()
-    row.hl:SetColorTexture(0.2, 0.6, 1, 0.15)
+    row.hl:SetColorTexture(1, 0.82, 0, 0.1)
     row.hl:Hide()
     row.actions = {}
     row:SetScript("OnEnter", function(self)
@@ -245,7 +306,7 @@ end
 
 local function HeaderLine(list)
     local sep = list:CreateTexture(nil, "ARTWORK")
-    sep:SetColorTexture(1, 0.82, 0, 0.25)
+    sep:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], 0.5)
     sep:SetHeight(1)
     sep:SetPoint("TOPLEFT", 6, -24)
     sep:SetPoint("TOPRIGHT", -6, -24)
@@ -284,6 +345,13 @@ else
     t:SetText("Babillard Forever FR")
 end
 if f.SetPortraitToAsset then f:SetPortraitToAsset(ns.ICON) end
+-- Fond nuit derrière tout le contenu (sous le cadre et le titre du jeu)
+Try(function()
+    local night = f:CreateTexture(nil, "BACKGROUND", nil, 7)
+    night:SetPoint("TOPLEFT", 6, -26)
+    night:SetPoint("BOTTOMRIGHT", -6, 26)
+    night:SetColorTexture(0.055, 0.06, 0.095, 1)
+end)
 
 local views = {}
 for i = 1, 3 do

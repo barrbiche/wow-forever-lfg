@@ -212,7 +212,7 @@ egal(ns.VersionNumber("1.2.0"), 1002000, "numéro de version")
 verifier(ns.VersionNumber("1.2") == nil and ns.VersionNumber("a.b.c") == nil and ns.VersionNumber("1.2.0;x") == nil
   and ns.VersionNumber(nil) == nil and ns.VersionNumber("1.2.99999") == nil, "versions invalides refusées")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.1.0", "Vieux-ForeverRealm")
-recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.2.0", "Pareil-ForeverRealm")
+recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.2.1", "Pareil-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;pirate", "Faux-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal", "SansVersion-ForeverRealm")
 egal(ns.newVersion, nil, "pas d'avis pour une version égale, ancienne ou invalide")
@@ -231,7 +231,7 @@ ns.db.opts.autoRemove = false
 vider()
 avancer(100)
 ns.PublishListing({ type = "LFM", akey = "WC", roles = { TANK = true, HEAL = true, DPS = true }, note = "essai" })
-egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.2.0", "L2 publié termine par la version")
+egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.2.1", "L2 publié termine par la version")
 verifier(#CHAT == 0, "publier ne parle jamais dans le chat tout seul")
 
 -- ---------- 5. Alertes par activités favorites ----------

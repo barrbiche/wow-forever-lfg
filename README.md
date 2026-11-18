@@ -273,6 +273,8 @@ Les addons de WoW n'ont pas accès à Internet: le pont entre le jeu et le site 
 - **Activités favorites**: `/bf favoris` (ou Options) choisit les activités qui déclenchent une alerte; si aucune n'est choisie, toutes alertent.
 - **Groupe à jour tout seul**: le nombre de joueurs se met à jour, et le rôle tank ou soigneur n'est plus cherché quand quelqu'un du groupe l'a d'assigné (le jeu ne donne le rôle que si les joueurs l'ont choisi). Un seul renvoi toutes les 10 secondes au plus.
 
+**1.2.1 — look du site**: fond nuit, panneaux et boutons à cadre doré, lignes de liste dorées au survol, couleurs de rareté pour les catégories (donjon bleu, raid orange, PvP violet, autre vert). Le look est appliqué étape par étape et protégé: si le jeu refuse une étape, le reste de l'interface reste utilisable. Je n'ai pas pu le voir dans le jeu, seulement vérifier qu'il se charge sans erreur.
+
 Tests: `python3 addon/tests/test_v12_addon.py`.
 
 Le code source des addons est dans `addon/` (`addon/BabillardForeverFR`, `addon/lfgFR`). `python3 addon/tests/test_code_site.py` (lupa et node) fait générer un vrai code par l'addon et vérifie que le site le lit correctement.
