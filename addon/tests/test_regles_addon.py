@@ -81,6 +81,7 @@ local function compter(t) local n = 0; for _ in pairs(t) do n = n + 1 end; retur
 local function recevoir(msg, expediteur) cadre(nil, "CHAT_MSG_ADDON", "BabillardFR", msg, "CHANNEL", expediteur) end
 
 -- ---------- 1. Mon annonce ne revient pas en double ----------
+ns.db.ruleset = "pvp"   -- les versions récentes exigent le type de serveur pour publier
 ns.PublishListing({ type = "LFM", akey = "WC", roles = { TANK = true }, note = "test" })
 local monMessage = ENVOYES[#ENVOYES]
 noter("message_publie", monMessage)
@@ -152,7 +153,7 @@ verifier("pvp_ok_nil", "true", "annonce sans type de serveur (nil): on la montre
 verifier("sans_choix_ok_normal", "true", "sans choix de ma part, on ne filtre pas")
 verifier("filtre_coupe_ok_pvp", "true", "option coupée: on montre tout")
 verifier("message_ruleset", "rp_pvp", "le type de serveur est dans le message publié")
-verifier("message_version", "1.2.3", "la version de l'addon est à la fin du message publié")
+verifier("message_version", "1.2.4", "la version de l'addon est à la fin du message publié")
 verifier("ruleset_alice", "pvp", "type reçu")
 verifier("ruleset_bob", "", "type inventé refusé")
 verifier("ruleset_carl", "", "ancienne version sans type")

@@ -94,6 +94,10 @@ for _, f in ipairs({ "Data.lua", "Chat.lua", "Core.lua" }) do assert(loadfile(AD
 rawset(_G, "BabillardForeverFRDB", {})   -- sinon le faux global répondrait « n'importe quoi » à la place d'une table vide
 cadre(nil, "ADDON_LOADED", "BabillardForeverFR")
 
+ns.db.ruleset = "pvp"   -- publier exige d'avoir choisi son type de serveur
+local ouvertures = {}
+ns.UI = { Open = function(vue) ouvertures[#ouvertures + 1] = vue end }
+
 local function compter(t) local n = 0; for _ in pairs(t) do n = n + 1 end; return n end
 local function recevoir(msg, exp) cadre(nil, "CHAT_MSG_ADDON", "BabillardFR", msg, "CHANNEL", exp) end
 local function chat(texte, exp, canal, base)
@@ -229,12 +233,29 @@ for _, l in pairs(ns.listings) do if ns.BareName(l.sender) == "zed" then nbZed =
 egal(nbZed, 1, "un seul Zed après l'annonce de l'addon")
 vider()
 
+-- ---------- 3c. Publier exige le type de serveur (PvE / PvP / RP / RP-PvP) ----------
+do
+  ns.db.ruleset = nil
+  vider(); avancer(100)
+  local avant = #ENVOYES
+  local ok = ns.PublishListing({ type = "LFM", akey = "WC", roles = { TANK = true }, note = "" })
+  verifier(ok == false and #ENVOYES == avant and ns.my == nil, "sans type de serveur: rien n'est publié")
+  egal(ouvertures[#ouvertures], 3, "l'onglet Mon perso s'ouvre pour choisir le type de serveur")
+  verifier(nbImprimes("choisis d'abord ton type de serveur") >= 1, "message clair")
+  verifier(ns.PublishGuild("PVE", "") == false and #ENVOYES == avant, "annonce de guilde aussi bloquée")
+  ns.db.ruleset = "pvp"
+  avancer(10)
+  verifier(ns.PublishListing({ type = "LFM", akey = "WC", roles = { TANK = true }, note = "" }) == true, "avec un type de serveur: publié")
+  verifier(ENVOYES[#ENVOYES]:find(";pvp;", 1, true) ~= nil, "l'annonce porte l'étiquette pvp")
+  ns.WithdrawListing(); vider()
+end
+
 -- ---------- 4. Avis de nouvelle version ----------
 egal(ns.VersionNumber("1.2.0"), 1002000, "numéro de version")
 verifier(ns.VersionNumber("1.2") == nil and ns.VersionNumber("a.b.c") == nil and ns.VersionNumber("1.2.0;x") == nil
   and ns.VersionNumber(nil) == nil and ns.VersionNumber("1.2.99999") == nil, "versions invalides refusées")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.1.0", "Vieux-ForeverRealm")
-recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.2.3", "Pareil-ForeverRealm")
+recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.2.4", "Pareil-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;pirate", "Faux-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal", "SansVersion-ForeverRealm")
 egal(ns.newVersion, nil, "pas d'avis pour une version égale, ancienne ou invalide")
@@ -253,7 +274,7 @@ ns.db.opts.autoRemove = false
 vider()
 avancer(100)
 ns.PublishListing({ type = "LFM", akey = "WC", roles = { TANK = true, HEAL = true, DPS = true }, note = "essai" })
-egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.2.3", "L2 publié termine par la version")
+egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.2.4", "L2 publié termine par la version")
 verifier(#CHAT == 0, "publier ne parle jamais dans le chat tout seul")
 
 -- ---------- 5. Alertes par activités favorites ----------
@@ -266,7 +287,7 @@ local function alerte(akey, opts, favs, source)
   ns.db.favs = favs or {}
   local avant = nbImprimes("pour")
   if source == "chat" then chat("LFM " .. akey .. " dps", "Alerte-ForeverRealm")
-  else recevoir("L2;LFM;Donjons;" .. akey .. ";D;MAGE;20;Horde;5;1;0;;normal;1.2.0", "Alerte-ForeverRealm") end
+  else recevoir("L2;LFM;Donjons;" .. akey .. ";D;MAGE;20;Horde;5;1;0;;pvp;1.2.0", "Alerte-ForeverRealm") end
   return nbImprimes("pour") > avant
 end
 ns.db.myRoles = { DPS = true }

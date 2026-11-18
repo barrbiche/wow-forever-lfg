@@ -275,6 +275,8 @@ Les addons de WoW n'ont pas accès à Internet: le pont entre le jeu et le site 
 
 **1.2.1 — look du site**: fond nuit, panneaux et boutons à cadre doré, lignes de liste dorées au survol, couleurs de rareté pour les catégories (donjon bleu, raid orange, PvP violet, autre vert). Le look est appliqué étape par étape et protégé: si le jeu refuse une étape, le reste de l'interface reste utilisable. Je n'ai pas pu le voir dans le jeu, seulement vérifier qu'il se charge sans erreur.
 
+**1.2.3 / 1.2.4**: ta propre annonce ne revient plus en double quand le jeu écrit ton nom « Nom Royaume ». **Publier exige maintenant le type de serveur** (PvE, PvP, RP ou RP-PvP, onglet Mon perso): dans Forever on ne groupe pas avec un autre type, et sans ce choix l'annonce partait sans étiquette. Les joueurs qui ont choisi un autre type ne la voient pas. Les annonces lues dans le chat viennent de ton propre serveur, donc du même type.
+
 Tests: `python3 addon/tests/test_v12_addon.py`.
 
 Le code source des addons est dans `addon/` (`addon/BabillardForeverFR`, `addon/lfgFR`). `python3 addon/tests/test_code_site.py` (lupa et node) fait générer un vrai code par l'addon et vérifie que le site le lit correctement.

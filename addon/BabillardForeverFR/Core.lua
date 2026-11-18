@@ -148,6 +148,15 @@ function ns.MyRuleset()
     if r and ns.RULESETS[r] then return r end
 end
 
+-- Publier demande d'avoir choisi son type de serveur: dans Forever, on ne peut pas grouper avec un autre type
+-- (PvE, PvP, RP, RP-PvP). Sans ce choix, l'annonce partirait sans étiquette et tout le monde la verrait.
+function ns.RequireRuleset()
+    if ns.MyRuleset() then return true end
+    ns.Print("choisis d'abord ton type de serveur (PvE, PvP, RP ou RP-PvP) dans l'onglet |cffffd100Mon perso|r: ton annonce restera visible seulement pour les joueurs du même type.")
+    if ns.UI and ns.UI.Open then pcall(ns.UI.Open, 3) end
+    return false
+end
+
 function ns.RulesetName(id)
     return ns.RULESETS[id or ""]
 end
@@ -340,6 +349,7 @@ function ns.PublishListing(p)
         ns.Print("choisis au moins un rôle.")
         return false
     end
+    if not ns.RequireRuleset() then return false end
     local _, class = UnitClass("player")
     local l = {
         sender = ns.Me(), type = p.type, cat = a.cat, akey = a.key, roles = CopyTable(p.roles),
@@ -347,9 +357,6 @@ function ns.PublishListing(p)
         groupCount = math.max(1, GetNumGroupMembers()), note = ns.Clean(p.note):sub(1, 120),
         time = GetTime(), ruleset = ns.MyRuleset() or "",
     }
-    if l.ruleset == "" then
-        ns.Print("tu n'as pas choisi ton type de serveur (onglet Mon perso): les autres ne pourront pas filtrer ton annonce.")
-    end
     if not ns.Send(ListingMessage(l)) then
         ns.Print("connexion au canal en cours, réessaie dans quelques secondes.")
         return false
@@ -392,6 +399,7 @@ function ns.PublishGuild(focus, note)
         ns.Print("choisis le type de ta guilde.")
         return false
     end
+    if not ns.RequireRuleset() then return false end
     local _, class = UnitClass("player")
     local g = {
         sender = ns.Me(), guild = ns.Clean(guild), focus = focus, faction = ns.MyFaction(),
