@@ -268,7 +268,7 @@ Les addons de WoW n'ont pas accès à Internet: le pont entre le jeu et le site 
 ### Addon 1.2.0: ce qui s'ajoute
 
 - **Chat → babillard**: les annonces « LFM / LFG » du chat (général, recherche de groupe, cris; français et anglais) apparaissent avec la mention `[chat]`. Elles sont seulement lues. Une annonce venue de l'addon (classe, niveau, rôles exacts) remplace toujours celle lue dans le chat pour le même joueur. Options: lecture du chat (activée), alertes pour le chat (désactivée).
-- **Publier aussi dans le chat**: case « Aussi dans le chat » à côté de Publier. L'annonce part dans « Recherche de groupe » (sinon « Général ») avec la mention `[Babillard FR]`, **seulement au clic**, une fois par minute au maximum.
+- **Publier aussi dans le chat**: case « Aussi dans le chat » à côté de Publier. L'annonce part dans « Recherche de groupe » (sinon « Général ») sans étiquette par défaut (l'option « Ajouter [Babillard FR] » est désactivée: la politique d'addons de Blizzard interdit la promotion), **seulement au clic**, une fois par minute au maximum.
 - **Nouvelle version**: la version de l'addon voyage dans les messages (champ en plus, les anciennes versions l'ignorent). Quand quelqu'un a une version plus récente, un message le dit une fois, et le pied de fenêtre l'affiche.
 - **Activités favorites**: `/bf favoris` (ou Options) choisit les activités qui déclenchent une alerte; si aucune n'est choisie, toutes alertent.
 - **Groupe à jour tout seul**: le nombre de joueurs se met à jour, et le rôle tank ou soigneur n'est plus cherché quand quelqu'un du groupe l'a d'assigné (le jeu ne donne le rôle que si les joueurs l'ont choisi). Un seul renvoi toutes les 10 secondes au plus.

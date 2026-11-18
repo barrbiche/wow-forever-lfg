@@ -320,6 +320,8 @@ export default function Aide({ ouvert, fermer }) {
         <p className="aide">
           Babillard Forever est un site de fans, sans lien avec Blizzard Entertainment. World of Warcraft est une marque de
           Blizzard Entertainment, Inc.
+          <br />
+          World of Warcraft and Warcraft are trademarks or registered trademarks of Blizzard Entertainment, Inc.
         </p>
       </div>
     </dialog>

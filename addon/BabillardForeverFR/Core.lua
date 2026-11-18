@@ -25,6 +25,7 @@ local DEFAULTS = {
         chatReading     = true,    -- lire les annonces du chat (« [chat] »)
         alertChat       = false,   -- alertes aussi pour les annonces lues dans le chat
         alsoChat        = false,   -- publier aussi dans le chat (au clic seulement)
+        chatTag         = false,   -- ajouter « [Babillard FR] » aux annonces du chat
         autoUpdate      = true,    -- mettre à jour tout seul le nombre de joueurs et les rôles manquants
         favsOnly        = false,   -- alertes seulement pour mes activités favorites
     },
@@ -852,7 +853,7 @@ function ns.PostToChat(l)
         return false
     end
     local send = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
-    local ok = pcall(send, ns.ChatText(l), "CHANNEL", nil, id)
+    local ok = pcall(send, ns.ChatText(l, ns.db.opts.chatTag), "CHANNEL", nil, id)
     if not ok then
         ns.Print("le jeu a refusé d'envoyer l'annonce dans le chat.")
         return false

@@ -1492,6 +1492,8 @@ export default function App() {
           <p className="avis">
             Babillard Forever est un site de fans, sans lien avec Blizzard Entertainment. World of Warcraft est une
             marque de Blizzard Entertainment, Inc.
+            <br />
+            World of Warcraft and Warcraft are trademarks or registered trademarks of Blizzard Entertainment, Inc.
           </p>
         </footer>
       </main>

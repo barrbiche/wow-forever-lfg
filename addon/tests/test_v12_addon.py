@@ -141,7 +141,9 @@ verifier(analyse("LFM stuff pour la guilde tank") == nil or analyse("LFM stuff p
 local t1 = ns.ChatText({ type = "LFM", akey = "WC", roles = { TANK = true, HEAL = true }, note = "QC vocal" })
 local r1 = ns.ParseChat(t1)
 verifier(r1 and r1.type == "LFM" and r1.akey == "WC" and roleSet(r1) == "HEAL,TANK", "relecture LFM: " .. t1)
-verifier(t1:find("%[Babillard FR%]$") ~= nil, "le texte finit par [Babillard FR]")
+verifier(t1:find("Babillard", 1, true) == nil, "pas de tag par défaut")
+local t1b = ns.ChatText({ type = "LFM", akey = "WC", roles = { TANK = true }, note = "" }, true)
+verifier(t1b:find("%[Babillard FR%]$") ~= nil and ns.ParseChat(t1b).akey == "WC", "tag seulement si demandé, texte toujours relisible")
 local t2 = ns.ChatText({ type = "LFG", akey = "SFK", roles = { DPS = true }, note = "", level = 22 })
 local r2 = ns.ParseChat(t2)
 verifier(r2 and r2.type == "LFG" and r2.akey == "SFK" and r2.level == 22, "relecture LFG: " .. t2)
@@ -212,7 +214,7 @@ egal(ns.VersionNumber("1.2.0"), 1002000, "numéro de version")
 verifier(ns.VersionNumber("1.2") == nil and ns.VersionNumber("a.b.c") == nil and ns.VersionNumber("1.2.0;x") == nil
   and ns.VersionNumber(nil) == nil and ns.VersionNumber("1.2.99999") == nil, "versions invalides refusées")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.1.0", "Vieux-ForeverRealm")
-recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.2.1", "Pareil-ForeverRealm")
+recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.2.2", "Pareil-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;pirate", "Faux-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal", "SansVersion-ForeverRealm")
 egal(ns.newVersion, nil, "pas d'avis pour une version égale, ancienne ou invalide")
@@ -231,7 +233,7 @@ ns.db.opts.autoRemove = false
 vider()
 avancer(100)
 ns.PublishListing({ type = "LFM", akey = "WC", roles = { TANK = true, HEAL = true, DPS = true }, note = "essai" })
-egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.2.1", "L2 publié termine par la version")
+egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.2.2", "L2 publié termine par la version")
 verifier(#CHAT == 0, "publier ne parle jamais dans le chat tout seul")
 
 -- ---------- 5. Alertes par activités favorites ----------
@@ -269,9 +271,13 @@ if CHAT[1] then
   local r = ns.ParseChat(CHAT[1].texte)
   verifier(r and r.akey == "WC" and r.type == "LFM", "le texte envoyé se relit")
 end
+verifier(not CHAT[1].texte:find("Babillard", 1, true), "annonce du chat sans tag par défaut")
 verifier(ns.PostToChat(ns.my) == false and #CHAT == 1, "pas deux publications en moins d'une minute")
 avancer(ns.CHAT_POST_GAP + 1)
+ns.db.opts.chatTag = true
 verifier(ns.PostToChat(ns.my) == true and #CHAT == 2, "de nouveau possible après une minute")
+verifier(CHAT[2].texte:find("%[Babillard FR%]$") ~= nil, "tag ajouté quand l'option est activée")
+ns.db.opts.chatTag = false
 canaux = { 1, "1. Général - Elwynn", false, 5, "BabillardFR", false }
 avancer(ns.CHAT_POST_GAP + 1)
 verifier(ns.PostToChat(ns.my) and CHAT[#CHAT].cible == 1, "à défaut, le canal Général")

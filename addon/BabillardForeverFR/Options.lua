@@ -31,6 +31,8 @@ local OPTIONS = {
       "Les annonces « LFM / LFG » du chat (général, recherche de groupe, cris) apparaissent avec la mention [chat]. Elles sont lues à l'écran seulement: rien n'est envoyé." },
     { "alsoChat",        "Publier aussi mon annonce dans le chat",
       "Quand tu cliques sur Publier, l'annonce est aussi envoyée dans « Recherche de groupe » (ou « Général »). Une fois par minute au maximum, seulement quand tu cliques." },
+    { "chatTag",         "Ajouter « [Babillard FR] » à la fin de mes annonces du chat",
+      "Désactivé par défaut. Ça fait connaître l'addon, mais la politique d'addons de Blizzard interdit d'utiliser un addon pour faire de la promotion: à toi de décider." },
     { "header", "Mon annonce" },
     { "autoRemove",      "Retirer mon annonce automatiquement",
       "Quand tu rejoins un groupe, quand ton groupe est complet ou quand tu entres dans une instance." },

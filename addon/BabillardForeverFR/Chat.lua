@@ -205,7 +205,8 @@ end
 -- Texte d'une annonce publiée dans le chat. Il se relit avec ns.ParseChat (voir les tests).
 -- l = annonce (type, akey, roles, note, level)
 ---------------------------------------------------------------------------
-function ns.ChatText(l)
+-- withTag: ajoute « [Babillard FR] » à la fin (désactivé par défaut: la politique d'addons de Blizzard interdit la promotion)
+function ns.ChatText(l, withTag)
     local a = ns.ACT_BY_KEY[l.akey or ""]
     local parts = { l.type == "LFG" and "LFG" or "LFM", a and a.name or "" }
     local names = {}
@@ -218,5 +219,6 @@ function ns.ChatText(l)
     if l.type == "LFG" and l.level and l.level > 0 then tinsert(parts, "niv " .. l.level) end
     local text = table.concat(parts, " ")
     if l.note and l.note ~= "" then text = text .. " - " .. l.note end
-    return (text .. " [Babillard FR]"):sub(1, 250)
+    if withTag then text = text .. " [Babillard FR]" end
+    return text:sub(1, 250)
 end
