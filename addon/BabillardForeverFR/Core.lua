@@ -785,7 +785,7 @@ local function GridIndex(values)
     return index, #list > 0 and index(list[#list]) or 0
 end
 
-function ns.GetTalentsTraits()
+function ns.GetTalentsTraits(debug)
     local tabs, talents = {}, {}
     if type(C_ClassTalents) ~= "table" or type(C_Traits) ~= "table" then return tabs, talents end
     local configID = Pack(C_ClassTalents.GetActiveConfigID)[1]
@@ -831,6 +831,7 @@ function ns.GetTalentsTraits()
     for tab = 1, #tabs do
         local col, colSpan = GridIndex(xs[tab])
         local row = GridIndex(ys[tab])
+        if debug then debug[tab] = { nodes = #nodes[tab], xs = xs[tab], ys = ys[tab], colSpan = colSpan } end
         table.sort(nodes[tab], function(a, b) if a.y ~= b.y then return a.y < b.y end return a.x < b.x end)
         for _, nd in ipairs(nodes[tab]) do
             local info = nd.info
@@ -852,7 +853,7 @@ function ns.GetTalentsTraits()
                 end
                 tabs[tab].points = tabs[tab].points + rank
                 local r, c = row(nd.y), (colSpan == 4) and col(nd.x) or nil
-                tinsert(talents, { tab = tab, name = (type(name) == "string" and name ~= "") and name or "Talent", rank = rank,
+                tinsert(talents, { tab = tab, x = nd.x, y = nd.y, id = nd.id, name = (type(name) == "string" and name ~= "") and name or "Talent", rank = rank,
                     max = tonumber(info.maxRanks) or 0, icon = IconName(icon),
                     tier = (r >= 1 and r <= 9) and r or nil, col = (c and c >= 1 and c <= 4) and c or nil })
             end
@@ -925,6 +926,29 @@ function ns.Diagnostic()
             add("champs d'un nœud", table.concat(keys, ","))
             add("posX/posY du 1er", tostring(info.posX) .. "/" .. tostring(info.posY))
         end
+    end
+    local dbg = {}
+    local okT, tabsT, talentsT = pcall(ns.GetTalentsTraits, dbg)
+    if okT then
+        for i, d in ipairs(dbg) do
+            local function uniq(list)
+                local seen, u = {}, {}
+                for _, v in ipairs(list) do if not seen[v] then seen[v] = true; tinsert(u, v) end end
+                table.sort(u)
+                while #u > 14 do table.remove(u) end
+                return table.concat(u, ",")
+            end
+            add("onglet" .. i .. " nœuds/colonnes", d.nodes .. "/" .. tostring(d.colSpan))
+            add("onglet" .. i .. " X", uniq(d.xs))
+            add("onglet" .. i .. " Y", uniq(d.ys))
+        end
+        local learned = {}
+        for _, t in ipairs(talentsT) do
+            tinsert(learned, tostring(t.name):sub(1, 18) .. "#" .. tostring(t.id) .. "@" .. tostring(t.x) .. "," .. tostring(t.y) ..
+                " r" .. t.rank .. "/" .. t.max .. " i" .. tostring(t.icon))
+            if #learned >= 8 then break end
+        end
+        add("appris", table.concat(learned, "; "))
     end
     local ok, tabs, talents = pcall(ns.GetTalents)
     if ok then

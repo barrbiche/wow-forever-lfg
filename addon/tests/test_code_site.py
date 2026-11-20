@@ -336,6 +336,7 @@ verifier(ft["Malice"].get("icone") == "f132001" and forever["fiche"]["arbres"][1
 diag = code_de(next(c["perso"] for c in CAS if c["nom"].startswith("WoW Forever: talents")), "Diagnostic")
 verifier("lecture=3 arbres, 4 talents appris, 4 placés" in diag and "points=5/8/3" in diag, f"/bf diag: résumé de la lecture: {diag}")
 verifier("treeID=1117" in diag and "configID=77" in diag and "nœuds=10" in diag and "texture de la tête" in diag, "/bf diag: arbre, config, nœuds et texture")
+verifier("onglet1 X=" in diag and "onglet3 Y=" in diag and "appris=" in diag and "#1@" in diag, f"/bf diag: coordonnées brutes par onglet et talents appris: {diag[-420:]}")
 verifier("champs d'un nœud=" in diag and "posX/posY du 1er=" in diag, "/bf diag: champs d'un nœud")
 verifier("Forever" not in diag.replace("WoW Forever", ""), "/bf diag: aucun nom de personnage dans la ligne")
 

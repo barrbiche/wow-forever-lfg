@@ -28,11 +28,16 @@ export const NOMS_EMPLACEMENTS = {
   18: 'À distance',
 }
 
-// Les images viennent du réseau d'images de Wowhead (le site ne garde aucun fichier de Blizzard). Le nom de l'icône
+// Les images viennent des serveurs d'images de Blizzard puis de Wowhead (le site ne garde aucun fichier de Blizzard). Le nom de l'icône
 // est validé à la lecture du code et par la base (minuscules, chiffres, soulignés), alors l'adresse reste sûre.
 // Mettre `false` pour ne plus afficher d'images (la fiche reste lisible sans elles).
 export const ICONES_ACTIVES = true
-const urlIcone = (nom, grande) => `https://wow.zamimg.com/images/wow/icons/${grande ? 'large' : 'medium'}/${nom}.jpg`
+// Deux serveurs d'images, essayés dans l'ordre: celui de Blizzard (le même que l'Armurerie), puis celui de Wowhead. Si un
+// bloqueur de publicités ou de traqueurs refuse l'un, l'autre prend le relais.
+const sourcesIcone = (nom, grande) => [
+  `https://render.worldofwarcraft.com/us/icons/${grande ? 56 : 36}/${nom}.jpg`,
+  `https://wow.zamimg.com/images/wow/icons/${grande ? 'large' : 'medium'}/${nom}.jpg`,
+]
 
 // WoW Forever donne aux addons un numéro de fichier d'icône (« f132345 » dans le code), pas un nom. La table numéro -> nom
 // (public/icones-jeu.txt, faite par scripts/construire-icones.py) est chargée une seule fois, et seulement quand une
@@ -81,12 +86,13 @@ function useNomIcone(nom) {
 // Une icône qui ne charge pas (nom inconnu, réseau bloqué) disparaît au lieu de laisser un carré cassé; `repli` (un
 // texte court) prend alors sa place quand il y en a un.
 function Icone({ nom, grande = false, repli = null }) {
-  const [echec, setEchec] = useState(false)
+  const [essai, setEssai] = useState(0)
   const reel = useNomIcone(nom)
-  if (!ICONES_ACTIVES || !reel || echec) return repli
+  const sources = reel ? sourcesIcone(reel, grande) : []
+  if (!ICONES_ACTIVES || !reel || essai >= sources.length) return repli
   const taille = grande ? 40 : 24
   return (
-    <img className="icone-jeu" src={urlIcone(reel, grande)} alt="" width={taille} height={taille} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setEchec(true)} />
+    <img key={essai} className="icone-jeu" src={sources[essai]} alt="" width={taille} height={taille} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setEssai(essai + 1)} />
   )
 }
 
