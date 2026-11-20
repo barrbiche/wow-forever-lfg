@@ -175,3 +175,323 @@
     grid-column: 1 / -1;
   }
 }
+
+/* ===== Fiche « comme en jeu »: poupée d'équipement et arbres de talents =====
+   Le cadre garde ses propres couleurs sombres (comme la fenêtre du jeu) pour que les bordures de rareté ressortent
+   sur le parchemin comme en thème sombre. Le texte clair sur fond sombre reste lisible dans les deux thèmes. */
+.poupee,
+.talents-cadre,
+.talents-onglets button {
+  --cadre-fond: linear-gradient(165deg, #1d1b24 0%, #2a2018 100%);
+  --cadre-bord: #6f5220;
+  --cadre-texte: #f2e8cd;
+  --cadre-doux: #b9ad8e;
+}
+
+.fiche button {
+  font: inherit;
+}
+
+.poupee {
+  --s: 42px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'g c d'
+    '. a .'
+    'det det det';
+  gap: 8px 10px;
+  padding: 12px;
+  border: 2px solid var(--cadre-bord);
+  border-radius: 10px;
+  background: var(--cadre-fond);
+  color: var(--cadre-texte);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.6), 0 1px 3px rgb(0 0 0 / 0.25);
+}
+
+.poupee-col {
+  display: grid;
+  align-content: space-between;
+  gap: 6px;
+}
+
+.poupee-col.gauche { grid-area: g; }
+.poupee-centre { grid-area: c; }
+.poupee-col.droite { grid-area: d; }
+.poupee-armes { grid-area: a; display: flex; justify-content: center; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.poupee-detail { grid-area: det; margin: 0; min-height: 2.6em; font-size: 0.85rem; text-align: center; color: var(--cadre-doux); overflow-wrap: anywhere; }
+
+.poupee .emp {
+  --q: #8a8f98;
+  position: relative;
+  width: var(--s);
+  height: var(--s);
+  list-style: none;
+}
+
+.poupee .emp.q0 { --q: #9d9d9d; }
+.poupee .emp.q1 { --q: #d8d8d8; }
+.poupee .emp.q2 { --q: #1eff00; }
+.poupee .emp.q3 { --q: #0070dd; }
+.poupee .emp.q4 { --q: #a335ee; }
+.poupee .emp.q5,
+.poupee .emp.q6 { --q: #ff8000; }
+
+.poupee .emp button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid var(--q);
+  border-radius: 5px;
+  background: #0d0b09;
+  color: var(--cadre-texte);
+  cursor: pointer;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--q) 45%, transparent);
+}
+
+.poupee .emp button:hover,
+.poupee .emp.choisie button {
+  box-shadow: 0 0 0 2px var(--cadre-texte), 0 0 8px var(--q);
+}
+
+.poupee .emp button:focus-visible,
+.talents-grille .tal button:focus-visible,
+.talents-onglets button:focus-visible {
+  outline: 3px solid var(--focus, #1f6fd1);
+  outline-offset: 2px;
+}
+
+.poupee .emp.libre,
+.poupee .emp.sans-donnees {
+  border: 2px dashed rgb(242 232 205 / 0.16);
+  border-radius: 5px;
+  background: rgb(0 0 0 / 0.25);
+}
+
+.poupee .emp.sans-donnees { opacity: 0.5; }
+
+.poupee .icone-jeu,
+.talents-grille .icone-jeu {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.poupee .repli,
+.talents-grille .repli {
+  align-self: start;
+  padding-top: 3px;
+  font-size: 0.62rem;
+  line-height: 1.1;
+  text-align: center;
+  color: var(--cadre-doux);
+}
+
+.poupee .ilvl {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: 0 3px;
+  border-top-left-radius: 4px;
+  background: rgb(0 0 0 / 0.75);
+  font-size: 0.64rem;
+  font-weight: 700;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+
+.poupee .ench {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #1eff00;
+  box-shadow: 0 0 4px #1eff00;
+}
+
+.poupee-centre {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 4px;
+  text-align: center;
+  background: radial-gradient(ellipse at 50% 40%, rgb(255 255 255 / 0.1), transparent 70%);
+}
+
+.poupee-centre .silhouette {
+  width: min(55%, 110px);
+  margin-bottom: 8px;
+  fill: rgb(242 232 205 / 0.09);
+}
+
+.poupee-nom {
+  font-family: var(--fantasy, Georgia, serif);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.poupee-sous,
+.poupee-ilvl {
+  font-size: 0.82rem;
+  color: var(--cadre-doux);
+}
+
+/* ---- arbres de talents ---- */
+.talents-jeu {
+  --s-tal: 44px;
+}
+
+.talents-onglets {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+}
+
+.talents-onglets button {
+  flex: 1 1 0;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 8px;
+  border: 2px solid var(--cadre-bord);
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+  background: #17151c;
+  color: var(--cadre-doux);
+  cursor: pointer;
+}
+
+.talents-onglets button.actif {
+  background: #2a2018;
+  color: var(--cadre-texte);
+  border-color: #b98a2c;
+}
+
+.talents-onglets .icone-jeu { width: 20px; height: 20px; margin: 0; }
+.talents-onglets .nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; font-size: 0.88rem; }
+.talents-onglets .pts { font-weight: 700; font-variant-numeric: tabular-nums; color: #f3c14e; }
+
+.talents-cadre {
+  padding: 12px;
+  border: 2px solid var(--cadre-bord);
+  border-radius: 0 0 10px 10px;
+  background: var(--cadre-fond);
+  color: var(--cadre-texte);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.6);
+}
+
+.talents-grille {
+  display: grid;
+  grid-template-columns: repeat(4, var(--s-tal));
+  justify-content: center;
+  gap: 8px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.talents-grille .tal {
+  width: var(--s-tal);
+  height: var(--s-tal);
+  border-radius: 50%;
+  list-style: none;
+}
+
+.talents-grille .tal.libre {
+  border: 2px solid rgb(242 232 205 / 0.1);
+  background: rgb(0 0 0 / 0.3);
+}
+
+.talents-grille .tal button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  overflow: visible;
+  border: 2px solid #3fbf3f;
+  border-radius: 8px;
+  background: #0d0b09;
+  cursor: pointer;
+}
+
+.talents-grille .tal.plein button { border-color: #f3c14e; }
+.talents-grille .tal.choisi button { box-shadow: 0 0 0 2px var(--cadre-texte); }
+
+.talents-grille .tal .icone-jeu { border-radius: 5px; }
+
+.talents-grille .rang-badge {
+  position: absolute;
+  right: -5px;
+  bottom: -6px;
+  min-width: 17px;
+  padding: 0 3px;
+  border-radius: 9px;
+  background: #000;
+  color: #3fff3f;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.talents-grille .tal.plein .rang-badge { color: #f3c14e; }
+
+.talents-detail {
+  margin: 12px 0 0;
+  min-height: 1.3em;
+  text-align: center;
+  font-size: 0.88rem;
+  color: var(--cadre-doux);
+  overflow-wrap: anywhere;
+}
+
+.talents-liste {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+}
+
+.talents-liste li { display: inline-flex; align-items: center; gap: 4px; }
+.talents-vide { color: var(--cadre-doux); text-align: center; margin: 0; }
+
+.fiche-liste { font-size: 0.9rem; }
+.fiche-liste > summary { cursor: pointer; font-weight: 600; }
+.fiche-liste .fiche-equipement { margin-top: 8px; }
+.fiche-talents-texte { margin: 8px 0 0; overflow-wrap: anywhere; }
+
+@media (max-width: 479px) {
+  .poupee { --s: 36px; padding: 8px; gap: 6px 6px; }
+  .talents-jeu { --s-tal: 40px; }
+  .talents-grille { gap: 7px 10px; }
+  .talents-onglets .nom { font-size: 0.8rem; }
+  .talents-onglets button { padding: 6px 4px; gap: 4px; }
+  .talents-onglets .icone-jeu { display: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .poupee .emp button { transition: box-shadow 0.12s ease; }
+}

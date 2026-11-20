@@ -769,7 +769,8 @@ function ns.GetTalents()
                 local t = Pack(GetTalentInfo, tab, i)
                 local rank = tonumber(t[5]) or 0
                 if type(t[1]) == "string" and rank > 0 then
-                    tinsert(talents, { tab = tab, name = t[1], rank = rank, max = tonumber(t[6]) or 0, icon = IconName(t[2]) })
+                    tinsert(talents, { tab = tab, name = t[1], rank = rank, max = tonumber(t[6]) or 0, icon = IconName(t[2]),
+                        tier = tonumber(t[3]), col = tonumber(t[4]) })
                 end
             end
         end
@@ -824,6 +825,8 @@ end
 --   ta = talents appris   nom:rang:arbre(1-3),...
 --   eq = équipement   emplacement:objet:niveau d'objet:qualité:enchantement:nom,...
 --   ic = icônes de l'équipement   emplacement:icône,...    tri / ti = icônes des arbres / des talents (même ordre)
+--   tp = place de chaque talent appris dans son arbre (même ordre que ta): trois chiffres rangée-colonne-rangs max
+--        (« 135 » = rangée 1, colonne 3, 5 rangs au plus), vide si le jeu ne la donne pas
 function ns.BuildExportCode()
     local c = ns.GetCharacterInfo()
     local function F(v) return ((tostring(v or "")):gsub("[|;=,:]", " ")) end
@@ -851,6 +854,17 @@ function ns.BuildExportCode()
     for _, g in ipairs(c.equipment) do
         if (g.icon or "") ~= "" then tinsert(gearIcons, g.slot .. ":" .. g.icon) end
     end
+    -- Place dans la grille de l'arbre (rangée 1-9, colonne 1-4, rangs max 1-5), pour dessiner l'arbre comme en jeu.
+    local talentPos, anyPos = {}, false
+    for _, t in ipairs(c.talents) do
+        local code = ""
+        local r, k, m = t.tier, t.col, t.max
+        if r and k and m and r >= 1 and r <= 9 and k >= 1 and k <= 4 and m >= 1 and m <= 5 then
+            code = string.format("%d%d%d", math.floor(r), math.floor(k), math.floor(m))
+            anyPos = true
+        end
+        tinsert(talentPos, code)
+    end
     local parts = {
         "BFFR1",
         "n=" .. F(c.name),
@@ -871,6 +885,7 @@ function ns.BuildExportCode()
         "ic=" .. table.concat(gearIcons, ","),
         "tri=" .. (anyTree and table.concat(treeIcons, ",") or ""),
         "ti=" .. (anyTalent and table.concat(talentIcons, ",") or ""),
+        "tp=" .. (anyPos and table.concat(talentPos, ",") or ""),
         "t=" .. time(),
     }
     return table.concat(parts, ";")

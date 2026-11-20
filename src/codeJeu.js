@@ -92,8 +92,10 @@ function lireArbres(brut, brutIcones) {
   return arbres
 }
 
-function lireTalents(brut, nbArbres, brutIcones) {
+function lireTalents(brut, nbArbres, brutIcones, brutPlaces) {
   const icones = String(brutIcones ?? '').split(',')
+  // Place dans la grille de l'arbre: trois chiffres « rangée (1-9), colonne (1-4), rangs max (1-5) », même ordre que les talents.
+  const places = String(brutPlaces ?? '').split(',')
   const talents = []
   // L'icône d'un talent est à la même place que lui dans la liste de départ (même si un autre talent est refusé).
   for (const [i, morceau] of String(brut ?? '').split(',').entries()) {
@@ -104,7 +106,9 @@ function lireTalents(brut, nbArbres, brutIcones) {
     const nom = nomPropre(p[0], 40)
     if (rang === null || arbre === null || !nom || arbre > Math.max(nbArbres, 1)) continue
     const icone = iconeValide(icones[i])
-    talents.push({ nom, rang, arbre, ...(icone ? { icone } : {}) })
+    const place = /^([1-9])([1-4])([1-5])$/.exec((places[i] ?? '').trim())
+    const grille = place && rang <= Number(place[3]) ? { ligne: Number(place[1]), col: Number(place[2]), max: Number(place[3]) } : {}
+    talents.push({ nom, rang, arbre, ...(icone ? { icone } : {}), ...grille })
     if (talents.length >= 70) break
   }
   return talents
@@ -198,7 +202,7 @@ export function lireCodeJeu(texte) {
   // Équipement et talents (addon récent seulement)
   const equipement = lireEquipement(champs.eq, champs.ic)
   const arbres = lireArbres(champs.tr, champs.tri)
-  const talents = lireTalents(champs.ta, arbres.length, champs.ti)
+  const talents = lireTalents(champs.ta, arbres.length, champs.ti, champs.tp)
   const fiche = equipement.length > 0 || arbres.length > 0 ? { equipement, arbres, talents } : null
   let specIncertaine = false
   if (fiche && valeurs.classe) {

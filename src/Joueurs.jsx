@@ -550,7 +550,7 @@ function CarteJoueur({ joueur: j, commande, enLigne, lien, apresAmis, utilisateu
 
         {j.bio && <p className="note">{j.bio}</p>}
 
-        <FicheDeJoueur userId={j.user_id} />
+        <FicheDeJoueur userId={j.user_id} classe={j.classe} niveau={j.niveau} />
 
         {j.en_revision ? (
           <p className="reputation revision">
@@ -1060,7 +1060,7 @@ export function ProfilJoueur({
               {' · '}
               {resumeFiche(ficheImport ?? ficheGardee)}
             </summary>
-            <FicheAffichage fiche={ficheImport ?? ficheGardee} maj={ficheImport ? null : ficheGardee.maj} />
+            <FicheAffichage fiche={ficheImport ?? ficheGardee} maj={ficheImport ? null : ficheGardee.maj} nom={champs.perso} classe={champs.classe} niveau={champs.niveau} />
             <p className="aide">
               Les joueurs connectés la voient sur ta carte (si ton profil n'est pas caché).
               {ficheImport ? ' Elle sera enregistrée avec ton profil.' : ''}

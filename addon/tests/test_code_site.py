@@ -91,7 +91,7 @@ if PERSO.arbres then
   GetNumTalentTabs = function() return #PERSO.arbres end
   GetTalentTabInfo = function(i) return PERSO.arbres[i].nom, PERSO.arbres[i].texture or 12345, PERSO.arbres[i].points, "fond" end
   GetNumTalents = function(i) return #PERSO.arbres[i].talents end
-  GetTalentInfo = function(i, j) local t = PERSO.arbres[i].talents[j]; return t[1], t[4] or 67890, 1, 1, t[2], t[3] end
+  GetTalentInfo = function(i, j) local t = PERSO.arbres[i].talents[j]; return t[1], t[4] or 67890, t[5], t[6], t[2], t[3] end
 end
 
 local ns = {}
@@ -143,8 +143,8 @@ GEAR_ROGUE = {
     16: dict(id=33333, nom="Dague sans nom en mémoire", ilvl=0, qualite=2, enchant=0, horsMemoire=True, texture=132345),
 }
 ARBRES_ROGUE = [
-    dict(nom="Assassinat", points=5, texture="Interface\\Icons\\Ability_Rogue_Eviscerate", talents=[["Malice", 5, 5, "Interface\\Icons\\Ability_Racial_BloodRage"]]),
-    dict(nom="Combat", points=31, talents=[["Précision", 2, 5, "Interface\\Icons\\INV_Weapon_ShortBlade_05"], ["Coups précis", 3, 3]]),
+    dict(nom="Assassinat", points=5, texture="Interface\\Icons\\Ability_Rogue_Eviscerate", talents=[["Malice", 5, 5, "Interface\\Icons\\Ability_Racial_BloodRage", 1, 3]]),
+    dict(nom="Combat", points=31, talents=[["Précision", 2, 5, "Interface\\Icons\\INV_Weapon_ShortBlade_05", 2, 2], ["Coups précis", 3, 3]]),
     dict(nom="Finesse", points=15, talents=[["Initiative", 3, 3]]),
 ]
 CAS += [
@@ -213,6 +213,9 @@ MAIN = [
     "BFFR1;n=Tester;lv=60;c=WARRIOR;tr=Armes:10,Fureur:5,Protection:0;ta=" + ",".join(f"Talent {i}:1:1" for i in range(300)),
     "BFFR1;n=Tester;lv=60;c=WARRIOR;eq=1:1:1:1:1:Casque,5:2:1:1:1:Torse,6:3:1:1:1:Taille,7:4:1:1:1:Jambes;"
     "ic=1:../../x,5:INV_Chest,6:a b,7:" + "z" * 65 + ",8:inv_ok;tr=A:1;tri=<img src=x>;ta=T:1:1;ti=javascript:alert(1)",
+    "BFFR1;n=Tester;lv=60;c=WARRIOR;tr=Armes:10,Fureur:5,Protection:0;"
+    "ta=Bon:2:1,Ligne0:1:1,Ligne10:1:1,Col5:1:1,Max6:1:1,Surrang:4:1,Lettres:1:2,Court:1:2,Long:1:2,Espace:1:3,Limite:5:3;"
+    "tp=135,015,105,155,166,423,a35,13,1355, 235 ,945",
 ]
 resultat = subprocess.run(["node", os.path.join(ICI, "decoder.mjs")], input=json.dumps(codes + MAIN), capture_output=True,
                           text=True, cwd=ICI)
@@ -256,8 +259,8 @@ verifier(pieces[1].get("icone") == "inv_helmet_01", f"icône du casque: chemin W
 verifier(pieces[5].get("icone") == "inv_chest_cloth_05", f"icône du plastron: extension .blp retirée: {pieces.get(5)}")
 verifier("icone" not in pieces[16], f"icône donnée comme un numéro: ignorée: {pieces.get(16)}")
 verifier(furtif["fiche"]["arbres"][0].get("icone") == "ability_rogue_eviscerate" and "icone" not in furtif["fiche"]["arbres"][1], "icône d'arbre lue (et absente quand le jeu donne un numéro)")
-verifier({"nom": "Malice", "rang": 5, "arbre": 1, "icone": "ability_racial_bloodrage"} in furtif["fiche"]["talents"], "icône d'un talent lue")
-verifier({"nom": "Précision", "rang": 2, "arbre": 2, "icone": "inv_weapon_shortblade_05"} in furtif["fiche"]["talents"], "l'icône suit son talent (même ordre)")
+verifier({"nom": "Malice", "rang": 5, "arbre": 1, "icone": "ability_racial_bloodrage", "ligne": 1, "col": 3, "max": 5} in furtif["fiche"]["talents"], "icône d'un talent lue")
+verifier({"nom": "Précision", "rang": 2, "arbre": 2, "icone": "inv_weapon_shortblade_05", "ligne": 2, "col": 2, "max": 5} in furtif["fiche"]["talents"], "l'icône suit son talent (même ordre)")
 
 refuses = lus[len(CAS):]
 for texte, lu in zip(MAIN[:8], refuses[:8]):
@@ -284,6 +287,16 @@ verifier(len(refuses[17]["fiche"]["talents"]) <= 70, f"pas plus de 70 talents: {
 ic_mal = refuses[18]["fiche"]
 verifier([p.get("icone") for p in ic_mal["equipement"]] == [None, "inv_chest", None, None], f"icônes piégées refusées (chemin, espace, trop long), majuscules acceptées en minuscules: {ic_mal['equipement']}")
 verifier("icone" not in ic_mal["arbres"][0] and "icone" not in ic_mal["talents"][0], "icônes d'arbre et de talent piégées refusées")
+
+tp_mal = refuses[19]["fiche"]["talents"]
+places = {t["nom"]: (t.get("ligne"), t.get("col"), t.get("max")) for t in tp_mal}
+verifier(places["Bon"] == (1, 3, 5), f"place valide lue: {places['Bon']}")
+for nom in ("Ligne0", "Ligne10", "Col5", "Max6", "Surrang", "Lettres", "Court", "Long"):
+    verifier(places[nom] == (None, None, None), f"place refusée (le talent est gardé sans place): {nom} {places[nom]}")
+verifier(places["Espace"] == (2, 3, 5), f"espaces autour d'une place tolérés: {places['Espace']}")
+verifier(places["Limite"] == (9, 4, 5), f"place aux limites acceptée: {places['Limite']}")
+combattant = next(t for t in furtif["fiche"]["talents"] if t["nom"] == "Coups précis")
+verifier("ligne" not in combattant and "col" not in combattant and "max" not in combattant, "talent dont le jeu ne donne pas la place: aucune place inventée")
 
 print(f"{total - len(echecs)}/{total} vérifications réussies")
 sys.exit(1 if echecs else 0)

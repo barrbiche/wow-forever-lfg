@@ -1,4 +1,4 @@
-// Teste supabase/ameliorations26.sql et 27 (fiche du personnage) sur un vrai Postgres en mémoire (PGlite), sans toucher à
+// Teste supabase/ameliorations26.sql, 27 et 28 (fiche du personnage) sur un vrai Postgres en mémoire (PGlite), sans toucher à
 // la vraie base. Il simule auth.uid() et les rôles anon / authenticated.
 //   npm install --no-save @electric-sql/pglite   (une fois, il n'est pas dans package.json)
 //   node supabase/tests/test_fiche.mjs
@@ -29,6 +29,9 @@ await db.exec(sql) // relancé sans problème
 const sql27 = readFileSync(new URL('../ameliorations27.sql', import.meta.url), 'utf8')
 await db.exec(sql27)
 await db.exec(sql27)
+const sql28 = readFileSync(new URL('../ameliorations28.sql', import.meta.url), 'utf8')
+await db.exec(sql28) // le 28 remplace le 27 (roulé après lui)
+await db.exec(sql28)
 verifier(true, 'script lancé deux fois')
 
 const moi = async (uid, role = 'authenticated') => {
@@ -66,6 +69,33 @@ await moi(A)
     const w = await enreg([GEAR[0]], ARBRES, [{ nom: 'T', rang: 1, arbre: 1, icone: mauvaise }])
     verifier(!w.ok, 'icône de talent refusée: ' + mauvaise)
   }
+}
+
+// --- place des talents dans l'arbre (ameliorations28)
+await moi(A)
+{
+  const taP = [{ nom: 'Précision', rang: 3, arbre: 1, ligne: 2, col: 3, max: 5, icone: 'ability_marksmanship' }, { nom: 'Sans place', rang: 1, arbre: 2 }]
+  let x = await enreg(GEAR, ARBRES, taP)
+  verifier(x.ok, 'enregistrement avec place des talents: ' + x.erreur)
+  x = await essai('select public.fiche_de($1) as f', [A])
+  const t = x.rows?.[0]?.f?.talents
+  verifier(t?.[0]?.ligne === 2 && t?.[0]?.col === 3 && t?.[0]?.max === 5 && t?.[0]?.icone === 'ability_marksmanship', 'place et rangs max gardés: ' + JSON.stringify(t?.[0]))
+  verifier(t?.[1] && !('ligne' in t[1]) && !('col' in t[1]) && !('max' in t[1]), 'sans place: pas de clés')
+  const base = { nom: 'T', rang: 1, arbre: 1 }
+  const refus = [
+    ['ligne 0', { ...base, ligne: 0, col: 1, max: 1 }], ['ligne 10', { ...base, ligne: 10, col: 1, max: 1 }],
+    ['colonne 5', { ...base, ligne: 1, col: 5, max: 1 }], ['colonne 0', { ...base, ligne: 1, col: 0, max: 1 }],
+    ['max 6', { ...base, ligne: 1, col: 1, max: 6 }], ['max 0', { ...base, ligne: 1, col: 1, max: 0 }],
+    ['rang plus grand que max', { ...base, rang: 3, ligne: 1, col: 1, max: 2 }],
+    ['ligne seule', { ...base, ligne: 1 }], ['ligne et col sans max', { ...base, ligne: 1, col: 1 }],
+    ['texte', { ...base, ligne: 'a', col: 1, max: 1 }], ['ligne décimale', { ...base, ligne: 1.5, col: 1, max: 1 }],
+  ]
+  for (const [nom, tal] of refus) {
+    const y = await enreg([GEAR[0]], ARBRES, [tal])
+    verifier(!y.ok, 'place refusée: ' + nom)
+  }
+  const bords = await enreg([GEAR[0]], ARBRES, [{ ...base, rang: 5, ligne: 9, col: 4, max: 5 }, { ...base, ligne: 1, col: 1, max: 1 }])
+  verifier(bords.ok, 'places aux limites acceptées: ' + bords.erreur)
 }
 
 // --- enregistrement valide
