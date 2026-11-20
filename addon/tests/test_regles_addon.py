@@ -154,7 +154,7 @@ verifier("pvp_ok_nil", "true", "annonce sans type de serveur (nil): on la montre
 verifier("sans_choix_ok_normal", "true", "sans choix de ma part, on ne filtre pas")
 verifier("filtre_coupe_ok_pvp", "true", "option coupée: on montre tout")
 verifier("message_ruleset", "rp_pvp", "le type de serveur est dans le message publié")
-verifier("message_version", "1.5.4", "la version de l'addon est à la fin du message publié")
+verifier("message_version", "1.5.5", "la version de l'addon est à la fin du message publié")
 verifier("ruleset_alice", "pvp", "type reçu")
 verifier("ruleset_bob", "", "type inventé refusé")
 verifier("ruleset_carl", "", "ancienne version sans type")

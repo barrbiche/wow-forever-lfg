@@ -232,17 +232,25 @@ TRAITS_ROGUE = dict(
     sorts={1: ["Malice", 132001], 2: ["Vitalité", 132002], 3: ["Précision", 132003], 4: ["Coups précis", 132004],
            5: ["Frappe", 132005], 6: ["Initiative", 132006], 7: ["A", 1], 8: ["B", 2], 9: ["C", 3], 10: ["D", 4]},
 )
-# Les portes de rangée gagnent sur la coordonnée Y: ici Y est volontairement trompeur (Suppression et Corruption un cran plus
-# bas que Vie volée alors que la porte dit « même rangée », comme dans l'arbre d'Affliction de Forever)
-TRAITS_PORTES = dict(
+# Coordonnées réelles relevées dans WoW Forever (/bf diag d'un démoniste): Vie volée améliorée à Y=2120 alors que Suppression et
+# Corruption améliorée sont à Y=2130 (même rangée), rangées à 600 d'écart, colonnes à 600 d'écart; l'onglet 2 est 4000 plus loin
+# et l'onglet 3 n'occupe que trois colonnes (X=9080, 9680, 10280). Aucune porte (portes=0).
+def reel(id, groupe, x, y, rang, maximum, entree):
+    return dict(id=id, info=dict(groupIDs=[9999, groupe], posX=x, posY=y, currentRank=rang, maxRanks=maximum, activeEntry=dict(entryID=entree)))
+
+TRAITS_REELS = dict(
     groupes=[dict(groupID=11, displayName="Affliction", icon=1, orderIndex=0),
              dict(groupID=12, displayName="Demonology", icon=2, orderIndex=1),
              dict(groupID=13, displayName="Destruction", icon=3, orderIndex=2)],
-    noeuds=[noeud(1, 11, 1, 1, 1, 2, 1, porte=0), noeud(2, 11, 2, 1, 5, 5, 2, porte=0, y=2 * 250), noeud(3, 11, 3, 1, 5, 5, 3, porte=0, y=2 * 250),
-            noeud(4, 11, 1, 2, 0, 5, 4, porte=5, y=3 * 250), noeud(5, 11, 4, 3, 0, 3, 5, porte=10, y=4 * 250),
-            noeud(6, 11, 2, 7, 0, 1, 6, porte=30, y=9 * 250)],
-    sorts={1: ["Vie volée améliorée", 10], 2: ["Suppression", 11], 3: ["Corruption améliorée", 12], 4: ["Malédiction", 13],
-           5: ["Pandémie", 14], 6: ["Ruine", 15]},
+    noeuds=[reel(1, 11, 1020, 2120, 1, 2, 1), reel(2, 11, 1620, 2130, 5, 5, 2), reel(3, 11, 2220, 2130, 5, 5, 3),
+            reel(4, 11, 1020, 2730, 0, 2, 4), reel(5, 11, 1620, 2730, 0, 2, 5), reel(6, 11, 2220, 2730, 0, 3, 6),
+            reel(7, 11, 2220, 3320, 0, 1, 7), reel(8, 11, 1020, 3330, 0, 2, 8), reel(9, 11, 2820, 5730, 0, 1, 9),
+            reel(10, 12, 5020, 2130, 0, 3, 10), reel(11, 12, 6820, 5730, 0, 1, 11),
+            reel(12, 13, 9680, 2130, 0, 5, 12), reel(13, 13, 10280, 3330, 0, 3, 13), reel(14, 13, 9080, 4530, 0, 2, 14)],
+    sorts={1: ["Vie volée améliorée", 10], 2: ["Suppression", 11], 3: ["Corruption améliorée", 12], 4: ["Fouet de malédiction", 13],
+           5: ["Moisson d'âmes", 14], 6: ["Drains améliorés", 15], 7: ["Malédiction amplifiée", 16], 8: ["Fléau d'agonie amélioré", 17],
+           9: ["Ruine", 18], 10: ["Maîtrise du démon", 19], 11: ["Métamorphose", 20], 12: ["Cataclysme", 21], 13: ["Embrasement", 22],
+           14: ["Dévastation", 23]},
     conditions=CONDITIONS,
 )
 # Onglet qui ne couvre que les colonnes 2 et 3: on ne sait pas laquelle est la première, donc pas de colonne
@@ -262,11 +270,11 @@ CAS += [
         "fiche": dict(equipement=1, arbres=["Assassinat:5", "Combat:8", "Finesse:3"], talents=10),
     },
     {
-        "nom": "WoW Forever: rangées par les portes",
-        "perso": dict(nom="Portes", royaume="Forever", region="EU", faction="Horde", classe="WARLOCK", niveau=20, traits=TRAITS_PORTES),
-        "attendu": dict(perso="Portes", classe="demoniste", faction="horde", region="EU", niveau="20", guilde=""),
+        "nom": "WoW Forever: coordonnées réelles",
+        "perso": dict(nom="Reels", royaume="Forever", region="EU", faction="Horde", classe="WARLOCK", niveau=20, traits=TRAITS_REELS),
+        "attendu": dict(perso="Reels", classe="demoniste", faction="horde", region="EU", niveau="20", guilde=""),
         "metiers": 0,
-        "fiche": dict(equipement=0, arbres=["Affliction:11", "Demonology:0", "Destruction:0"], talents=6),
+        "fiche": dict(equipement=0, arbres=["Affliction:11", "Demonology:0", "Destruction:0"], talents=14),
     },
     {
         "nom": "WoW Forever: onglet incomplet",
@@ -367,16 +375,18 @@ verifier((ft["Malice"]["arbre"], ft["Malice"]["ligne"], ft["Malice"]["col"], ft[
 verifier((ft["Précision"]["arbre"], ft["Précision"]["ligne"], ft["Précision"]["col"]) == (2, 1, 1), f"Précision en haut à gauche de Combat: {ft['Précision']}")
 verifier((ft["Coups précis"]["ligne"], ft["Coups précis"]["col"], ft["Coups précis"]["rang"], ft["Coups précis"]["max"]) == (2, 2, 3, 5), f"Coups précis: {ft['Coups précis']}")
 verifier((ft["Initiative"]["arbre"], ft["Initiative"]["ligne"], ft["Initiative"]["col"]) == (3, 2, 3), f"Initiative dans Finesse: {ft['Initiative']}")
-portes = next(lu for c, lu in zip(CAS, lus) if c["nom"] == "WoW Forever: rangées par les portes")
-pt = {x["nom"]: x for x in portes["fiche"]["talents"]}
-verifier((pt["Vie volée améliorée"]["ligne"], pt["Vie volée améliorée"]["col"]) == (1, 1), f"porte 0: rangée 1: {pt['Vie volée améliorée']}")
-verifier((pt["Suppression"]["ligne"], pt["Suppression"]["col"], pt["Corruption améliorée"]["ligne"], pt["Corruption améliorée"]["col"]) == (1, 2, 1, 3),
-         f"Suppression et Corruption dans la rangée 1 même si leur Y est plus bas (la porte gagne): {pt['Suppression']} {pt['Corruption améliorée']}")
-verifier((pt["Malédiction"]["ligne"], pt["Malédiction"]["rang"]) == (2, 0), f"porte 5 = rangée 2, pas appris: {pt['Malédiction']}")
-verifier((pt["Pandémie"]["ligne"], pt["Pandémie"]["col"]) == (3, 4), f"porte 10 = rangée 3: {pt['Pandémie']}")
-verifier(pt["Ruine"]["ligne"] == 7, f"porte 30 = rangée 7: {pt['Ruine']}")
-diag_portes = code_de(next(c["perso"] for c in CAS if c["nom"] == "WoW Forever: rangées par les portes"), "Diagnostic")
-verifier("portes=0,5,10,30 (rangées par les portes)" in diag_portes, f"/bf diag: portes de l'onglet: {diag_portes[-700:]}")
+reels = next(lu for c, lu in zip(CAS, lus) if c["nom"] == "WoW Forever: coordonnées réelles")
+pt = {x["nom"]: x for x in reels["fiche"]["talents"]}
+place = lambda n: (pt[n]["arbre"], pt[n]["ligne"], pt[n]["col"], pt[n]["max"])
+verifier(place("Vie volée améliorée") == (1, 1, 1, 2), f"Y=2120 et Y=2130 = même rangée 1: {pt['Vie volée améliorée']}")
+verifier(place("Suppression") == (1, 1, 2, 5) and place("Corruption améliorée") == (1, 1, 3, 5), f"Suppression et Corruption en rangée 1: {pt['Suppression']}")
+verifier(place("Fouet de malédiction") == (1, 2, 1, 2) and place("Moisson d'âmes") == (1, 2, 2, 2) and place("Drains améliorés") == (1, 2, 3, 3), "rangée 2 d'Affliction")
+verifier(place("Malédiction amplifiée") == (1, 3, 3, 1) and place("Fléau d'agonie amélioré") == (1, 3, 1, 2), "rangée 3 (Y=3320 et 3330 ensemble)")
+verifier(place("Ruine") == (1, 7, 4, 1), f"dernière rangée 7, colonne 4: {pt['Ruine']}")
+verifier(place("Maîtrise du démon") == (2, 1, 1, 3) and place("Métamorphose") == (2, 7, 4, 1), "deuxième onglet décalé de 4000")
+verifier(place("Cataclysme") == (3, 1, 2, 5) and place("Embrasement") == (3, 3, 3, 3) and place("Dévastation") == (3, 5, 1, 2),
+         f"troisième onglet à trois colonnes: colonnes retrouvées par la position: {pt['Cataclysme']} {pt['Dévastation']}")
+verifier(reels["fiche"]["arbres_points"] == [11, 0, 0] if "arbres_points" in reels["fiche"] else True, "points")
 partiel = next(lu for c, lu in zip(CAS, lus) if c["nom"] == "WoW Forever: onglet incomplet")
 verifier(all("ligne" not in x and "col" not in x for x in partiel["fiche"]["talents"]), f"onglet qui ne couvre pas 4 colonnes: talents gardés sans place (liste): {partiel['fiche']['talents']}")
 verifier(ft["Malice"].get("icone") == "f132001" and forever["fiche"]["arbres"][1].get("icone") == "f626002", "icônes en numéros de fichier gardées")

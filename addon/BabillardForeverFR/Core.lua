@@ -766,23 +766,45 @@ end
 -- grille (rangée, colonne) à partir de ses coordonnées posX / posY, puis le nom et l'icône via le sort du talent.
 -- Les colonnes ne sont données que si l'onglet en couvre bien quatre (sinon on ne sait pas laquelle est la première):
 -- le talent reste alors sans colonne et le site l'affiche en liste plutôt que mal placé.
+-- Les coordonnées de Forever ne sont pas parfaitement alignées: dans l'arbre d'Affliction, Vie volée améliorée est à Y=2120 et
+-- Suppression à Y=2130 (même rangée, 10 d'écart), alors que deux rangées voisines sont à 600 l'une de l'autre. On regroupe donc
+-- les valeurs proches (moins de 100 d'écart) en une seule ligne ou colonne, puis on mesure le pas réel entre groupes.
+local PAS_GRILLE = 600       -- écart entre deux rangées / colonnes dans Forever (BaseRowHeight de l'interface officielle)
+local TOLERANCE_GRILLE = 100 -- en dessous: même rangée / même colonne
+
 local function GridIndex(values)
-    local list, seen = {}, {}
+    local raw, seen = {}, {}
     for _, v in ipairs(values) do
-        if not seen[v] then seen[v] = true; tinsert(list, v) end
+        if not seen[v] then seen[v] = true; tinsert(raw, v) end
     end
-    table.sort(list)
+    table.sort(raw)
+    local list = {}  -- début de chaque groupe de valeurs proches
+    for _, v in ipairs(raw) do
+        if #list == 0 or v - list[#list] >= TOLERANCE_GRILLE then tinsert(list, v) end
+    end
     local step
     for i = 2, #list do
         local d = list[i] - list[i - 1]
-        if d > 0 and (not step or d < step) then step = d end
+        if not step or d < step then step = d end
     end
+    -- Un écart de plusieurs pas (rangée vide au milieu) ne doit pas être pris pour un pas unique.
+    if step and step > PAS_GRILLE * 1.5 then step = step / math.floor(step / PAS_GRILLE + 0.5) end
     local function index(v)
         if not step then return 1 end
         return math.floor((v - list[1]) / step + 0.5) + 1
     end
     -- Deuxième valeur: l'index de la dernière valeur (le nombre de colonnes ou de rangées couvertes).
-    return index, #list > 0 and index(list[#list]) or 0
+    return index, #raw > 0 and index(raw[#raw]) or 0
+end
+
+-- Les trois onglets sont côte à côte, 4000 d'écart l'un de l'autre, la première colonne du premier à X=1020. Quand un onglet
+-- n'occupe pas ses quatre colonnes (Destruction n'en a que trois dans Forever), on retrouve la colonne depuis cette position.
+-- Retourne nil si les coordonnées ne tombent pas sur cette grille (on préfère alors la liste à une case fausse).
+local function ColonneAncree(tab, x)
+    local off = (x - (1020 + 4000 * (tab - 1))) / PAS_GRILLE
+    local n = math.floor(off + 0.5)
+    if math.abs(off - n) > 0.3 then return nil end
+    return n + 1
 end
 
 function ns.GetTalentsTraits(debug)
@@ -849,28 +871,23 @@ function ns.GetTalentsTraits(debug)
     for tab = 1, #tabs do
         local col, colSpan = GridIndex(xs[tab])
         local rowByY = GridIndex(ys[tab])
-        -- Rangée par les portes (points requis) quand l'onglet en a; sinon par la coordonnée Y.
-        local gateValues, anyGate, allFives = {}, false, true
-        for _, nd in ipairs(nodes[tab]) do
-            if nd.gate > 0 then anyGate = true end
-            if nd.gate % 5 ~= 0 then allFives = false end
-            tinsert(gateValues, nd.gate)
-        end
-        local function row(nd)
-            if not anyGate then return rowByY(nd.y) end
-            if allFives then return nd.gate / 5 + 1 end
-            -- Portes qui ne sont pas des multiples de 5: la rangée est le rang de la porte parmi les portes de l'onglet.
-            local sortedGates, seen = {}, {}
-            for _, g in ipairs(gateValues) do if not seen[g] then seen[g] = true; tinsert(sortedGates, g) end end
-            table.sort(sortedGates)
-            for i, g in ipairs(sortedGates) do if g == nd.gate then return i end end
-            return 1
+        local gateValues = {}
+        for _, nd in ipairs(nodes[tab]) do tinsert(gateValues, nd.gate) end
+        -- Colonne: par l'index dans l'onglet quand il couvre quatre colonnes, sinon par la position ancrée (tout ou rien).
+        local colOf = function(x) return col(x) end
+        if colSpan ~= 4 then
+            local ok = #nodes[tab] > 0
+            for _, nd in ipairs(nodes[tab]) do
+                local c = ColonneAncree(tab, nd.x)
+                if not c or c < 1 or c > 4 then ok = false; break end
+            end
+            colOf = ok and function(x) return ColonneAncree(tab, x) end or function() return nil end
         end
         if debug then
             local gv, seenG = {}, {}
             for _, g in ipairs(gateValues) do if not seenG[g] then seenG[g] = true; tinsert(gv, g) end end
             table.sort(gv)
-            debug[tab] = { nodes = #nodes[tab], xs = xs[tab], ys = ys[tab], colSpan = colSpan, gates = gv, byGate = anyGate }
+            debug[tab] = { nodes = #nodes[tab], xs = xs[tab], ys = ys[tab], colSpan = colSpan, gates = gv, byGate = false }
         end
         table.sort(nodes[tab], function(a, b) if a.y ~= b.y then return a.y < b.y end return a.x < b.x end)
         for _, nd in ipairs(nodes[tab]) do
@@ -894,7 +911,7 @@ function ns.GetTalentsTraits(debug)
             -- Un nœud sans nom et sans point n'est pas un talent à montrer (case de passage, porte…).
             if rank > 0 or hasName then
                 tabs[tab].points = tabs[tab].points + rank
-                local r, c = row(nd), (colSpan == 4) and col(nd.x) or nil
+                local r, c = rowByY(nd.y), colOf(nd.x)
                 tinsert(talents, { tab = tab, x = nd.x, y = nd.y, gate = nd.gate, id = nd.id, name = hasName and name or "Talent", rank = rank,
                     max = tonumber(info.maxRanks) or 0, icon = IconName(icon),
                     tier = (r >= 1 and r <= 9) and r or nil, col = (c and c >= 1 and c <= 4) and c or nil })
@@ -989,7 +1006,7 @@ function ns.Diagnostic()
             add("onglet" .. i .. " nœuds/colonnes", d.nodes .. "/" .. tostring(d.colSpan))
             add("onglet" .. i .. " X", uniq(d.xs))
             add("onglet" .. i .. " Y", uniq(d.ys))
-            add("onglet" .. i .. " portes", (#d.gates > 0 and table.concat(d.gates, ",") or "aucune") .. (d.byGate and " (rangées par les portes)" or " (rangées par Y)"))
+            add("onglet" .. i .. " portes", (#d.gates > 0 and table.concat(d.gates, ",") or "aucune") .. " (info seulement)")
         end
         local learned = {}
         for _, t in ipairs(talentsT) do
