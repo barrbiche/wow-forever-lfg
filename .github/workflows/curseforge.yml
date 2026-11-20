@@ -67,20 +67,38 @@ jobs:
               except urllib.error.HTTPError as e:
                   return e.code, e.read().decode("utf-8", "replace")
 
-          # 1. Trouver le numéro de la version du jeu (« Forever »)
+          # 1. Trouver le(s) numéro(s) de version du jeu. CF_GAME_VERSION peut contenir des noms ou des numéros
+          #    (id) séparés par des virgules, par exemple « Forever » ou « 12345 ».
           statut, corps = appeler(base + "/game/versions")
           if statut != 200:
               sys.exit(f"Liste des versions du jeu refusée ({statut}): {corps[:300]}")
           versions = json.loads(corps)
-          choix = [v for v in versions if str(v.get("name", "")).strip().lower() == voulu.lower()]
-          if not choix:
-              choix = [v for v in versions if voulu.lower() in str(v.get("name", "")).lower()]
-          if not choix:
-              noms = sorted({str(v.get("name")) for v in versions})
-              sys.exit(f"Version du jeu « {voulu} » introuvable chez CurseForge. Noms connus: {', '.join(noms[-40:])}. "
-                       "Mets la variable CF_GAME_VERSION au nom exact.")
-          ids = [choix[0]["id"]]
-          print("Version du jeu:", choix[0].get("name"), ids)
+          statut, corps = appeler(base + "/game/version-types")
+          types = {t["id"]: t.get("name", "") for t in json.loads(corps)} if statut == 200 else {}
+
+          def etiquette(v):
+              return f'{v.get("id")}: {v.get("name")} [{types.get(v.get("gameVersionTypeID"), v.get("gameVersionTypeID"))}]'
+
+          ids = []
+          for morceau in [m.strip() for m in voulu.split(",") if m.strip()]:
+              if morceau.isdigit() and any(str(v.get("id")) == morceau for v in versions):
+                  ids.append(int(morceau)); continue
+              exacts = [v for v in versions if str(v.get("name", "")).strip().lower() == morceau.lower()]
+              par_type = [v for v in versions if morceau.lower() in str(types.get(v.get("gameVersionTypeID"), "")).lower()]
+              trouves = exacts or [v for v in versions if morceau.lower() in str(v.get("name", "")).lower()] or par_type
+              if trouves:
+                  ids.append(max(trouves, key=lambda v: v["id"])["id"])
+          if not ids:
+              print(f"Version du jeu « {voulu} » introuvable chez CurseForge. Types de versions connus:")
+              for t in sorted(set(types.values())): print("  type:", t)
+              print("Versions qui ressemblent à Forever, au jeu 16, ou récentes (numéro > 10):")
+              for v in versions:
+                  nom = str(v.get("name", ""))
+                  tp = str(types.get(v.get("gameVersionTypeID"), ""))
+                  if "forever" in (nom + tp).lower() or re.match(r"^(1[0-9]|[2-9][0-9])\.", nom):
+                      print("  ", etiquette(v))
+              sys.exit("Mets la variable CF_GAME_VERSION au nom exact ou au numéro (id) de la bonne version.")
+          print("Version(s) du jeu choisie(s):", [etiquette(v) for v in versions if v["id"] in ids])
 
           # 2. Texte de la mise à jour: la ligne « **x.y.z** » du README, sinon le message de l'étiquette
           readme = open("README.md", encoding="utf-8").read()
