@@ -100,7 +100,41 @@
 }
 
 .fiche-equipement .objet {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   overflow-wrap: anywhere;
+}
+
+/* Icône du jeu: un petit cadre de la couleur de rareté (pièces) autour de l'image. */
+.icone-jeu {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  object-fit: cover;
+  vertical-align: middle;
+  background: rgb(0 0 0 / 0.25);
+}
+
+.fiche-equipement .icone-jeu {
+  box-shadow: 0 0 0 2px var(--q, #8a8f98);
+}
+
+.fiche-arbres .icone-jeu,
+.fiche-talents .icone-jeu {
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+}
+
+.fiche-arbres li {
+  align-items: center;
+}
+
+.fiche-talents li {
+  display: inline-flex;
+  align-items: center;
 }
 
 .fiche-equipement .niveau-objet {

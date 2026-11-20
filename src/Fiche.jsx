@@ -27,6 +27,21 @@ export const NOMS_EMPLACEMENTS = {
   18: 'À distance',
 }
 
+// Les images viennent du réseau d'images de Wowhead (le site ne garde aucun fichier de Blizzard). Le nom de l'icône
+// est validé à la lecture du code et par la base (minuscules, chiffres, soulignés), alors l'adresse reste sûre.
+// Mettre `false` pour ne plus afficher d'images (la fiche reste lisible sans elles).
+export const ICONES_ACTIVES = true
+const urlIcone = (nom) => `https://wow.zamimg.com/images/wow/icons/medium/${nom}.jpg`
+
+// Une icône qui ne charge pas (nom inconnu, réseau bloqué) disparaît au lieu de laisser un carré cassé.
+function Icone({ nom }) {
+  const [echec, setEchec] = useState(false)
+  if (!ICONES_ACTIVES || !nom || echec) return null
+  return (
+    <img className="icone-jeu" src={urlIcone(nom)} alt="" width="24" height="24" loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setEchec(true)} />
+  )
+}
+
 const QUALITES = ['médiocre', 'ordinaire', 'inhabituel', 'rare', 'épique', 'légendaire', 'artéfact']
 
 // Résumé en une ligne: « 15 pièces · talents 31 / 20 / 0 ».
@@ -60,6 +75,7 @@ export function FicheAffichage({ fiche, maj }) {
           <ul className="fiche-arbres">
             {arbres.map((a, i) => (
               <li key={i} className={i === principal ? 'principal' : ''}>
+                <Icone nom={a.icone} />
                 <strong>{a.nom}</strong>
                 <span>{a.points}</span>
               </li>
@@ -77,6 +93,7 @@ export function FicheAffichage({ fiche, maj }) {
                   <ul>
                     {dedans.map((t, k) => (
                       <li key={k}>
+                        <Icone nom={t.icone} />
                         {t.nom} <span className="rang">{t.rang}</span>
                       </li>
                     ))}
@@ -95,6 +112,7 @@ export function FicheAffichage({ fiche, maj }) {
               <li key={p.slot} className={`q${Math.min(Math.max(p.qualite, 0), 6)}`}>
                 <span className="emplacement">{NOMS_EMPLACEMENTS[p.slot] ?? `Emplacement ${p.slot}`}</span>
                 <span className="objet">
+                  <Icone nom={p.icone} />
                   <span className="sr">{QUALITES[p.qualite] ?? ''} </span>
                   {p.nom}
                 </span>

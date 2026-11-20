@@ -44,7 +44,21 @@ const sansAccents = (t) => String(t ?? '').normalize('NFD').replace(/[\u0300-\u0
 
 export const EMPLACEMENTS_FICHE = 19 // numéros d'emplacement du jeu (1 à 19)
 
-function lireEquipement(brut) {
+// Nom d'icône du jeu (« inv_helmet_01 »): lettres minuscules, chiffres et soulignés seulement. Le nom sert à bâtir
+// une adresse d'image, donc rien d'autre n'est accepté.
+const ICONE = /^[a-z0-9_]{1,64}$/
+const iconeValide = (t) => {
+  const s = String(t ?? '').trim().toLowerCase()
+  return ICONE.test(s) ? s : ''
+}
+
+function lireEquipement(brut, brutIcones) {
+  const icones = new Map()
+  for (const morceau of String(brutIcones ?? '').split(',')) {
+    const [slot, icone] = morceau.split(':')
+    const s = entier(slot, 1, EMPLACEMENTS_FICHE)
+    if (s !== null && iconeValide(icone)) icones.set(s, iconeValide(icone))
+  }
   const parSlot = new Map()
   for (const morceau of String(brut ?? '').split(',')) {
     const p = morceau.split(':')
@@ -56,36 +70,41 @@ function lireEquipement(brut) {
     const qualite = entier(p[3], 0, 6) ?? 1
     const enchant = entier(p[4], 0, 999999) ?? 0
     const nom = nomPropre(p.slice(5).join(' '), 60) || '?'
-    parSlot.set(slot, { slot, id, ilvl, qualite, enchant, nom })
+    parSlot.set(slot, { slot, id, ilvl, qualite, enchant, nom, ...(icones.has(slot) ? { icone: icones.get(slot) } : {}) })
     if (parSlot.size >= 17) break
   }
   return [...parSlot.values()].sort((a, b) => a.slot - b.slot)
 }
 
-function lireArbres(brut) {
+function lireArbres(brut, brutIcones) {
+  const icones = String(brutIcones ?? '').split(',')
   const arbres = []
-  for (const morceau of String(brut ?? '').split(',')) {
+  for (const [i, morceau] of String(brut ?? '').split(',').entries()) {
     const p = morceau.split(':')
     if (p.length !== 2) continue
     const points = entier(p[1], 0, 60)
     const nom = nomPropre(p[0], 30)
     if (points === null || !nom) continue
-    arbres.push({ nom, points })
+    const icone = iconeValide(icones[i])
+    arbres.push({ nom, points, ...(icone ? { icone } : {}) })
     if (arbres.length >= 3) break
   }
   return arbres
 }
 
-function lireTalents(brut, nbArbres) {
+function lireTalents(brut, nbArbres, brutIcones) {
+  const icones = String(brutIcones ?? '').split(',')
   const talents = []
-  for (const morceau of String(brut ?? '').split(',')) {
+  // L'icône d'un talent est à la même place que lui dans la liste de départ (même si un autre talent est refusé).
+  for (const [i, morceau] of String(brut ?? '').split(',').entries()) {
     const p = morceau.split(':')
     if (p.length !== 3) continue
     const rang = entier(p[1], 1, 5)
     const arbre = entier(p[2], 1, 3)
     const nom = nomPropre(p[0], 40)
     if (rang === null || arbre === null || !nom || arbre > Math.max(nbArbres, 1)) continue
-    talents.push({ nom, rang, arbre })
+    const icone = iconeValide(icones[i])
+    talents.push({ nom, rang, arbre, ...(icone ? { icone } : {}) })
     if (talents.length >= 70) break
   }
   return talents
@@ -177,9 +196,9 @@ export function lireCodeJeu(texte) {
   const ilvl = Number.isInteger(Number(champs.il)) && Number(champs.il) > 0 ? Number(champs.il) : null
 
   // Équipement et talents (addon récent seulement)
-  const equipement = lireEquipement(champs.eq)
-  const arbres = lireArbres(champs.tr)
-  const talents = lireTalents(champs.ta, arbres.length)
+  const equipement = lireEquipement(champs.eq, champs.ic)
+  const arbres = lireArbres(champs.tr, champs.tri)
+  const talents = lireTalents(champs.ta, arbres.length, champs.ti)
   const fiche = equipement.length > 0 || arbres.length > 0 ? { equipement, arbres, talents } : null
   let specIncertaine = false
   if (fiche && valeurs.classe) {

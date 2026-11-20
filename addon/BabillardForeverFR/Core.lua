@@ -696,6 +696,16 @@ function ns.GetSkillProfessions()
     return out
 end
 
+-- Nom d'une icône du jeu: « Interface\\Icons\\INV_Helmet_01 » -> « inv_helmet_01 ». Vide si on ne reconnaît pas un
+-- chemin (par exemple un simple numéro de fichier): le site n'affiche alors pas d'image pour cette pièce.
+local function IconName(texture)
+    if type(texture) ~= "string" or (issecretvalue and issecretvalue(texture)) then return "" end
+    local name = (texture:match("([^\\/]+)$") or ""):gsub("%.%a+$", ""):lower()
+    if name:match("^[%w_]+$") and #name <= 64 then return name end
+    return ""
+end
+ns.IconName = IconName
+
 -- Équipement porté: une entrée par pièce (chemise et tabard exclus).
 local GEAR_SLOTS = { 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 }
 local QUALITY_BY_COLOR = { ["9d9d9d"] = 0, ["ffffff"] = 1, ["1eff00"] = 2, ["0070dd"] = 3, ["a335ee"] = 4, ["ff8000"] = 5 }
@@ -710,10 +720,14 @@ function ns.GetEquipment()
             local id = tonumber(link:match("item:(%d+)"))
             if id then
                 local enchant = tonumber(link:match("item:%d+:(%d+)")) or 0
-                local name, quality, ilvl
+                local name, quality, ilvl, icon
                 if getInfo then
-                    local okI, n, _, q, il = pcall(getInfo, link)
-                    if okI then name, quality, ilvl = n, q, il end
+                    local okI, n, _, q, il, _, _, _, _, _, tex = pcall(getInfo, link)
+                    if okI then name, quality, ilvl, icon = n, q, il, tex end
+                end
+                if GetInventoryItemTexture then
+                    local okT, tex = pcall(GetInventoryItemTexture, "player", slot)
+                    if okT and tex then icon = tex end
                 end
                 -- Objet pas encore en mémoire: le nom et la couleur sont dans le lien lui-même.
                 name = (type(name) == "string" and name) or link:match("|h%[(.-)%]|h") or "?"
@@ -721,7 +735,8 @@ function ns.GetEquipment()
                     local color = link:match("|cff(%x%x%x%x%x%x)")
                     quality = (color and QUALITY_BY_COLOR[color:lower()]) or 1
                 end
-                tinsert(out, { slot = slot, id = id, name = name, ilvl = tonumber(ilvl) or 0, quality = quality, enchant = enchant })
+                tinsert(out, { slot = slot, id = id, name = name, ilvl = tonumber(ilvl) or 0, quality = quality, enchant = enchant,
+                    icon = IconName(icon) })
             end
         end
     end
@@ -746,14 +761,15 @@ function ns.GetTalents()
         local r = Pack(GetTalentTabInfo, tab)
         local name, points
         if type(r[1]) == "string" then name, points = r[1], r[3] else name, points = r[2], r[5] end
-        tinsert(tabs, { name = type(name) == "string" and name or "?", points = tonumber(points) or 0 })
+        tinsert(tabs, { name = type(name) == "string" and name or "?", points = tonumber(points) or 0,
+            icon = type(r[1]) == "string" and IconName(r[2]) or "" })
         local count = Pack(GetNumTalents, tab)[1]
         if type(count) == "number" then
             for i = 1, math.min(count, 40) do
                 local t = Pack(GetTalentInfo, tab, i)
                 local rank = tonumber(t[5]) or 0
                 if type(t[1]) == "string" and rank > 0 then
-                    tinsert(talents, { tab = tab, name = t[1], rank = rank, max = tonumber(t[6]) or 0 })
+                    tinsert(talents, { tab = tab, name = t[1], rank = rank, max = tonumber(t[6]) or 0, icon = IconName(t[2]) })
                 end
             end
         end
@@ -807,6 +823,7 @@ end
 --   tr = arbres de talents, dans l'ordre du jeu   nom:points,...
 --   ta = talents appris   nom:rang:arbre(1-3),...
 --   eq = équipement   emplacement:objet:niveau d'objet:qualité:enchantement:nom,...
+--   ic = icônes de l'équipement   emplacement:icône,...    tri / ti = icônes des arbres / des talents (même ordre)
 function ns.BuildExportCode()
     local c = ns.GetCharacterInfo()
     local function F(v) return ((tostring(v or "")):gsub("[|;=,:]", " ")) end
@@ -819,6 +836,20 @@ function ns.BuildExportCode()
     for _, t in ipairs(c.talents) do tinsert(talentParts, F(t.name) .. ":" .. t.rank .. ":" .. t.tab) end
     for _, g in ipairs(c.equipment) do
         tinsert(gear, g.slot .. ":" .. g.id .. ":" .. g.ilvl .. ":" .. g.quality .. ":" .. g.enchant .. ":" .. F(g.name))
+    end
+    -- Icônes: listes parallèles (une icône par arbre, par talent), ou « emplacement:icône » pour l'équipement.
+    -- Un champ n'est écrit que s'il y a au moins une icône (le code reste court).
+    local treeIcons, talentIcons, gearIcons, anyTree, anyTalent = {}, {}, {}, false, false
+    for _, t in ipairs(c.talentTabs) do
+        tinsert(treeIcons, t.icon or "")
+        if (t.icon or "") ~= "" then anyTree = true end
+    end
+    for _, t in ipairs(c.talents) do
+        tinsert(talentIcons, t.icon or "")
+        if (t.icon or "") ~= "" then anyTalent = true end
+    end
+    for _, g in ipairs(c.equipment) do
+        if (g.icon or "") ~= "" then tinsert(gearIcons, g.slot .. ":" .. g.icon) end
     end
     local parts = {
         "BFFR1",
@@ -837,6 +868,9 @@ function ns.BuildExportCode()
         "tr=" .. table.concat(trees, ","),
         "ta=" .. table.concat(talentParts, ","),
         "eq=" .. table.concat(gear, ","),
+        "ic=" .. table.concat(gearIcons, ","),
+        "tri=" .. (anyTree and table.concat(treeIcons, ",") or ""),
+        "ti=" .. (anyTalent and table.concat(talentIcons, ",") or ""),
         "t=" .. time(),
     }
     return table.concat(parts, ";")

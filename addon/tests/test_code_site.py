@@ -75,6 +75,10 @@ if PERSO.equipement then
     if not e then return nil end
     return "|cff" .. QUALITE_COULEUR[e.qualite or 1] .. "|Hitem:" .. e.id .. ":" .. (e.enchant or 0) .. ":0:0|h[" .. e.nom .. "]|h|r"
   end
+  GetInventoryItemTexture = function(unit, slot)
+    local e = PERSO.equipement[slot]
+    return e and e.texture or nil
+  end
   C_Item = { GetItemInfo = function(lien)
     local id = tonumber(lien:match("item:(%d+)"))
     for _, e in pairs(PERSO.equipement) do
@@ -85,9 +89,9 @@ if PERSO.equipement then
 end
 if PERSO.arbres then
   GetNumTalentTabs = function() return #PERSO.arbres end
-  GetTalentTabInfo = function(i) return PERSO.arbres[i].nom, "icone", PERSO.arbres[i].points, "fond" end
+  GetTalentTabInfo = function(i) return PERSO.arbres[i].nom, PERSO.arbres[i].texture or 12345, PERSO.arbres[i].points, "fond" end
   GetNumTalents = function(i) return #PERSO.arbres[i].talents end
-  GetTalentInfo = function(i, j) local t = PERSO.arbres[i].talents[j]; return t[1], "icone", 1, 1, t[2], t[3] end
+  GetTalentInfo = function(i, j) local t = PERSO.arbres[i].talents[j]; return t[1], t[4] or 67890, 1, 1, t[2], t[3] end
 end
 
 local ns = {}
@@ -134,13 +138,13 @@ CAS = [
 
 # Équipement et talents: ce que l'addon lit dans le jeu doit arriver intact sur le site.
 GEAR_ROGUE = {
-    1: dict(id=12345, nom="Casque du Crépuscule", ilvl=62, qualite=4, enchant=0),
-    5: dict(id=22222, nom="Plastron; spécial|piégé", ilvl=58, qualite=3, enchant=1234),
-    16: dict(id=33333, nom="Dague sans nom en mémoire", ilvl=0, qualite=2, enchant=0, horsMemoire=True),
+    1: dict(id=12345, nom="Casque du Crépuscule", ilvl=62, qualite=4, enchant=0, texture="Interface\\Icons\\INV_Helmet_01"),
+    5: dict(id=22222, nom="Plastron; spécial|piégé", ilvl=58, qualite=3, enchant=1234, texture="Interface/Icons/INV_Chest_Cloth_05.blp"),
+    16: dict(id=33333, nom="Dague sans nom en mémoire", ilvl=0, qualite=2, enchant=0, horsMemoire=True, texture=132345),
 }
 ARBRES_ROGUE = [
-    dict(nom="Assassinat", points=5, talents=[["Malice", 5, 5]]),
-    dict(nom="Combat", points=31, talents=[["Précision", 2, 5], ["Coups précis", 3, 3]]),
+    dict(nom="Assassinat", points=5, texture="Interface\\Icons\\Ability_Rogue_Eviscerate", talents=[["Malice", 5, 5, "Interface\\Icons\\Ability_Racial_BloodRage"]]),
+    dict(nom="Combat", points=31, talents=[["Précision", 2, 5, "Interface\\Icons\\INV_Weapon_ShortBlade_05"], ["Coups précis", 3, 3]]),
     dict(nom="Finesse", points=15, talents=[["Initiative", 3, 3]]),
 ]
 CAS += [
@@ -207,6 +211,8 @@ MAIN = [
     "BFFR1;n=Tester;lv=60;c=WARRIOR;tr=A:61,B:x,:3,C:5,D:6,E:7,F:8;ta=Bon:5:1,Rang6:6:1,Arbre4:1:4,Rang0:0:1,<b>Gras</b>:2:1",
     "BFFR1;n=Tester;lv=60;c=WARRIOR;eq=" + ",".join(f"{(i % 19) + 1}:{i + 1}:10:1:0:Objet {i}" for i in range(200)),
     "BFFR1;n=Tester;lv=60;c=WARRIOR;tr=Armes:10,Fureur:5,Protection:0;ta=" + ",".join(f"Talent {i}:1:1" for i in range(300)),
+    "BFFR1;n=Tester;lv=60;c=WARRIOR;eq=1:1:1:1:1:Casque,5:2:1:1:1:Torse,6:3:1:1:1:Taille,7:4:1:1:1:Jambes;"
+    "ic=1:../../x,5:INV_Chest,6:a b,7:" + "z" * 65 + ",8:inv_ok;tr=A:1;tri=<img src=x>;ta=T:1:1;ti=javascript:alert(1)",
 ]
 resultat = subprocess.run(["node", os.path.join(ICI, "decoder.mjs")], input=json.dumps(codes + MAIN), capture_output=True,
                           text=True, cwd=ICI)
@@ -242,10 +248,16 @@ for c, lu in zip(CAS, lus[: len(CAS)]):
 verifier(lus[0]["metiers"][0] == {"nom": "Herboristerie", "rang": 225, "max": 300}, "métier lu avec son rang")
 furtif = next(lu for c, lu in zip(CAS, lus) if c["nom"] == "équipement et talents")
 pieces = {p["slot"]: p for p in furtif["fiche"]["equipement"]}
-verifier(pieces[1] == dict(slot=1, id=12345, ilvl=62, qualite=4, enchant=0, nom="Casque du Crépuscule"), f"casque lu intact: {pieces.get(1)}")
+verifier(pieces[1] == dict(slot=1, id=12345, ilvl=62, qualite=4, enchant=0, nom="Casque du Crépuscule", icone="inv_helmet_01"), f"casque lu intact: {pieces.get(1)}")
 verifier(pieces[5]["nom"] == "Plastron spécial piégé" and pieces[5]["enchant"] == 1234, f"nom nettoyé, enchantement lu: {pieces.get(5)}")
 verifier(pieces[16]["nom"] == "Dague sans nom en mémoire" and pieces[16]["qualite"] == 2, f"objet hors mémoire: nom et couleur lus dans le lien: {pieces.get(16)}")
-verifier({"nom": "Coups précis", "rang": 3, "arbre": 2} in furtif["fiche"]["talents"], "un talent lu avec son rang et son arbre")
+verifier({"nom": "Coups précis", "rang": 3, "arbre": 2} in furtif["fiche"]["talents"], "un talent sans icône lu avec son rang et son arbre (le numéro de fichier d'icône est ignoré)")
+verifier(pieces[1].get("icone") == "inv_helmet_01", f"icône du casque: chemin Windows nettoyé et en minuscules: {pieces.get(1)}")
+verifier(pieces[5].get("icone") == "inv_chest_cloth_05", f"icône du plastron: extension .blp retirée: {pieces.get(5)}")
+verifier("icone" not in pieces[16], f"icône donnée comme un numéro: ignorée: {pieces.get(16)}")
+verifier(furtif["fiche"]["arbres"][0].get("icone") == "ability_rogue_eviscerate" and "icone" not in furtif["fiche"]["arbres"][1], "icône d'arbre lue (et absente quand le jeu donne un numéro)")
+verifier({"nom": "Malice", "rang": 5, "arbre": 1, "icone": "ability_racial_bloodrage"} in furtif["fiche"]["talents"], "icône d'un talent lue")
+verifier({"nom": "Précision", "rang": 2, "arbre": 2, "icone": "inv_weapon_shortblade_05"} in furtif["fiche"]["talents"], "l'icône suit son talent (même ordre)")
 
 refuses = lus[len(CAS):]
 for texte, lu in zip(MAIN[:8], refuses[:8]):
@@ -269,6 +281,9 @@ verifier(all(0 <= a["points"] <= 60 for a in ar_mal["arbres"]), "points d'arbre 
 verifier([t["nom"] for t in ar_mal["talents"]] == ["Bon", "bGras/b"], f"talents hors limites refusés (rang 6, arbre 4, rang 0), < et > retirés: {ar_mal['talents']}")
 verifier(len(refuses[16]["fiche"]["equipement"]) <= 17, "pas plus de 17 pièces")
 verifier(len(refuses[17]["fiche"]["talents"]) <= 70, f"pas plus de 70 talents: {len(refuses[17]['fiche']['talents'])}")
+ic_mal = refuses[18]["fiche"]
+verifier([p.get("icone") for p in ic_mal["equipement"]] == [None, "inv_chest", None, None], f"icônes piégées refusées (chemin, espace, trop long), majuscules acceptées en minuscules: {ic_mal['equipement']}")
+verifier("icone" not in ic_mal["arbres"][0] and "icone" not in ic_mal["talents"][0], "icônes d'arbre et de talent piégées refusées")
 
 print(f"{total - len(echecs)}/{total} vérifications réussies")
 sys.exit(1 if echecs else 0)

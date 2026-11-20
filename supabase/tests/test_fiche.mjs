@@ -1,4 +1,4 @@
-// Teste supabase/ameliorations26.sql (fiche du personnage) sur un vrai Postgres en mémoire (PGlite), sans toucher à
+// Teste supabase/ameliorations26.sql et 27 (fiche du personnage) sur un vrai Postgres en mémoire (PGlite), sans toucher à
 // la vraie base. Il simule auth.uid() et les rôles anon / authenticated.
 //   npm install --no-save @electric-sql/pglite   (une fois, il n'est pas dans package.json)
 //   node supabase/tests/test_fiche.mjs
@@ -26,6 +26,9 @@ await db.exec(`
 const sql = readFileSync(process.env.SQLFILE ?? new URL('../ameliorations26.sql', import.meta.url), 'utf8')
 await db.exec(sql)
 await db.exec(sql) // relancé sans problème
+const sql27 = readFileSync(new URL('../ameliorations27.sql', import.meta.url), 'utf8')
+await db.exec(sql27)
+await db.exec(sql27)
 verifier(true, 'script lancé deux fois')
 
 const moi = async (uid, role = 'authenticated') => {
@@ -41,6 +44,29 @@ const GEAR = [
 const ARBRES = [{ nom: 'Armes', points: 31 }, { nom: 'Fureur', points: 20 }, { nom: 'Protection', points: 0 }]
 const TAL = [{ nom: 'Précision', rang: 3, arbre: 1 }]
 const enreg = (eq, ar, ta) => essai('select public.enregistrer_fiche($1::jsonb,$2::jsonb,$3::jsonb)', [JSON.stringify(eq), JSON.stringify(ar), JSON.stringify(ta)])
+
+// --- icônes (ameliorations27)
+await moi(A)
+{
+  const eqI = [{ ...GEAR[0], icone: 'inv_helmet_01' }, { ...GEAR[1], icone: '' }]
+  const arI = [{ nom: 'Armes', points: 31, icone: 'ability_warrior_savageblow' }, { nom: 'Fureur', points: 20 }]
+  const taI = [{ nom: 'Précision', rang: 3, arbre: 1, icone: 'ability_marksmanship' }, { nom: 'Autre', rang: 1, arbre: 2 }]
+  let x = await enreg(eqI, arI, taI)
+  verifier(x.ok, 'enregistrement avec icônes: ' + x.erreur)
+  x = await essai('select public.fiche_de($1) as f', [A])
+  const g = x.rows?.[0]?.f
+  verifier(g?.equipement?.[0]?.icone === 'inv_helmet_01' && !('icone' in g.equipement[1]), 'icône d\'équipement gardée (vide = pas de clé)')
+  verifier(g?.arbres?.[0]?.icone === 'ability_warrior_savageblow' && !('icone' in g.arbres[1]), 'icône d\'arbre gardée')
+  verifier(g?.talents?.[0]?.icone === 'ability_marksmanship' && !('icone' in g.talents[1]), 'icône de talent gardée')
+  for (const mauvaise of ['../evil', 'Majuscule', 'a b', 'x'.repeat(65), 'a/b', '<img>', "a'b"]) {
+    const y = await enreg([{ ...GEAR[0], icone: mauvaise }], ARBRES, TAL)
+    verifier(!y.ok, 'icône refusée: ' + mauvaise)
+    const z = await enreg([GEAR[0]], [{ nom: 'A', points: 1, icone: mauvaise }], TAL)
+    verifier(!z.ok, 'icône d\'arbre refusée: ' + mauvaise)
+    const w = await enreg([GEAR[0]], ARBRES, [{ nom: 'T', rang: 1, arbre: 1, icone: mauvaise }])
+    verifier(!w.ok, 'icône de talent refusée: ' + mauvaise)
+  }
+}
 
 // --- enregistrement valide
 await moi(A)
