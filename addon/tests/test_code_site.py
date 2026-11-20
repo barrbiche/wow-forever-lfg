@@ -235,7 +235,7 @@ CAS += [
                       traits=TRAITS_ROGUE),
         "attendu": dict(perso="Forever", classe="voleur", specialisation="combat", faction="horde", region="EU", niveau="60", guilde=""),
         "metiers": 0,
-        "fiche": dict(equipement=1, arbres=["Assassinat:5", "Combat:8", "Finesse:3"], talents=4),
+        "fiche": dict(equipement=1, arbres=["Assassinat:5", "Combat:8", "Finesse:3"], talents=10),
     },
     {
         "nom": "WoW Forever: onglet incomplet",
@@ -265,7 +265,7 @@ MAIN = [
     "  BFFR1;n=Tester;lv=12;c=hunter;f=HORDE;rg=eu;ro=TXZ;rs=RP_PVP;g=" + "G" * 80 + "  \n",
     "BFFR1;n=Tester;lv=12;rs=hacker",
     "BFFR1;n=Tester;lv=12;p=Mine:1:2:3,:5:6,Forge:10:50",
-    "BFFR1;" + "n=Tester;" * 800,
+    "BFFR1;" + "n=Tester;" * 1500,
     "BFFR1;n=Tester;lv=60;c=WARRIOR;eq=0:1:1:1:1:Zéro,20:1:1:1:1:Vingt,1:0:1:1:1:SansId,2:x:1:1:1:Lettres,3:5:5:5:5,4:123:9999:9:9:Limites",
     "BFFR1;n=Tester;lv=60;c=WARRIOR;tr=A:61,B:x,:3,C:5,D:6,E:7,F:8;ta=Bon:5:1,Rang6:6:1,Arbre4:1:4,Rang0:0:1,<b>Gras</b>:2:1",
     "BFFR1;n=Tester;lv=60;c=WARRIOR;eq=" + ",".join(f"{(i % 19) + 1}:{i + 1}:10:1:0:Objet {i}" for i in range(200)),
@@ -275,6 +275,9 @@ MAIN = [
     "BFFR1;n=Tester;lv=60;c=WARRIOR;tr=Armes:10,Fureur:5,Protection:0;"
     "ta=Bon:2:1,Ligne0:1:1,Ligne10:1:1,Col5:1:1,Max6:1:1,Surrang:4:1,Lettres:1:2,Court:1:2,Long:1:2,Espace:1:3,Limite:5:3;"
     "tp=135,015,105,155,166,423,a35,13,1355, 235 ,945",
+    # talents pas appris (rang 0): gardés seulement avec une place valide
+    "BFFR1;n=Tester;lv=60;c=WARRIOR;tr=Armes:10,Fureur:5,Protection:0;"
+    "ta=Un:0:1,Deux:2:1,Trois:0:2,SansPlace:0:1,PlaceFausse:0:1,Surrang:4:1;tp=125,113,414,,015,123",
 ]
 resultat = subprocess.run(["node", os.path.join(ICI, "decoder.mjs")], input=json.dumps(codes + MAIN), capture_output=True,
                           text=True, cwd=ICI)
@@ -324,7 +327,11 @@ verifier({"nom": "Précision", "rang": 2, "arbre": 2, "icone": "inv_weapon_short
 forever = next(lu for c, lu in zip(CAS, lus) if c["nom"].startswith("WoW Forever"))
 ft = {t["nom"]: t for t in forever["fiche"]["talents"]}
 verifier([a["nom"] for a in forever["fiche"]["arbres"]] == ["Assassinat", "Combat", "Finesse"], "onglets remis dans l'ordre du jeu (orderIndex)")
-verifier(set(ft) == {"Malice", "Précision", "Coups précis", "Initiative"}, f"seuls les talents appris sont envoyés (pas de rang 0): {set(ft)}")
+verifier({n for n, t in ft.items() if t["rang"] > 0} == {"Malice", "Précision", "Coups précis", "Initiative"}, f"talents appris: {ft.keys()}")
+verifier(set(ft) == {"Malice", "Vitalité", "Précision", "Coups précis", "Frappe", "Initiative", "A", "B", "C", "D"}, f"tous les talents de l'arbre sont envoyés, appris ou non: {set(ft)}")
+verifier(all(t["ligne"] and t["col"] and t["max"] for t in ft.values()), "chaque talent a sa place, appris ou non")
+verifier((ft["Vitalité"]["rang"], ft["Vitalité"]["arbre"], ft["Vitalité"]["ligne"], ft["Vitalité"]["col"], ft["Vitalité"]["max"]) == (0, 1, 1, 2, 3), f"talent pas appris: rang 0 avec sa place: {ft['Vitalité']}")
+verifier((ft["Frappe"]["rang"], ft["Frappe"]["arbre"], ft["Frappe"]["ligne"], ft["Frappe"]["col"]) == (0, 2, 3, 4), f"Frappe pas appris en rangée 3, colonne 4: {ft['Frappe']}")
 verifier((ft["Malice"]["arbre"], ft["Malice"]["ligne"], ft["Malice"]["col"], ft["Malice"]["max"], ft["Malice"]["rang"]) == (1, 1, 3, 5, 5), f"Malice: {ft['Malice']}")
 verifier((ft["Précision"]["arbre"], ft["Précision"]["ligne"], ft["Précision"]["col"]) == (2, 1, 1), f"Précision en haut à gauche de Combat: {ft['Précision']}")
 verifier((ft["Coups précis"]["ligne"], ft["Coups précis"]["col"], ft["Coups précis"]["rang"], ft["Coups précis"]["max"]) == (2, 2, 3, 5), f"Coups précis: {ft['Coups précis']}")
@@ -334,7 +341,7 @@ verifier(all("ligne" not in x and "col" not in x for x in partiel["fiche"]["tale
 verifier(ft["Malice"].get("icone") == "f132001" and forever["fiche"]["arbres"][1].get("icone") == "f626002", "icônes en numéros de fichier gardées")
 
 diag = code_de(next(c["perso"] for c in CAS if c["nom"].startswith("WoW Forever: talents")), "Diagnostic")
-verifier("lecture=3 arbres, 4 talents appris, 4 placés" in diag and "points=5/8/3" in diag, f"/bf diag: résumé de la lecture: {diag}")
+verifier("lecture=3 arbres, 10 talents dont 4 appris, 10 placés" in diag and "points=5/8/3" in diag, f"/bf diag: résumé de la lecture: {diag}")
 verifier("treeID=1117" in diag and "configID=77" in diag and "nœuds=10" in diag and "texture de la tête" in diag, "/bf diag: arbre, config, nœuds et texture")
 verifier("onglet1 X=" in diag and "onglet3 Y=" in diag and "appris=" in diag and "#1@" in diag, f"/bf diag: coordonnées brutes par onglet et talents appris: {diag[-420:]}")
 verifier("champs d'un nœud=" in diag and "posX/posY du 1er=" in diag, "/bf diag: champs d'un nœud")
@@ -375,6 +382,13 @@ verifier(places["Espace"] == (2, 3, 5), f"espaces autour d'une place tolérés: 
 verifier(places["Limite"] == (9, 4, 5), f"place aux limites acceptée: {places['Limite']}")
 combattant = next(t for t in furtif["fiche"]["talents"] if t["nom"] == "Coups précis")
 verifier("ligne" not in combattant and "col" not in combattant and "max" not in combattant, "talent dont le jeu ne donne pas la place: aucune place inventée")
+
+zero = {t["nom"]: t for t in refuses[20]["fiche"]["talents"]}
+verifier(set(zero) == {"Un", "Deux", "Trois", "Surrang"}, f"rang 0 gardé seulement avec une place valide: {set(zero)}")
+verifier("ligne" not in zero["Surrang"] and zero["Surrang"]["rang"] == 4, f"rang plus grand que le max: la place est refusée, le talent appris reste: {zero['Surrang']}")
+verifier(zero["Un"]["rang"] == 0 and zero["Un"]["ligne"] == 1 and zero["Un"]["col"] == 2 and zero["Un"]["max"] == 5, f"rang 0: {zero['Un']}")
+verifier(zero["Trois"]["arbre"] == 2 and zero["Trois"]["ligne"] == 4, f"talent pas appris dans le 2e arbre: {zero['Trois']}")
+verifier(len(code_de(next(c["perso"] for c in CAS if c["nom"].startswith("WoW Forever: talents")))) < 9000, "le code reste sous la limite du site")
 
 print(f"{total - len(echecs)}/{total} vérifications réussies")
 sys.exit(1 if echecs else 0)

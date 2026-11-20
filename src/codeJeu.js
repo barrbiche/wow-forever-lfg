@@ -7,7 +7,7 @@
 import { specialisationsDe } from './data.js'
 
 export const PREFIXE_CODE = 'BFFR1'
-const LONGUEUR_MAX = 6000 // équipement et talents allongent le code (environ 2 500 caractères au maximum)
+const LONGUEUR_MAX = 9000 // équipement et talents (tous ceux de l'arbre) allongent le code: environ 6 000 caractères au pire
 
 // Jeton de classe du jeu (UnitClass) -> identifiant de classe du site (data.js).
 const CLASSES_DU_JEU = {
@@ -101,13 +101,15 @@ function lireTalents(brut, nbArbres, brutIcones, brutPlaces) {
   for (const [i, morceau] of String(brut ?? '').split(',').entries()) {
     const p = morceau.split(':')
     if (p.length !== 3) continue
-    const rang = entier(p[1], 1, 5)
+    const rang = entier(p[1], 0, 5)
     const arbre = entier(p[2], 1, 3)
     const nom = nomPropre(p[0], 40)
     if (rang === null || arbre === null || !nom || arbre > Math.max(nbArbres, 1)) continue
     const icone = iconeValide(icones[i])
     const place = /^([1-9])([1-4])([1-5])$/.exec((places[i] ?? '').trim())
     const grille = place && rang <= Number(place[3]) ? { ligne: Number(place[1]), col: Number(place[2]), max: Number(place[3]) } : {}
+    // Rang 0 = talent pas appris: gardé seulement avec sa place dans la grille (sinon il ne servirait à rien).
+    if (rang === 0 && !grille.ligne) continue
     talents.push({ nom, rang, arbre, ...(icone ? { icone } : {}), ...grille })
     if (talents.length >= 70) break
   }

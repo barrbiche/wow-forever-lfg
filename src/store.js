@@ -1158,11 +1158,13 @@ export async function enregistrerFiche(fiche, perso) {
     }
     return 'ok'
   }
-  const { error } = await supabase.rpc('enregistrer_fiche', {
-    p_equipement: fiche.equipement,
-    p_arbres: fiche.arbres,
-    p_talents: fiche.talents,
-  })
+  const envoyer = (talents) =>
+    supabase.rpc('enregistrer_fiche', { p_equipement: fiche.equipement, p_arbres: fiche.arbres, p_talents: talents })
+  let { error } = await envoyer(fiche.talents)
+  // La base n'a pas encore ameliorations29.sql: elle refuse les talents sans point. On réessaie avec ceux qui ont des points.
+  if (error && /talent invalide/i.test(error.message ?? '') && fiche.talents.some((t) => t.rang === 0)) {
+    ;({ error } = await envoyer(fiche.talents.filter((t) => t.rang > 0)))
+  }
   if (error) {
     if (error.code === 'PGRST202' || /could not find the function|schema cache/i.test(error.message ?? '')) return 'base'
     throw error

@@ -836,28 +836,36 @@ function ns.GetTalentsTraits(debug)
         for _, nd in ipairs(nodes[tab]) do
             local info = nd.info
             local rank = tonumber(info.currentRank) or tonumber(info.ranksPurchased) or 0
-            if rank > 0 then
-                local entryID = (type(info.activeEntry) == "table" and info.activeEntry.entryID)
-                    or (type(info.entryIDs) == "table" and info.entryIDs[1])
-                local entry = entryID and Pack(C_Traits.GetEntryInfo, configID, entryID)[1]
-                local def = type(entry) == "table" and entry.definitionID and Pack(C_Traits.GetDefinitionInfo, entry.definitionID)[1]
-                local name, icon
-                if type(def) == "table" then
-                    name, icon = def.overrideName, def.overrideIcon
-                    local spellID = def.spellID
-                    if spellID and type(C_Spell) == "table" then
-                        local si = Pack(C_Spell.GetSpellInfo, spellID)[1]
-                        if type(si) == "table" then name = name or si.name; icon = icon or si.iconID or si.originalIconID end
-                    end
-                    if not name and spellID then name = Pack(GetSpellInfo, spellID)[1] end
+            local entryID = (type(info.activeEntry) == "table" and info.activeEntry.entryID)
+                or (type(info.entryIDs) == "table" and info.entryIDs[1])
+            local entry = entryID and Pack(C_Traits.GetEntryInfo, configID, entryID)[1]
+            local def = type(entry) == "table" and entry.definitionID and Pack(C_Traits.GetDefinitionInfo, entry.definitionID)[1]
+            local name, icon
+            if type(def) == "table" then
+                name, icon = def.overrideName, def.overrideIcon
+                local spellID = def.spellID
+                if spellID and type(C_Spell) == "table" then
+                    local si = Pack(C_Spell.GetSpellInfo, spellID)[1]
+                    if type(si) == "table" then name = name or si.name; icon = icon or si.iconID or si.originalIconID end
                 end
+                if not name and spellID then name = Pack(GetSpellInfo, spellID)[1] end
+            end
+            local hasName = type(name) == "string" and name ~= ""
+            -- Un nœud sans nom et sans point n'est pas un talent à montrer (case de passage, porte…).
+            if rank > 0 or hasName then
                 tabs[tab].points = tabs[tab].points + rank
                 local r, c = row(nd.y), (colSpan == 4) and col(nd.x) or nil
-                tinsert(talents, { tab = tab, x = nd.x, y = nd.y, id = nd.id, name = (type(name) == "string" and name ~= "") and name or "Talent", rank = rank,
+                tinsert(talents, { tab = tab, x = nd.x, y = nd.y, id = nd.id, name = hasName and name or "Talent", rank = rank,
                     max = tonumber(info.maxRanks) or 0, icon = IconName(icon),
                     tier = (r >= 1 and r <= 9) and r or nil, col = (c and c >= 1 and c <= 4) and c or nil })
             end
         end
+    end
+    -- Le code doit rester court (la base garde 70 talents au plus): trop de talents -> seulement ceux qui ont des points.
+    if #talents > 70 then
+        local learned = {}
+        for _, t in ipairs(talents) do if t.rank > 0 then tinsert(learned, t) end end
+        talents = learned
     end
     return tabs, talents
 end
@@ -954,7 +962,9 @@ function ns.Diagnostic()
     if ok then
         local placed = 0
         for _, t in ipairs(talents) do if t.tier and t.col then placed = placed + 1 end end
-        add("lecture", #tabs .. " arbres, " .. #talents .. " talents appris, " .. placed .. " placés")
+        local learnedCount = 0
+        for _, t in ipairs(talents) do if t.rank > 0 then learnedCount = learnedCount + 1 end end
+        add("lecture", #tabs .. " arbres, " .. #talents .. " talents dont " .. learnedCount .. " appris, " .. placed .. " placés")
         local pts = {}
         for _, t in ipairs(tabs) do tinsert(pts, t.points) end
         add("points", table.concat(pts, "/"))
@@ -1024,7 +1034,7 @@ end
 -- Format : BFFR1;cle=valeur;cle=valeur...
 --   p  = métiers   nom:rang:max,...
 --   tr = arbres de talents, dans l'ordre du jeu   nom:points,...
---   ta = talents appris   nom:rang:arbre(1-3),...
+--   ta = talents   nom:rang:arbre(1-3),...   (rang 0 = pas appris: seulement avec sa place dans tp)
 --   eq = équipement   emplacement:objet:niveau d'objet:qualité:enchantement:nom,...
 --   ic = icônes de l'équipement   emplacement:icône,...    tri / ti = icônes des arbres / des talents (même ordre)
 --   tp = place de chaque talent appris dans son arbre (même ordre que ta): trois chiffres rangée-colonne-rangs max
@@ -1038,6 +1048,13 @@ function ns.BuildExportCode()
     end
     local trees, talentParts, gear = {}, {}, {}
     for _, t in ipairs(c.talentTabs) do tinsert(trees, F(t.name) .. ":" .. t.points) end
+    -- Tous les talents de l'arbre sont envoyés (ceux sans point en gris sur le site), mais un talent sans point n'est utile
+    -- que s'il a sa place dans la grille: sans place on ne garde que ceux qui ont des points.
+    local sent = {}
+    for _, t in ipairs(c.talents) do
+        if t.rank > 0 or (t.tier and t.col and t.max and t.max >= 1) then tinsert(sent, t) end
+    end
+    c.talents = sent
     for _, t in ipairs(c.talents) do tinsert(talentParts, F(t.name) .. ":" .. t.rank .. ":" .. t.tab) end
     for _, g in ipairs(c.equipment) do
         tinsert(gear, g.slot .. ":" .. g.id .. ":" .. g.ilvl .. ":" .. g.quality .. ":" .. g.enchant .. ":" .. F(g.name))

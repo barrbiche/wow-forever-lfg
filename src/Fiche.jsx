@@ -115,6 +115,18 @@ const COLONNE_GAUCHE = [1, 2, 3, 15, 5, 4, 19, 9]
 const COLONNE_DROITE = [10, 6, 7, 8, 11, 12, 13, 14]
 const ARMES = [16, 17, 18]
 const SANS_DONNEES = new Set([4, 19])
+// Icône officielle de la classe (le jeu n'en donne pas de modèle 3D): une image par classe, même nom en anglais.
+const ICONE_CLASSE = {
+  guerrier: 'classicon_warrior',
+  paladin: 'classicon_paladin',
+  chasseur: 'classicon_hunter',
+  voleur: 'classicon_rogue',
+  pretre: 'classicon_priest',
+  chaman: 'classicon_shaman',
+  mage: 'classicon_mage',
+  demoniste: 'classicon_warlock',
+  druide: 'classicon_druid',
+}
 const COURT = { 1: 'Tête', 2: 'Cou', 3: 'Épa.', 5: 'Torse', 6: 'Taille', 7: 'Jamb.', 8: 'Pieds', 9: 'Poign.', 10: 'Mains', 11: 'Bague', 12: 'Bague', 13: 'Bijou', 14: 'Bijou', 15: 'Dos', 16: 'Main d.', 17: 'Main g.', 18: 'Dist.' }
 
 function describePiece(p) {
@@ -156,10 +168,18 @@ function Poupee({ equipement, nom, classe, niveau }) {
     <div className="poupee">
       <ul className="poupee-col gauche">{COLONNE_GAUCHE.map(caseDe)}</ul>
       <div className="poupee-centre">
-        <svg className="silhouette" viewBox="0 0 100 160" aria-hidden="true" focusable="false">
-          <circle cx="50" cy="28" r="17" />
-          <path d="M20 150c0-38 8-80 30-80s30 42 30 80z" />
-        </svg>
+        <div className="poupee-classe" style={{ '--classe': couleurTexteClasse(classe) }}>
+          <Icone
+            nom={ICONE_CLASSE[classe]}
+            grande
+            repli={
+              <svg className="silhouette" viewBox="0 0 100 160" aria-hidden="true" focusable="false">
+                <circle cx="50" cy="28" r="17" />
+                <path d="M20 150c0-38 8-80 30-80s30 42 30 80z" />
+              </svg>
+            }
+          />
+        </div>
         <div className="poupee-nom" style={{ color: couleurTexteClasse(classe) }}>{nom || 'Personnage'}</div>
         <div className="poupee-sous">{[niveau ? `Niveau ${niveau}` : '', cls?.nom].filter(Boolean).join(' · ')}</div>
         {moyen > 0 && <div className="poupee-ilvl">Niveau d'objet moyen {moyen}</div>}
@@ -185,7 +205,7 @@ function Arbres({ arbres, talents, principal }) {
   const arbre = arbres[Math.min(actif, arbres.length - 1)]
   const dedans = talents.filter((t) => t.arbre === actif + 1)
   const places = dedans.filter((t) => t.ligne)
-  const sansPlace = dedans.filter((t) => !t.ligne)
+  const sansPlace = dedans.filter((t) => !t.ligne && t.rang > 0)
   const lignes = Math.max(7, ...places.map((t) => t.ligne))
   const parCase = new Map(places.map((t) => [`${t.ligne}-${t.col}`, t]))
   const talentChoisi = choisi && dedans.includes(choisi) ? choisi : null
@@ -209,10 +229,12 @@ function Arbres({ arbres, talents, principal }) {
               const c = (k % COLONNES) + 1
               const t = parCase.get(`${l}-${c}`)
               if (!t) return <li key={k} className="tal libre" aria-hidden="true" />
-              const plein = t.rang >= t.max
+              const appris = t.rang > 0
+              const plein = appris && t.rang >= t.max
+              const etat = appris ? '' : ' (pas appris)'
               return (
-                <li key={k} className={`tal appris${plein ? ' plein' : ''}${talentChoisi === t ? ' choisi' : ''}`}>
-                  <button type="button" title={`${t.nom}: rang ${t.rang}/${t.max}`} aria-label={`${t.nom}: rang ${t.rang} sur ${t.max}`} aria-pressed={talentChoisi === t} onClick={() => setChoisi(talentChoisi === t ? null : t)}>
+                <li key={k} className={`tal ${appris ? 'appris' : 'pas-appris'}${plein ? ' plein' : ''}${talentChoisi === t ? ' choisi' : ''}`}>
+                  <button type="button" title={`${t.nom}: rang ${t.rang}/${t.max}${etat}`} aria-label={`${t.nom}: rang ${t.rang} sur ${t.max}${etat}`} aria-pressed={talentChoisi === t} onClick={() => setChoisi(talentChoisi === t ? null : t)}>
                     <Icone nom={t.icone} grande repli={<span className="repli">{t.nom.slice(0, 3)}</span>} />
                     <span className="rang-badge">{t.rang}</span>
                   </button>
@@ -221,7 +243,7 @@ function Arbres({ arbres, talents, principal }) {
             })}
           </ul>
         ) : (
-          dedans.length === 0 && <p className="aide talents-vide">Aucun talent appris dans cet arbre.</p>
+          sansPlace.length === 0 && <p className="aide talents-vide">Aucun talent appris dans cet arbre.</p>
         )}
         {sansPlace.length > 0 && (
           <ul className="talents-liste">
@@ -234,7 +256,7 @@ function Arbres({ arbres, talents, principal }) {
           </ul>
         )}
         <p className="talents-detail" aria-live="polite">
-          {talentChoisi ? `${talentChoisi.nom}: rang ${talentChoisi.rang}${talentChoisi.max ? `/${talentChoisi.max}` : ''}` : `${arbre.nom}: ${arbre.points} ${arbre.points > 1 ? 'points' : 'point'}`}
+          {talentChoisi ? `${talentChoisi.nom}: rang ${talentChoisi.rang}${talentChoisi.max ? `/${talentChoisi.max}` : ''}${talentChoisi.rang === 0 ? ' (pas appris)' : ''}` : `${arbre.nom}: ${arbre.points} ${arbre.points > 1 ? 'points' : 'point'}`}
         </p>
       </div>
     </div>
@@ -289,7 +311,7 @@ export function FicheAffichage({ fiche, maj, nom, classe, niveau }) {
         )}
         {talents.length > 0 &&
           arbres.map((a, i) => {
-            const dedans = talents.filter((t) => t.arbre === i + 1)
+            const dedans = talents.filter((t) => t.arbre === i + 1 && t.rang > 0)
             if (dedans.length === 0) return null
             return (
               <p key={i} className="fiche-talents-texte">
@@ -301,7 +323,7 @@ export function FicheAffichage({ fiche, maj, nom, classe, niveau }) {
 
       <p className="aide fiche-note">
         Copié par le joueur depuis l'addon{maj ? `, ${depuis(maj)}` : ''}. Ce n'est pas vérifié par le site.
-        {arbres.length > 0 && ' Dans les arbres, les cases vides sont les talents non appris.'}
+        {arbres.length > 0 && ' Dans les arbres, les talents gris ne sont pas appris.'}
       </p>
     </div>
   )

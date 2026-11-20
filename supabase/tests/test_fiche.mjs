@@ -1,4 +1,4 @@
-// Teste supabase/ameliorations26.sql, 27 et 28 (fiche du personnage) sur un vrai Postgres en mémoire (PGlite), sans toucher à
+// Teste supabase/ameliorations26.sql, 27, 28 et 29 (fiche du personnage) sur un vrai Postgres en mémoire (PGlite), sans toucher à
 // la vraie base. Il simule auth.uid() et les rôles anon / authenticated.
 //   npm install --no-save @electric-sql/pglite   (une fois, il n'est pas dans package.json)
 //   node supabase/tests/test_fiche.mjs
@@ -32,6 +32,9 @@ await db.exec(sql27)
 const sql28 = readFileSync(new URL('../ameliorations28.sql', import.meta.url), 'utf8')
 await db.exec(sql28) // le 28 remplace le 27 (roulé après lui)
 await db.exec(sql28)
+const sql29 = readFileSync(new URL('../ameliorations29.sql', import.meta.url), 'utf8')
+await db.exec(sql29) // le 29 remplace le 28
+await db.exec(sql29)
 verifier(true, 'script lancé deux fois')
 
 const moi = async (uid, role = 'authenticated') => {
@@ -93,6 +96,15 @@ await moi(A)
   for (const [nom, tal] of refus) {
     const y = await enreg([GEAR[0]], ARBRES, [tal])
     verifier(!y.ok, 'place refusée: ' + nom)
+  }
+  // rang 0 (pas appris): seulement avec sa place (ameliorations29)
+  const zero = await enreg([GEAR[0]], ARBRES, [{ nom: 'Sans point', rang: 0, arbre: 1, ligne: 3, col: 2, max: 5 }, { nom: 'Appris', rang: 2, arbre: 1, ligne: 1, col: 1, max: 2 }])
+  verifier(zero.ok, 'talent sans point avec sa place accepté: ' + zero.erreur)
+  const lu0 = (await essai('select public.fiche_de($1) as f', [A])).rows?.[0]?.f?.talents
+  verifier(lu0?.[0]?.rang === 0 && lu0?.[0]?.ligne === 3 && lu0?.[1]?.rang === 2, 'rang 0 gardé tel quel: ' + JSON.stringify(lu0))
+  for (const [nom, tal] of [['rang 0 sans place', { ...base, rang: 0 }], ['rang 6', { ...base, rang: 6, ligne: 1, col: 1, max: 5 }], ['rang -1', { ...base, rang: -1, ligne: 1, col: 1, max: 5 }]]) {
+    const y = await enreg([GEAR[0]], ARBRES, [tal])
+    verifier(!y.ok, 'refusé: ' + nom)
   }
   const bords = await enreg([GEAR[0]], ARBRES, [{ ...base, rang: 5, ligne: 9, col: 4, max: 5 }, { ...base, ligne: 1, col: 1, max: 1 }])
   verifier(bords.ok, 'places aux limites acceptées: ' + bords.erreur)
