@@ -240,6 +240,7 @@ function pageApropos() {
 <li><strong>Des événements</strong> planifiés jusqu'à 60 jours d'avance, avec inscriptions et heure affichée à Montréal et à Paris.</li>
 <li><strong>Des guides</strong> de donjons en français, avec leurs sources.</li>
 <li><strong>Un compteur par serveur</strong> pour voir où jouent les gens du site.</li>
+<li><strong>Un addon gratuit</strong>, <a href="https://www.curseforge.com/wow/addons/babillard-forever-fr" target="_blank" rel="noopener">Babillard Forever FR sur CurseForge</a>, qui met le babillard directement dans le jeu.</li>
 </ul>
 <h2>Un site de fans, indépendant</h2>
 <p>Babillard Forever est un projet de fans, créé et entretenu par un joueur du Québec. Il n'a aucun lien avec Blizzard Entertainment, qui n'a ni approuvé ni commandité le site. World of Warcraft et WoW Forever sont des marques de Blizzard Entertainment. Le site ne demande jamais ton mot de passe du jeu ni ton compte Battle.net.</p>
@@ -299,9 +300,14 @@ function pageCommentCaMarche() {
 <h2>Réputation et sécurité</h2>
 <p>À la fin d'un groupe, tu peux donner un pouce aux joueurs avec qui ça a bien été. Une réputation positive aide les autres à te choisir. Les comportements comme le leave ninja ou le need sur tout peuvent aussi être signalés, mais seulement par ceux qui étaient dans le même groupe. Les annonces, guildes, messages et joueurs peuvent être signalés: trois signalements de personnes différentes masquent le contenu en attendant que les modérateurs le vérifient. Les comptes qui abusent sont suspendus.</p>
 
+<h2>L'addon pour le jeu</h2>
+<p>Babillard Forever FR est un addon gratuit pour WoW Forever, offert sur <a href="https://www.curseforge.com/wow/addons/babillard-forever-fr" target="_blank" rel="noopener">CurseForge</a>. Avec l'application CurseForge, il s'installe et se met à jour tout seul. Dans le jeu, tape <code>/bf</code> pour ouvrir le babillard.</p>
+<p>L'addon montre les groupes publiés par les autres joueurs de l'addon, lit les annonces « LFM » du chat, te laisse publier ton groupe (aussi dans le chat si tu veux), chuchoter à un groupe avec un message déjà écrit et être alerté pour tes activités favorites. Pour un raid, tu peux indiquer combien de tanks, de soigneurs et de DPS il te faut. Il n'envoie rien tout seul: chaque annonce et chaque message part quand tu cliques. Les groupes de l'addon et ceux du site sont deux listes séparées pour l'instant.</p>
+<p>L'addon peut aussi remplir ton profil: dans le jeu, <code>/bf perso</code> puis « Copier mon code », et tu le colles dans « Mon profil » sur le site.</p>
+
 <h2>Questions fréquentes</h2>
 <h3>Est-ce que le site est gratuit?</h3>
-<p>Oui. Un don facultatif aide à le garder en ligne.</p>
+<p>Oui. Un don facultatif aide à le garder en ligne. L'addon pour le jeu est gratuit aussi.</p>
 <h3>Est-ce que j'ai besoin de mon compte Battle.net?</h3>
 <p>Non. Le site te demande seulement un compte pour t'identifier. Ton BattleTag est facultatif et n'est donné qu'aux joueurs que tu acceptes.</p>
 <h3>Et si je joue en anglais?</h3>
