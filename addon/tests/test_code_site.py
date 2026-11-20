@@ -23,7 +23,7 @@ def verifier(condition, message):
         print("ÉCHEC:", message)
 
 
-def code_de(perso):
+def code_de(perso, fonction="BuildExportCode"):
     """Charge Data.lua et Core.lua avec une fausse API et retourne ns.BuildExportCode() pour ce personnage."""
     lua = LuaRuntime(unpack_returned_tuples=True)
     def en_lua(v):
@@ -35,7 +35,7 @@ def code_de(perso):
 
     lua.globals().PERSO = en_lua(perso)
     return lua.execute(r"""
-local ADDON_DIR = ...
+local ADDON_DIR, FONCTION = ...
 local U = {}
 setmetatable(U, { __index = function() return U end, __call = function() return U end })
 setmetatable(_G, { __index = function() return U end })
@@ -94,13 +94,29 @@ if PERSO.arbres then
   GetTalentInfo = function(i, j) local t = PERSO.arbres[i].talents[j]; return t[1], t[4] or 67890, t[5], t[6], t[2], t[3] end
 end
 
+-- WoW Forever: pas de GetTalentInfo, les talents passent par C_Traits (config « CamelotCombat »)
+if PERSO.traits then
+  rawset(_G, "GetNumTalentTabs", false)
+  local T = PERSO.traits
+  C_ClassTalents = { GetActiveConfigID = function() return 77 end }
+  C_Traits = {
+    GetConfigInfo = function(id) return { treeIDs = { 1117 } } end,
+    GetGroupDisplayInfoByTreeID = function() return T.groupes end,
+    GetTreeNodes = function() local ids = {}; for _, n in ipairs(T.noeuds) do ids[#ids + 1] = n.id end; return ids end,
+    GetNodeInfo = function(cfg, id) for _, n in ipairs(T.noeuds) do if n.id == id then return n.info end end end,
+    GetEntryInfo = function(cfg, e) return { definitionID = e + 1000 } end,
+    GetDefinitionInfo = function(d) return { spellID = d - 1000 } end,
+  }
+  C_Spell = { GetSpellInfo = function(sid) local s = T.sorts[sid]; if s then return { name = s[1], iconID = s[2] } end end }
+end
+
 local ns = {}
 for _, f in ipairs({ "Data.lua", "Core.lua" }) do
   assert(loadfile(ADDON_DIR .. "/" .. f))("BabillardForeverFR", ns)
 end
 ns.db = { myRoles = PERSO.roles or {}, ruleset = PERSO.ruleset }
-return ns.BuildExportCode()
-""", ADDON)
+return ns[FONCTION]()
+""", ADDON, fonction)
 
 
 CAS = [
@@ -187,6 +203,49 @@ CAS += [
     },
 ]
 
+def noeud(id, groupe, col, rangee, rang, maximum, entree):
+    """Un nœud de l'arbre de traits: coordonnées à une échelle arbitraire (300 par colonne, 250 par rangée)."""
+    return dict(id=id, info=dict(groupIDs=[9999, groupe], posX=col * 300 + 100, posY=rangee * 250, currentRank=rang, maxRanks=maximum,
+                                 activeEntry=dict(entryID=entree)))
+
+
+TRAITS_ROGUE = dict(
+    groupes=[dict(groupID=13, displayName="Finesse", icon=626003, orderIndex=2),
+             dict(groupID=11, displayName="Assassinat", icon=626001, orderIndex=0),
+             dict(groupID=12, displayName="Combat", icon=626002, orderIndex=1)],
+    noeuds=[noeud(1, 11, 3, 1, 5, 5, 1), noeud(2, 11, 2, 1, 0, 3, 2),
+            noeud(3, 12, 1, 1, 5, 5, 3), noeud(4, 12, 2, 2, 3, 5, 4), noeud(5, 12, 4, 3, 0, 1, 5),
+            noeud(6, 13, 3, 2, 3, 3, 6),
+            # nœuds non appris qui complètent la largeur des onglets (colonnes 1 à 4)
+            noeud(7, 13, 1, 1, 0, 1, 7), noeud(8, 13, 4, 1, 0, 1, 8), noeud(9, 11, 1, 1, 0, 1, 9), noeud(10, 11, 4, 1, 0, 1, 10)],
+    sorts={1: ["Malice", 132001], 2: ["Vitalité", 132002], 3: ["Précision", 132003], 4: ["Coups précis", 132004],
+           5: ["Frappe", 132005], 6: ["Initiative", 132006], 7: ["A", 1], 8: ["B", 2], 9: ["C", 3], 10: ["D", 4]},
+)
+# Onglet qui ne couvre que les colonnes 2 et 3: on ne sait pas laquelle est la première, donc pas de colonne
+TRAITS_INCOMPLET = dict(
+    groupes=TRAITS_ROGUE["groupes"],
+    noeuds=[noeud(1, 12, 2, 1, 2, 3, 1), noeud(2, 12, 3, 2, 1, 1, 2)],
+    sorts={1: ["Un", 132001], 2: ["Deux", 132002]},
+)
+CAS += [
+    {
+        "nom": "WoW Forever: talents lus par C_Traits",
+        "perso": dict(nom="Forever", royaume="Forever", region="EU", faction="Horde", classe="ROGUE", niveau=60,
+                      equipement={16: dict(id=33333, nom="Dague", ilvl=60, qualite=5, enchant=0, texture=132345)},
+                      traits=TRAITS_ROGUE),
+        "attendu": dict(perso="Forever", classe="voleur", specialisation="combat", faction="horde", region="EU", niveau="60", guilde=""),
+        "metiers": 0,
+        "fiche": dict(equipement=1, arbres=["Assassinat:5", "Combat:8", "Finesse:3"], talents=4),
+    },
+    {
+        "nom": "WoW Forever: onglet incomplet",
+        "perso": dict(nom="Partiel", royaume="Forever", region="EU", faction="Horde", classe="ROGUE", niveau=30, traits=TRAITS_INCOMPLET),
+        "attendu": dict(perso="Partiel", classe="voleur", specialisation="combat", faction="horde", region="EU", niveau="30", guilde=""),
+        "metiers": 0,
+        "fiche": dict(equipement=0, arbres=["Assassinat:0", "Combat:3", "Finesse:0"], talents=2),
+    },
+]
+
 codes = [code_de(c["perso"]) for c in CAS]
 for c, code in zip(CAS, codes):
     verifier(code.startswith("BFFR1;"), f"{c['nom']}: le code de l'addon commence par BFFR1 ({code[:20]})")
@@ -254,13 +313,31 @@ pieces = {p["slot"]: p for p in furtif["fiche"]["equipement"]}
 verifier(pieces[1] == dict(slot=1, id=12345, ilvl=62, qualite=4, enchant=0, nom="Casque du Crépuscule", icone="inv_helmet_01"), f"casque lu intact: {pieces.get(1)}")
 verifier(pieces[5]["nom"] == "Plastron spécial piégé" and pieces[5]["enchant"] == 1234, f"nom nettoyé, enchantement lu: {pieces.get(5)}")
 verifier(pieces[16]["nom"] == "Dague sans nom en mémoire" and pieces[16]["qualite"] == 2, f"objet hors mémoire: nom et couleur lus dans le lien: {pieces.get(16)}")
-verifier({"nom": "Coups précis", "rang": 3, "arbre": 2} in furtif["fiche"]["talents"], "un talent sans icône lu avec son rang et son arbre (le numéro de fichier d'icône est ignoré)")
+verifier(pieces[16].get("icone") == "f132345", f"icône donnée comme un numéro de fichier (WoW Forever): gardée comme « f132345 »: {pieces.get(16)}")
+verifier({"nom": "Coups précis", "rang": 3, "arbre": 2, "icone": "f67890"} in furtif["fiche"]["talents"], "un talent dont l'icône est un numéro de fichier: gardé en « f… »")
 verifier(pieces[1].get("icone") == "inv_helmet_01", f"icône du casque: chemin Windows nettoyé et en minuscules: {pieces.get(1)}")
 verifier(pieces[5].get("icone") == "inv_chest_cloth_05", f"icône du plastron: extension .blp retirée: {pieces.get(5)}")
-verifier("icone" not in pieces[16], f"icône donnée comme un numéro: ignorée: {pieces.get(16)}")
-verifier(furtif["fiche"]["arbres"][0].get("icone") == "ability_rogue_eviscerate" and "icone" not in furtif["fiche"]["arbres"][1], "icône d'arbre lue (et absente quand le jeu donne un numéro)")
+verifier(furtif["fiche"]["arbres"][0].get("icone") == "ability_rogue_eviscerate" and furtif["fiche"]["arbres"][1].get("icone") == "f12345", "icône d'arbre lue (chemin) et numéro de fichier gardé en « f… »")
 verifier({"nom": "Malice", "rang": 5, "arbre": 1, "icone": "ability_racial_bloodrage", "ligne": 1, "col": 3, "max": 5} in furtif["fiche"]["talents"], "icône d'un talent lue")
 verifier({"nom": "Précision", "rang": 2, "arbre": 2, "icone": "inv_weapon_shortblade_05", "ligne": 2, "col": 2, "max": 5} in furtif["fiche"]["talents"], "l'icône suit son talent (même ordre)")
+
+forever = next(lu for c, lu in zip(CAS, lus) if c["nom"].startswith("WoW Forever"))
+ft = {t["nom"]: t for t in forever["fiche"]["talents"]}
+verifier([a["nom"] for a in forever["fiche"]["arbres"]] == ["Assassinat", "Combat", "Finesse"], "onglets remis dans l'ordre du jeu (orderIndex)")
+verifier(set(ft) == {"Malice", "Précision", "Coups précis", "Initiative"}, f"seuls les talents appris sont envoyés (pas de rang 0): {set(ft)}")
+verifier((ft["Malice"]["arbre"], ft["Malice"]["ligne"], ft["Malice"]["col"], ft["Malice"]["max"], ft["Malice"]["rang"]) == (1, 1, 3, 5, 5), f"Malice: {ft['Malice']}")
+verifier((ft["Précision"]["arbre"], ft["Précision"]["ligne"], ft["Précision"]["col"]) == (2, 1, 1), f"Précision en haut à gauche de Combat: {ft['Précision']}")
+verifier((ft["Coups précis"]["ligne"], ft["Coups précis"]["col"], ft["Coups précis"]["rang"], ft["Coups précis"]["max"]) == (2, 2, 3, 5), f"Coups précis: {ft['Coups précis']}")
+verifier((ft["Initiative"]["arbre"], ft["Initiative"]["ligne"], ft["Initiative"]["col"]) == (3, 2, 3), f"Initiative dans Finesse: {ft['Initiative']}")
+partiel = next(lu for c, lu in zip(CAS, lus) if c["nom"] == "WoW Forever: onglet incomplet")
+verifier(all("ligne" not in x and "col" not in x for x in partiel["fiche"]["talents"]), f"onglet qui ne couvre pas 4 colonnes: talents gardés sans place (liste): {partiel['fiche']['talents']}")
+verifier(ft["Malice"].get("icone") == "f132001" and forever["fiche"]["arbres"][1].get("icone") == "f626002", "icônes en numéros de fichier gardées")
+
+diag = code_de(next(c["perso"] for c in CAS if c["nom"].startswith("WoW Forever: talents")), "Diagnostic")
+verifier("lecture=3 arbres, 4 talents appris, 4 placés" in diag and "points=5/8/3" in diag, f"/bf diag: résumé de la lecture: {diag}")
+verifier("treeID=1117" in diag and "configID=77" in diag and "nœuds=10" in diag and "texture de la tête" in diag, "/bf diag: arbre, config, nœuds et texture")
+verifier("champs d'un nœud=" in diag and "posX/posY du 1er=" in diag, "/bf diag: champs d'un nœud")
+verifier("Forever" not in diag.replace("WoW Forever", ""), "/bf diag: aucun nom de personnage dans la ligne")
 
 refuses = lus[len(CAS):]
 for texte, lu in zip(MAIN[:8], refuses[:8]):

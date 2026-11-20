@@ -1,7 +1,7 @@
 // La fiche d'un personnage (équipement, arbres de talents, talents) copiée depuis l'addon Babillard Forever FR.
 // Les textes viennent d'un code collé par le joueur: ils sont toujours affichés comme du texte (jamais du HTML), et la
 // fiche dit clairement qu'elle n'est pas vérifiée.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './fiche.css'
 import { depuis } from './commun.jsx'
 import { lireFiche } from './store.js'
@@ -34,14 +34,59 @@ export const NOMS_EMPLACEMENTS = {
 export const ICONES_ACTIVES = true
 const urlIcone = (nom, grande) => `https://wow.zamimg.com/images/wow/icons/${grande ? 'large' : 'medium'}/${nom}.jpg`
 
+// WoW Forever donne aux addons un numéro de fichier d'icône (« f132345 » dans le code), pas un nom. La table numéro -> nom
+// (public/icones-jeu.txt, faite par scripts/construire-icones.py) est chargée une seule fois, et seulement quand une
+// fiche en a besoin.
+let tableIcones = null
+function chargerTableIcones() {
+  if (!tableIcones) {
+    tableIcones = fetch('/icones-jeu.txt')
+      .then((r) => (r.ok ? r.text() : Promise.reject(new Error('table des icônes absente'))))
+      .then((texte) => {
+        const noms = new Map()
+        let numero = 0
+        for (const ligne of texte.split('\n')) {
+          const i = ligne.indexOf(':')
+          if (i < 1) continue
+          numero += Number(ligne.slice(0, i))
+          noms.set(numero, ligne.slice(i + 1))
+        }
+        return noms
+      })
+      .catch(() => {
+        tableIcones = null // réessayer à la prochaine fiche
+        return new Map()
+      })
+  }
+  return tableIcones
+}
+
+// Le nom d'image d'une icône: tel quel, ou retrouvé dans la table quand c'est un numéro. `null` = en attente, `''` = inconnue.
+function useNomIcone(nom) {
+  const fichier = /^f(\d{1,10})$/.exec(nom ?? '')
+  const [trouve, setTrouve] = useState(null)
+  useEffect(() => {
+    if (!fichier) return undefined
+    let actif = true
+    chargerTableIcones().then((noms) => {
+      if (actif) setTrouve(noms.get(Number(fichier[1])) ?? '')
+    })
+    return () => {
+      actif = false
+    }
+  }, [nom]) // eslint-disable-line react-hooks/exhaustive-deps
+  return fichier ? trouve : nom
+}
+
 // Une icône qui ne charge pas (nom inconnu, réseau bloqué) disparaît au lieu de laisser un carré cassé; `repli` (un
 // texte court) prend alors sa place quand il y en a un.
 function Icone({ nom, grande = false, repli = null }) {
   const [echec, setEchec] = useState(false)
-  if (!ICONES_ACTIVES || !nom || echec) return repli
+  const reel = useNomIcone(nom)
+  if (!ICONES_ACTIVES || !reel || echec) return repli
   const taille = grande ? 40 : 24
   return (
-    <img className="icone-jeu" src={urlIcone(nom, grande)} alt="" width={taille} height={taille} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setEchec(true)} />
+    <img className="icone-jeu" src={urlIcone(reel, grande)} alt="" width={taille} height={taille} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setEchec(true)} />
   )
 }
 

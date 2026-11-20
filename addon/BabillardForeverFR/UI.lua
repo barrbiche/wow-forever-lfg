@@ -1037,7 +1037,7 @@ local function RefreshMe()
         local text = t.name .. " " .. t.points
         tinsert(trees, i == main and ("|cffffd100" .. text .. "|r") or text)
     end
-    M.values[7]:SetText(#trees > 0 and table.concat(trees, " / ") or "|cff888888Indisponibles (le jeu ne les donne pas à l'addon)|r")
+    M.values[7]:SetText(#trees > 0 and table.concat(trees, " / ") or "|cff888888Indisponibles (tape /bf diag et envoie le résultat)|r")
     M.roles.Update()
 end
 

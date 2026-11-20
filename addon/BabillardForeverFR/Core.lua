@@ -696,10 +696,18 @@ function ns.GetSkillProfessions()
     return out
 end
 
--- Nom d'une icône du jeu: « Interface\\Icons\\INV_Helmet_01 » -> « inv_helmet_01 ». Vide si on ne reconnaît pas un
--- chemin (par exemple un simple numéro de fichier): le site n'affiche alors pas d'image pour cette pièce.
+-- Nom d'une icône du jeu: « Interface\\Icons\\INV_Helmet_01 » -> « inv_helmet_01 ». WoW Forever donne plutôt un numéro de
+-- fichier (« 132345 »): on l'écrit « f132345 » et le site retrouve le nom de l'image avec une table. Vide si on ne
+-- reconnaît rien: le site n'affiche alors pas d'image.
 local function IconName(texture)
-    if type(texture) ~= "string" or (issecretvalue and issecretvalue(texture)) then return "" end
+    if issecretvalue and issecretvalue(texture) then return "" end
+    if type(texture) == "number" then
+        if texture >= 1 and texture < 2147483648 and texture == math.floor(texture) then
+            return "f" .. string.format("%d", texture)
+        end
+        return ""
+    end
+    if type(texture) ~= "string" then return "" end
     local name = (texture:match("([^\\/]+)$") or ""):gsub("%.%a+$", ""):lower()
     if name:match("^[%w_]+$") and #name <= 64 then return name end
     return ""
@@ -743,8 +751,8 @@ function ns.GetEquipment()
     return out
 end
 
--- Talents (API de Classic): trois arbres, points dépensés dans chacun, et chaque talent avec au moins un rang.
--- Si le jeu n'a pas ces fonctions ou les renvoie autrement, on rend une liste vide: rien n'est inventé.
+-- Talents: trois arbres, points dépensés dans chacun, et chaque talent avec au moins un rang. API de Classic si le jeu l'a,
+-- sinon le système de traits (WoW Forever). Si rien ne répond, on rend une liste vide: rien n'est inventé.
 local function Pack(f, ...)
     if type(f) ~= "function" then return {} end
     local res = { pcall(f, ...) }
@@ -753,10 +761,110 @@ local function Pack(f, ...)
     return res
 end
 
+-- WoW Forever n'a pas GetTalentInfo: les talents passent par le système de traits (config « CamelotCombat », un arbre par
+-- classe, trois onglets = trois « groupes »). On lit tous les nœuds de l'arbre pour placer chaque talent appris dans la
+-- grille (rangée, colonne) à partir de ses coordonnées posX / posY, puis le nom et l'icône via le sort du talent.
+-- Les colonnes ne sont données que si l'onglet en couvre bien quatre (sinon on ne sait pas laquelle est la première):
+-- le talent reste alors sans colonne et le site l'affiche en liste plutôt que mal placé.
+local function GridIndex(values)
+    local list, seen = {}, {}
+    for _, v in ipairs(values) do
+        if not seen[v] then seen[v] = true; tinsert(list, v) end
+    end
+    table.sort(list)
+    local step
+    for i = 2, #list do
+        local d = list[i] - list[i - 1]
+        if d > 0 and (not step or d < step) then step = d end
+    end
+    local function index(v)
+        if not step then return 1 end
+        return math.floor((v - list[1]) / step + 0.5) + 1
+    end
+    -- Deuxième valeur: l'index de la dernière valeur (le nombre de colonnes ou de rangées couvertes).
+    return index, #list > 0 and index(list[#list]) or 0
+end
+
+function ns.GetTalentsTraits()
+    local tabs, talents = {}, {}
+    if type(C_ClassTalents) ~= "table" or type(C_Traits) ~= "table" then return tabs, talents end
+    local configID = Pack(C_ClassTalents.GetActiveConfigID)[1]
+    if type(configID) ~= "number" then return tabs, talents end
+    local cfg = Pack(C_Traits.GetConfigInfo, configID)[1]
+    local treeID = type(cfg) == "table" and type(cfg.treeIDs) == "table" and cfg.treeIDs[1]
+    if type(treeID) ~= "number" then return tabs, talents end
+    local groups = Pack(C_Traits.GetGroupDisplayInfoByTreeID, treeID)[1]
+    if type(groups) ~= "table" or #groups == 0 then return tabs, talents end
+    local sorted = {}
+    for _, g in ipairs(groups) do
+        if type(g) == "table" and g.groupID then tinsert(sorted, g) end
+    end
+    table.sort(sorted, function(a, b) return (a.orderIndex or 0) < (b.orderIndex or 0) end)
+    local byGroup = {}
+    for i = 1, math.min(#sorted, 3) do
+        byGroup[sorted[i].groupID] = i
+        tinsert(tabs, { name = type(sorted[i].displayName) == "string" and sorted[i].displayName or "?", points = 0,
+            icon = IconName(sorted[i].icon) })
+    end
+    local nodeIDs = Pack(C_Traits.GetTreeNodes, treeID)[1]
+    if type(nodeIDs) ~= "table" then return tabs, talents end
+
+    -- Passe 1: tous les nœuds de chaque onglet (pour connaître l'écart entre deux rangées / colonnes).
+    local nodes, xs, ys = {}, {}, {}
+    for i = 1, #tabs do nodes[i], xs[i], ys[i] = {}, {}, {} end
+    for _, id in ipairs(nodeIDs) do
+        local info = Pack(C_Traits.GetNodeInfo, configID, id)[1]
+        if type(info) == "table" and type(info.groupIDs) == "table" then
+            local tab
+            for _, gid in ipairs(info.groupIDs) do
+                if byGroup[gid] then tab = byGroup[gid]; break end
+            end
+            if tab and tonumber(info.posX) and tonumber(info.posY) then
+                tinsert(nodes[tab], { id = id, info = info, x = info.posX, y = info.posY })
+                tinsert(xs[tab], info.posX)
+                tinsert(ys[tab], info.posY)
+            end
+        end
+    end
+
+    -- Passe 2: les talents appris.
+    for tab = 1, #tabs do
+        local col, colSpan = GridIndex(xs[tab])
+        local row = GridIndex(ys[tab])
+        table.sort(nodes[tab], function(a, b) if a.y ~= b.y then return a.y < b.y end return a.x < b.x end)
+        for _, nd in ipairs(nodes[tab]) do
+            local info = nd.info
+            local rank = tonumber(info.currentRank) or tonumber(info.ranksPurchased) or 0
+            if rank > 0 then
+                local entryID = (type(info.activeEntry) == "table" and info.activeEntry.entryID)
+                    or (type(info.entryIDs) == "table" and info.entryIDs[1])
+                local entry = entryID and Pack(C_Traits.GetEntryInfo, configID, entryID)[1]
+                local def = type(entry) == "table" and entry.definitionID and Pack(C_Traits.GetDefinitionInfo, entry.definitionID)[1]
+                local name, icon
+                if type(def) == "table" then
+                    name, icon = def.overrideName, def.overrideIcon
+                    local spellID = def.spellID
+                    if spellID and type(C_Spell) == "table" then
+                        local si = Pack(C_Spell.GetSpellInfo, spellID)[1]
+                        if type(si) == "table" then name = name or si.name; icon = icon or si.iconID or si.originalIconID end
+                    end
+                    if not name and spellID then name = Pack(GetSpellInfo, spellID)[1] end
+                end
+                tabs[tab].points = tabs[tab].points + rank
+                local r, c = row(nd.y), (colSpan == 4) and col(nd.x) or nil
+                tinsert(talents, { tab = tab, name = (type(name) == "string" and name ~= "") and name or "Talent", rank = rank,
+                    max = tonumber(info.maxRanks) or 0, icon = IconName(icon),
+                    tier = (r >= 1 and r <= 9) and r or nil, col = (c and c >= 1 and c <= 4) and c or nil })
+            end
+        end
+    end
+    return tabs, talents
+end
+
 function ns.GetTalents()
     local tabs, talents = {}, {}
     local n = Pack(GetNumTalentTabs)[1]
-    if type(n) ~= "number" or n < 1 then return tabs, talents end
+    if type(n) ~= "number" or n < 1 then return ns.GetTalentsTraits() end
     for tab = 1, math.min(n, 3) do
         local r = Pack(GetTalentTabInfo, tab)
         local name, points
@@ -776,6 +884,76 @@ function ns.GetTalents()
         end
     end
     return tabs, talents
+end
+
+-- Diagnostic (/bf diag): ce que le jeu met à la disposition de l'addon pour les talents et l'équipement, sur une ligne à
+-- copier. Sert à corriger la lecture quand le jeu change; ne contient rien de personnel (pas de nom de personnage).
+function ns.Diagnostic()
+    local out = {}
+    local function add(k, v) tinsert(out, k .. "=" .. tostring(v)) end
+    local function kind(v) if v == nil then return "absent" end return type(v) end
+    local function member(tbl, name) if type(tbl) ~= "table" then return "absent" end return kind(tbl[name]) end
+    local b = Pack(GetBuildInfo)
+    add("jeu", tostring(b[1]) .. "/" .. tostring(b[4]))
+    add("addon", ns.VERSION)
+    add("GetNumTalentTabs", kind(GetNumTalentTabs))
+    add("GetTalentInfo", kind(GetTalentInfo))
+    add("C_Traits", kind(C_Traits))
+    add("C_ClassTalents", kind(C_ClassTalents))
+    add("C_Spell", kind(C_Spell))
+    for _, f in ipairs({ "GetConfigInfo", "GetTreeNodes", "GetNodeInfo", "GetEntryInfo", "GetDefinitionInfo", "GetGroupDisplayInfoByTreeID" }) do
+        add("Traits." .. f, member(C_Traits, f))
+    end
+    local configID = type(C_ClassTalents) == "table" and Pack(C_ClassTalents.GetActiveConfigID)[1] or nil
+    add("configID", configID)
+    local cfg = type(C_Traits) == "table" and type(configID) == "number" and Pack(C_Traits.GetConfigInfo, configID)[1] or nil
+    local treeID = type(cfg) == "table" and type(cfg.treeIDs) == "table" and cfg.treeIDs[1] or nil
+    add("treeID", treeID)
+    local groups = treeID and Pack(C_Traits.GetGroupDisplayInfoByTreeID, treeID)[1] or nil
+    add("onglets", type(groups) == "table" and #groups or "?")
+    if type(groups) == "table" and type(groups[1]) == "table" then
+        add("onglet1", tostring(groups[1].displayName) .. "/icône " .. kind(groups[1].icon))
+    end
+    local nodeIDs = treeID and Pack(C_Traits.GetTreeNodes, treeID)[1] or nil
+    add("nœuds", type(nodeIDs) == "table" and #nodeIDs or "?")
+    if type(nodeIDs) == "table" and nodeIDs[1] then
+        local info = Pack(C_Traits.GetNodeInfo, configID, nodeIDs[1])[1]
+        if type(info) == "table" then
+            local keys = {}
+            for k in pairs(info) do tinsert(keys, tostring(k)) end
+            table.sort(keys)
+            add("champs d'un nœud", table.concat(keys, ","))
+            add("posX/posY du 1er", tostring(info.posX) .. "/" .. tostring(info.posY))
+        end
+    end
+    local ok, tabs, talents = pcall(ns.GetTalents)
+    if ok then
+        local placed = 0
+        for _, t in ipairs(talents) do if t.tier and t.col then placed = placed + 1 end end
+        add("lecture", #tabs .. " arbres, " .. #talents .. " talents appris, " .. placed .. " placés")
+        local pts = {}
+        for _, t in ipairs(tabs) do tinsert(pts, t.points) end
+        add("points", table.concat(pts, "/"))
+        if talents[1] then
+            add("1er talent", tostring(talents[1].name) .. " rang " .. talents[1].rank .. "/" .. talents[1].max ..
+                " case " .. tostring(talents[1].tier) .. "," .. tostring(talents[1].col) .. " icône " .. tostring(talents[1].icon))
+        end
+    else
+        add("lecture", "ERREUR " .. tostring(tabs))
+    end
+    add("GetInventoryItemTexture", kind(GetInventoryItemTexture))
+    local tex = Pack(GetInventoryItemTexture or function() end, "player", 1)[1]
+    add("texture de la tête", kind(tex) .. ":" .. tostring(tex))
+    add("C_Item.GetItemInfo", member(C_Item, "GetItemInfo"))
+    local okE, eq = pcall(ns.GetEquipment)
+    if okE then
+        local withIcon = 0
+        for _, g in ipairs(eq) do if g.icon ~= "" then withIcon = withIcon + 1 end end
+        add("équipement", #eq .. " pièces, " .. withIcon .. " icônes")
+    else
+        add("équipement", "ERREUR " .. tostring(eq))
+    end
+    return table.concat(out, " | ")
 end
 
 -- Spécialisation = l'arbre où il y a le plus de points (nil s'il n'y en a aucun).
@@ -1373,12 +1551,15 @@ SlashCmdList.BABILLARDFR = function(arg)
         if ns.UI then ns.UI.Open(2) end
     elseif arg == "perso" or arg == "code" then
         if ns.UI then ns.UI.Open(3) end
+    elseif arg == "diag" then
+        ns.ShowCopy("Diagnostic Babillard Forever FR (colle-le dans la conversation):", ns.Diagnostic())
     elseif arg == "aide" then
         ns.Print("commandes :")
         print("  |cffffd100/bf|r : ouvrir ou fermer le babillard")
         print("  |cffffd100/bf guildes|r : guildes francophones")
         print("  |cffffd100/bf perso|r : mon personnage et code pour le site")
         print("  |cffffd100/bf site|r : lien du site")
+        print("  |cffffd100/bf diag|r : diagnostic (si les talents ou l'équipement n'apparaissent pas)")
         print("  |cffffd100/bf favoris|r : choisir les activités qui déclenchent une alerte")
         print("  |cffffd100/bf demandes|r : les groupes à qui tu as chuchoté")
         print("  |cffffd100/bf ignores|r : joueurs ignorés (|cffffd100/bf ignores vider|r pour tout retirer)")
