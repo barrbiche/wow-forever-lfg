@@ -226,3 +226,118 @@ header.haut .titre-lien {
     padding-inline: 72px;
   }
 }
+
+/* ----- Boutons secondaires (Taverne, Soutenir, Installer, Addon, Aide): une rangée plus discrète sous les deux actions
+   principales. Sur cellulaire, une seule ligne qui défile de côté au lieu de trois lignes de boutons. ----- */
+header.haut .actions.actions-secondaires {
+  margin-top: 10px;
+  gap: 8px;
+}
+
+header.haut .actions.actions-secondaires .bouton {
+  flex: 0 1 auto;
+  padding: 7px 12px;
+  min-height: 0;
+  font-size: 0.88rem;
+}
+
+header.haut .actions.actions-secondaires .bouton svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 559px) {
+  /* En-tête plus court: les groupes doivent apparaître plus vite. */
+  .parchemin-titre {
+    padding: 12px 30px 10px;
+  }
+
+  header.haut .sous-titre {
+    margin-top: 6px;
+    font-size: 0.88rem;
+    line-height: 1.35;
+  }
+
+  .lancement {
+    margin-top: 14px;
+    padding: 8px 10px 6px;
+  }
+
+  .lancement-titre {
+    margin-bottom: 4px;
+    font-size: 0.78rem;
+  }
+
+  .lancement-case strong {
+    font-size: clamp(1.4rem, 7vw, 1.9rem);
+  }
+
+  header.haut .beta-note {
+    margin-top: 10px;
+    font-size: 0.8rem;
+  }
+
+  header.haut .actions {
+    margin-top: 12px;
+  }
+
+  header.haut .actions.actions-secondaires {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    margin-top: 8px;
+    margin-inline: -16px;
+    padding: 2px 16px 4px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    scroll-padding-inline: 16px;
+  }
+
+  header.haut .actions.actions-secondaires::-webkit-scrollbar {
+    display: none;
+  }
+
+  header.haut .actions.actions-secondaires .bouton {
+    flex: none;
+    scroll-snap-align: start;
+  }
+
+  header.haut .statut {
+    margin-top: 8px;
+  }
+
+  /* Bandeau de l'addon: une seule ligne courte. */
+  .bandeau.bandeau-addon {
+    gap: 8px 10px;
+    padding: 8px 10px;
+    font-size: 0.85rem;
+  }
+
+  .bandeau.bandeau-addon > span {
+    flex: 1 1 180px;
+  }
+}
+
+/* Sur grand écran, les deux rangées de boutons n'en font qu'une, comme avant. */
+@media (min-width: 760px) {
+  header.haut .groupe-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  header.haut .groupe-actions .actions,
+  header.haut .groupe-actions .actions.actions-secondaires {
+    margin-top: 0;
+  }
+}
+
+/* Le bloc des boutons prend la largeur de l'écran (sinon la rangée qui défile le fait grandir au-delà de l'écran). */
+header.haut .groupe-actions {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}

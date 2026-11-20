@@ -270,11 +270,10 @@ function BandeauAddon() {
   return (
     <p className="bandeau bandeau-addon" role="note">
       <span>
-        <strong>Tu joues à WoW Forever?</strong> L'addon gratuit <strong>Babillard Forever FR</strong> met le babillard
-        directement dans ton jeu: tape <code>/bf</code>.
+        <strong>Tu joues à WoW Forever?</strong> L'addon gratuit met le babillard dans ton jeu (<code>/bf</code>).
       </span>
       <a className="bouton petit principal" href="https://www.curseforge.com/wow/addons/babillard-forever-fr" target="_blank" rel="noopener noreferrer">
-        Télécharger sur CurseForge
+        Télécharger
       </a>
       <button type="button" className="bandeau-fermer" onClick={fermer} aria-label="Fermer ce message">
         ×
@@ -1030,6 +1029,7 @@ export default function App() {
               Le site est en test: des bogues sont possibles.
               <button type="button" className="lien" onClick={() => setRetourOuvert(true)}>Écris-nous</button>
             </p>
+            <div className="groupe-actions">
             <div className="actions">
               {utilisateur ? (
                 <div className="session">
@@ -1065,6 +1065,8 @@ export default function App() {
               <button type="button" className="bouton principal" onClick={ouvrirPublication}>
                 Publier une annonce
               </button>
+            </div>
+            <div className="actions actions-secondaires">
               <button type="button" className="bouton bouton-taverne" onClick={() => ouvrirChat('salon', 'taverne')}>
                 <Icone nom="discussion" taille={18} />
                 Taverne
@@ -1084,6 +1086,7 @@ export default function App() {
                 <Icone nom="livre" taille={18} />
                 Comment ça marche?
               </button>
+            </div>
             </div>
             <div className="statut">
               {!chargement && (
