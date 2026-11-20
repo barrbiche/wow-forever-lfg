@@ -1471,6 +1471,9 @@ export default function App() {
               <a className="lien" href="/guides/">Guides de donjons</a>
               <a className="lien" href="/comment-ca-marche/">Explications détaillées</a>
               <a className="lien" href="/a-propos/">À propos</a>
+              <a className="lien" href="https://www.curseforge.com/wow/addons/babillard-forever-fr" target="_blank" rel="noopener noreferrer">
+                Addon pour le jeu (CurseForge)
+              </a>
             </nav>
             <div className="pied-soutien">
               <ChoixPubs />

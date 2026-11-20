@@ -230,6 +230,28 @@ export default function Aide({ ouvert, fermer }) {
         </section>
 
         <section>
+          <h3>Addon pour le jeu</h3>
+          <ul className="puces">
+            <li>
+              <strong>Babillard Forever FR</strong> est un addon gratuit qui met le babillard directement dans WoW Forever.{' '}
+              <a href="https://www.curseforge.com/wow/addons/babillard-forever-fr" target="_blank" rel="noopener noreferrer">
+                Télécharge-le sur CurseForge
+              </a>{' '}
+              (avec l'application CurseForge, il s'installe et se met à jour tout seul). Dans le jeu, tape <code>/bf</code>.
+            </li>
+            <li>
+              Il montre les groupes publiés par les autres joueurs de l'addon, lit les annonces « LFM » du chat, te laisse
+              publier ton groupe (aussi dans le chat si tu veux), chuchoter à un groupe avec un message déjà écrit, et
+              t'alerte pour tes activités favorites. Pour un raid, tu peux dire combien de tanks, soigneurs et DPS il te faut.
+            </li>
+            <li>
+              Il n'envoie rien tout seul: chaque annonce et chaque message part quand tu cliques. Les groupes de l'addon et
+              ceux du site sont deux listes séparées pour l'instant.
+            </li>
+          </ul>
+        </section>
+
+        <section>
           <h3>Guides de donjons</h3>
           <ul className="puces">
             <li>

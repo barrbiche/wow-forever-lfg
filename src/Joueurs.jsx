@@ -721,7 +721,11 @@ function ImporterDuJeu({ surImport }) {
     <details className="import-jeu">
       <summary>Remplir avec mon personnage du jeu</summary>
       <p className="aide">
-        Avec l’addon Babillard Forever FR: dans le jeu, tape <code>/bf perso</code>, clique « Copier mon code », puis colle le code ici.
+        Avec l’addon Babillard Forever FR (
+        <a href="https://www.curseforge.com/wow/addons/babillard-forever-fr" target="_blank" rel="noopener noreferrer">
+          CurseForge
+        </a>
+        ): dans le jeu, tape <code>/bf perso</code>, clique « Copier mon code », puis colle le code ici.
       </p>
       <textarea
         rows={2}
