@@ -1,7 +1,7 @@
 # Envoie l'addon sur CurseForge quand on pousse une étiquette, par exemple:  git tag v1.3.0 && git push origin v1.3.0
 # Réglages dans GitHub (Settings > Secrets and variables > Actions):
 #   secret    CF_API_KEY        jeton de l'API CurseForge (ne jamais l'écrire dans le code)
-#   variable  CF_PROJECT_ID     numéro du projet CurseForge
+#   variable  CF_PROJECT_ID     numéro du projet CurseForge (un secret du même nom marche aussi)
 #   variable  CF_GAME_VERSION   facultatif, nom de la version du jeu à cocher (défaut: Forever)
 name: Envoyer sur CurseForge
 
@@ -42,7 +42,7 @@ jobs:
       - name: Envoyer sur CurseForge
         env:
           CF_API_KEY: ${{ secrets.CF_API_KEY }}
-          CF_PROJECT_ID: ${{ vars.CF_PROJECT_ID }}
+          CF_PROJECT_ID: ${{ vars.CF_PROJECT_ID || secrets.CF_PROJECT_ID }}
           CF_GAME_VERSION: ${{ vars.CF_GAME_VERSION }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
