@@ -353,31 +353,37 @@ verifier(ns.listings["Spam-ForeverRealm"] ~= nil, "retirer un joueur de la liste
 ns.db.ignored = {}
 vider()
 
+-- ---------- 3h. Arbre principal des talents ----------
+egal(ns.MainTalentTab({ { name = "A", points = 5 }, { name = "B", points = 31 }, { name = "C", points = 15 } }), 2, "l'arbre avec le plus de points")
+egal(ns.MainTalentTab({ { name = "A", points = 0 }, { name = "B", points = 0 } }), nil, "aucun point = pas de spécialisation")
+egal(ns.MainTalentTab({ { name = "A", points = 10 }, { name = "B", points = 10 } }), 1, "égalité: le premier arbre")
+egal(ns.MainTalentTab(nil), nil, "pas d'arbres")
+
 -- ---------- 4. Avis de nouvelle version ----------
 egal(ns.VersionNumber("1.2.0"), 1002000, "numéro de version")
 verifier(ns.VersionNumber("1.2") == nil and ns.VersionNumber("a.b.c") == nil and ns.VersionNumber("1.2.0;x") == nil
   and ns.VersionNumber(nil) == nil and ns.VersionNumber("1.2.99999") == nil, "versions invalides refusées")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.1.0", "Vieux-ForeverRealm")
-recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.3.0", "Pareil-ForeverRealm")
+recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.4.0", "Pareil-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;pirate", "Faux-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal", "SansVersion-ForeverRealm")
 egal(ns.newVersion, nil, "pas d'avis pour une version égale, ancienne ou invalide")
-recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.3.1", "Neuf-ForeverRealm")
-egal(ns.newVersion, "1.3.1", "avis pour une version plus récente")
-egal(ns.db.newestSeen, 1003001, "version vue sauvegardée")
-recevoir("G2;Les Pas Fins;PVE;Horde;ROGUE;60;0;note;normal;1.3.1", "Neuf2-ForeverRealm")
-recevoir("H2;20;MAGE;1.3.1", "Neuf3-ForeverRealm")
+recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.4.1", "Neuf-ForeverRealm")
+egal(ns.newVersion, "1.4.1", "avis pour une version plus récente")
+egal(ns.db.newestSeen, 1004001, "version vue sauvegardée")
+recevoir("G2;Les Pas Fins;PVE;Horde;ROGUE;60;0;note;normal;1.4.1", "Neuf2-ForeverRealm")
+recevoir("H2;20;MAGE;1.4.1", "Neuf3-ForeverRealm")
 egal(nbImprimes("nouvelle version"), 1, "l'avis n'est dit qu'une fois par version")
-recevoir("H2;20;MAGE;1.4.0", "Neuf4-ForeverRealm")
-egal(ns.newVersion, "1.4.0", "une version encore plus récente remplace l'avis")
-egal(nbImprimes("nouvelle version"), 2, "un nouvel avis pour 1.4.0")
+recevoir("H2;20;MAGE;1.5.0", "Neuf4-ForeverRealm")
+egal(ns.newVersion, "1.5.0", "une version encore plus récente remplace l'avis")
+egal(nbImprimes("nouvelle version"), 2, "un nouvel avis pour 1.5.0")
 
 -- Mon message contient ma version (L2 et G2)
 ns.db.opts.autoRemove = false
 vider()
 avancer(100)
 ns.PublishListing({ type = "LFM", akey = "WC", roles = { TANK = true, HEAL = true, DPS = true }, note = "essai" })
-egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.3.0", "L2 publié termine par la version")
+egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.4.0", "L2 publié termine par la version")
 verifier(#CHAT == 0, "publier ne parle jamais dans le chat tout seul")
 
 -- ---------- 5. Alertes par activités favorites ----------

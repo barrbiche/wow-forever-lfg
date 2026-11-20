@@ -1120,6 +1120,69 @@ export async function enregistrerPersosExtra(extras) {
   if (error) throw error
 }
 
+// ---------- Fiche du personnage: équipement et talents copiés depuis l'addon (ameliorations26.sql) ----------
+
+const CLE_FICHE_DEMO = 'forever-demo-fiche'
+
+// Retourne { perso, maj, equipement, arbres, talents } ou null (pas de fiche, profil caché, ou base pas à jour).
+export async function lireFiche(userId) {
+  if (!userId) return null
+  if (modeDemo) {
+    try {
+      const fiche = JSON.parse(localStorage.getItem(CLE_FICHE_DEMO) || 'null')
+      const moi = lireJoueursDemo().find((j) => j.moi)
+      return fiche && moi && moi.user_id === userId ? fiche : null
+    } catch {
+      return null
+    }
+  }
+  try {
+    const { data, error } = await supabase.rpc('fiche_de', { p_user: userId })
+    return error ? null : (data ?? null)
+  } catch {
+    return null
+  }
+}
+
+// Enregistre ma fiche (celle de mon personnage principal). Retourne 'ok', ou 'base' quand la base n'a pas encore
+// ameliorations26.sql: le profil lui-même est déjà enregistré, seule la fiche manque.
+export async function enregistrerFiche(fiche, perso) {
+  if (modeDemo) {
+    try {
+      localStorage.setItem(
+        CLE_FICHE_DEMO,
+        JSON.stringify({ perso, maj: new Date().toISOString(), equipement: fiche.equipement, arbres: fiche.arbres, talents: fiche.talents }),
+      )
+    } catch {
+      // navigation privée: la fiche n'est pas gardée
+    }
+    return 'ok'
+  }
+  const { error } = await supabase.rpc('enregistrer_fiche', {
+    p_equipement: fiche.equipement,
+    p_arbres: fiche.arbres,
+    p_talents: fiche.talents,
+  })
+  if (error) {
+    if (error.code === 'PGRST202' || /could not find the function|schema cache/i.test(error.message ?? '')) return 'base'
+    throw error
+  }
+  return 'ok'
+}
+
+export async function effacerFiche() {
+  if (modeDemo) {
+    try {
+      localStorage.removeItem(CLE_FICHE_DEMO)
+    } catch {
+      // rien à faire
+    }
+    return
+  }
+  const { error } = await supabase.rpc('effacer_fiche')
+  if (error) throw error
+}
+
 // « Je suis dispo maintenant »: pour 30 à 120 minutes, ou 0 pour arrêter. Retourne la fin du statut (ou null).
 // Demande ameliorations24.sql sur la vraie base.
 export async function etreDisponible(minutes) {
@@ -1138,6 +1201,7 @@ export async function supprimerProfil() {
     ecrireJoueursDemo(lireJoueursDemo().filter((j) => !j.moi))
     try {
       localStorage.removeItem(CLE_PERSOS_DEMO)
+      localStorage.removeItem(CLE_FICHE_DEMO)
     } catch {
       // rien à faire
     }

@@ -956,9 +956,9 @@ local mv = views[3]
 local M = {}
 
 SectionTitle(mv, "Mon personnage", 70, -40)
-local mp = MakePanel(mv, -60, -262)
+local mp = MakePanel(mv, -60, -274)
 
-local LABELS = { "Personnage", "Niveau et classe", "Faction", "Guilde", "Niveau d'objet", "Métiers" }
+local LABELS = { "Personnage", "Niveau et classe", "Faction", "Guilde", "Niveau d'objet", "Métiers", "Talents" }
 M.values = {}
 for i, label in ipairs(LABELS) do
     local l = mp:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -988,17 +988,17 @@ end)
 Tooltip(M.ruleset, "Type de serveur", "Normal (PvE), PvP, RP ou RP-PvP. On ne groupe qu'avec le même type: les annonces des autres types sont cachées. Clique pour changer.")
 
 local rl = mp:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-rl:SetPoint("TOPLEFT", 14, -160)
+rl:SetPoint("TOPLEFT", 14, -172)
 rl:SetText("Mes rôles")
-M.roles = MakeRoleIcons(mp, 160, -152, 30, function() return ns.db.myRoles end, function() UI.Refresh() end)
+M.roles = MakeRoleIcons(mp, 160, -164, 30, function() return ns.db.myRoles end, function() UI.Refresh() end)
 local rh = mp:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-rh:SetPoint("TOPLEFT", 280, -160)
+rh:SetPoint("TOPLEFT", 280, -172)
 rh:SetWidth(270)
 rh:SetJustifyH("LEFT")
 rh:SetText("Utilisés pour les alertes: l'addon te prévient quand un groupe cherche un de tes rôles.")
 
-SectionTitle(mv, "Lier mon personnage au site", 18, -270)
-local ep = MakePanel(mv, -288, 32)
+SectionTitle(mv, "Lier mon personnage au site", 18, -282)
+local ep = MakePanel(mv, -300, 32)
 local steps = ep:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 steps:SetPoint("TOPLEFT", 16, -16)
 steps:SetWidth(540)
@@ -1008,8 +1008,8 @@ steps:SetText(
     "|cffffd1001.|r Clique sur « Copier mon code ».\n" ..
     "|cffffd1002.|r Fais |cffffd100Ctrl+C|r pour le copier.\n" ..
     "|cffffd1003.|r Sur |cff33aaffbabillard-forever.com|r, va dans ton profil et colle le code.\n\n" ..
-    "|cffaaaaaaLe code contient ton nom, ton niveau, ta classe, ta guilde, tes rôles et tes métiers. " ..
-    "Génère un nouveau code quand tu montes de niveau pour garder ton profil à jour.|r")
+    "|cffaaaaaaLe code contient ton nom, ton niveau, ta classe, ta guilde, tes rôles, tes métiers, ton équipement " ..
+    "et tes talents. Génère un nouveau code quand tu changes d'équipement ou de talents pour garder ton profil à jour.|r")
 
 M.export = MakeButton(ep, "Copier mon code", 200, 30)
 M.export:SetPoint("BOTTOM", 0, 24)
@@ -1026,10 +1026,18 @@ local function RefreshMe()
     local rs = ns.MyRuleset()
     M.ruleset:SetText(rs and ("Serveur : " .. ns.RulesetName(rs)) or "|cffff8800Choisis ton type de serveur|r")
     M.values[4]:SetText(c.guild ~= "" and ("<" .. c.guild .. ">") or "|cff888888Aucune|r")
-    M.values[5]:SetText(c.ilvl and tostring(c.ilvl) or "|cff888888Inconnu|r")
+    local pieces = #c.equipment > 0 and ("  |cff888888(" .. #c.equipment .. " pièces)|r") or ""
+    M.values[5]:SetText(c.ilvl and (tostring(c.ilvl) .. pieces) or "|cff888888Inconnu|r")
     local profs = {}
     for _, p in ipairs(c.professions) do tinsert(profs, p.name .. " " .. p.rank .. "/" .. p.max) end
     M.values[6]:SetText(#profs > 0 and table.concat(profs, ", ") or "|cff888888Aucun|r")
+    local main = ns.MainTalentTab(c.talentTabs)
+    local trees = {}
+    for i, t in ipairs(c.talentTabs) do
+        local text = t.name .. " " .. t.points
+        tinsert(trees, i == main and ("|cffffd100" .. text .. "|r") or text)
+    end
+    M.values[7]:SetText(#trees > 0 and table.concat(trees, " / ") or "|cff888888Indisponibles (le jeu ne les donne pas à l'addon)|r")
     M.roles.Update()
 end
 

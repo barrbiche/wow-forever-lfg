@@ -1,0 +1,143 @@
+/* La fiche du personnage (équipement et talents). Les couleurs de rareté sont une barre à gauche de la pièce:
+   le texte garde la couleur du fond, donc il reste lisible sur le parchemin comme sur le fond sombre. */
+.fiche-joueur,
+.fiche-profil {
+  margin: 10px 0 0;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius, 8px);
+  background: color-mix(in srgb, var(--field, #f1f3f7) 70%, transparent);
+}
+
+.fiche-joueur > summary,
+.fiche-profil > summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.fiche {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.fiche h4 {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+}
+
+.fiche ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fiche-arbres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fiche-arbres li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.9rem;
+}
+
+.fiche-arbres li.principal {
+  border-color: var(--gold-line, #946609);
+  background: color-mix(in srgb, var(--gold, #e9ab1e) 22%, transparent);
+}
+
+.fiche-arbres li span {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.fiche-talents {
+  margin-top: 6px;
+  font-size: 0.88rem;
+}
+
+.fiche-talents summary {
+  cursor: pointer;
+}
+
+.fiche-talents ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 4px;
+}
+
+.fiche-talents .rang {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.fiche-equipement {
+  display: grid;
+  gap: 3px;
+}
+
+.fiche-equipement li {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 8px;
+  border-left: 4px solid var(--q, #8a8f98);
+  font-size: 0.9rem;
+}
+
+.fiche-equipement .emplacement {
+  color: var(--muted, #566074);
+  font-size: 0.82rem;
+}
+
+.fiche-equipement .objet {
+  overflow-wrap: anywhere;
+}
+
+.fiche-equipement .niveau-objet {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.fiche-equipement .enchant {
+  font-size: 0.75rem;
+  color: var(--muted, #566074);
+}
+
+.fiche-equipement .q0 { --q: #9d9d9d; }
+.fiche-equipement .q1 { --q: #d8d8d8; }
+.fiche-equipement .q2 { --q: #1eff00; }
+.fiche-equipement .q3 { --q: #0070dd; }
+.fiche-equipement .q4 { --q: #a335ee; }
+.fiche-equipement .q5,
+.fiche-equipement .q6 { --q: #ff8000; }
+
+.fiche-note {
+  margin: 0;
+}
+
+.fiche-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+@media (max-width: 479px) {
+  .fiche-equipement li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .fiche-equipement .emplacement {
+    grid-column: 1 / -1;
+  }
+}

@@ -672,6 +672,104 @@ function ns.GetProfessions()
     return out
 end
 
+-- Métiers, deuxième méthode: les lignes de compétences (Classic). Les en-têtes « Métiers » et « Compétences
+-- secondaires » (français ou anglais) précèdent les lignes qui nous intéressent.
+function ns.GetSkillProfessions()
+    local out = {}
+    if not GetNumSkillLines or not GetSkillLineInfo then return out end
+    if ExpandSkillHeader then pcall(ExpandSkillHeader, 0) end
+    local okN, count = pcall(GetNumSkillLines)
+    if not okN or type(count) ~= "number" then return out end
+    local inside = false
+    for i = 1, count do
+        local ok, name, header, _, rank, _, _, maxRank = pcall(GetSkillLineInfo, i)
+        if ok and type(name) == "string" then
+            if header then
+                local low = name:lower()
+                inside = (low:find("profession", 1, true) or low:find("m.-tier") or low:find("secondary", 1, true)
+                    or low:find("secondaire")) and true or false
+            elseif inside and #out < 8 then
+                tinsert(out, { name = name, rank = tonumber(rank) or 0, max = tonumber(maxRank) or 0 })
+            end
+        end
+    end
+    return out
+end
+
+-- Équipement porté: une entrée par pièce (chemise et tabard exclus).
+local GEAR_SLOTS = { 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 }
+local QUALITY_BY_COLOR = { ["9d9d9d"] = 0, ["ffffff"] = 1, ["1eff00"] = 2, ["0070dd"] = 3, ["a335ee"] = 4, ["ff8000"] = 5 }
+
+function ns.GetEquipment()
+    local out = {}
+    if not GetInventoryItemLink then return out end
+    local getInfo = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+    for _, slot in ipairs(GEAR_SLOTS) do
+        local okL, link = pcall(GetInventoryItemLink, "player", slot)
+        if okL and type(link) == "string" and not (issecretvalue and issecretvalue(link)) then
+            local id = tonumber(link:match("item:(%d+)"))
+            if id then
+                local enchant = tonumber(link:match("item:%d+:(%d+)")) or 0
+                local name, quality, ilvl
+                if getInfo then
+                    local okI, n, _, q, il = pcall(getInfo, link)
+                    if okI then name, quality, ilvl = n, q, il end
+                end
+                -- Objet pas encore en mémoire: le nom et la couleur sont dans le lien lui-même.
+                name = (type(name) == "string" and name) or link:match("|h%[(.-)%]|h") or "?"
+                if type(quality) ~= "number" then
+                    local color = link:match("|cff(%x%x%x%x%x%x)")
+                    quality = (color and QUALITY_BY_COLOR[color:lower()]) or 1
+                end
+                tinsert(out, { slot = slot, id = id, name = name, ilvl = tonumber(ilvl) or 0, quality = quality, enchant = enchant })
+            end
+        end
+    end
+    return out
+end
+
+-- Talents (API de Classic): trois arbres, points dépensés dans chacun, et chaque talent avec au moins un rang.
+-- Si le jeu n'a pas ces fonctions ou les renvoie autrement, on rend une liste vide: rien n'est inventé.
+local function Pack(f, ...)
+    if type(f) ~= "function" then return {} end
+    local res = { pcall(f, ...) }
+    if not res[1] then return {} end
+    table.remove(res, 1)
+    return res
+end
+
+function ns.GetTalents()
+    local tabs, talents = {}, {}
+    local n = Pack(GetNumTalentTabs)[1]
+    if type(n) ~= "number" or n < 1 then return tabs, talents end
+    for tab = 1, math.min(n, 3) do
+        local r = Pack(GetTalentTabInfo, tab)
+        local name, points
+        if type(r[1]) == "string" then name, points = r[1], r[3] else name, points = r[2], r[5] end
+        tinsert(tabs, { name = type(name) == "string" and name or "?", points = tonumber(points) or 0 })
+        local count = Pack(GetNumTalents, tab)[1]
+        if type(count) == "number" then
+            for i = 1, math.min(count, 40) do
+                local t = Pack(GetTalentInfo, tab, i)
+                local rank = tonumber(t[5]) or 0
+                if type(t[1]) == "string" and rank > 0 then
+                    tinsert(talents, { tab = tab, name = t[1], rank = rank, max = tonumber(t[6]) or 0 })
+                end
+            end
+        end
+    end
+    return tabs, talents
+end
+
+-- Spécialisation = l'arbre où il y a le plus de points (nil s'il n'y en a aucun).
+function ns.MainTalentTab(tabs)
+    local best, bestPoints = nil, 0
+    for i, t in ipairs(tabs or {}) do
+        if t.points > bestPoints then best, bestPoints = i, t.points end
+    end
+    return best
+end
+
 function ns.GetItemLevel()
     if not GetAverageItemLevel then return nil end
     local ok, overall, equipped = pcall(GetAverageItemLevel)
@@ -679,6 +777,7 @@ function ns.GetItemLevel()
 end
 
 function ns.GetCharacterInfo()
+    local tabs, talents = ns.GetTalents()
     local name, realm = UnitFullName("player")
     local className, classFile = UnitClass("player")
     local race = UnitRace("player")
@@ -693,17 +792,33 @@ function ns.GetCharacterInfo()
         level = ns.MyLevel(),
         guild = GetGuildInfo("player") or "",
         ilvl = ns.GetItemLevel(),
-        professions = ns.GetProfessions(),
+        professions = (function()
+            local p = ns.GetProfessions()
+            return #p > 0 and p or ns.GetSkillProfessions()
+        end)(),
+        equipment = ns.GetEquipment(),
+        talentTabs = tabs,
+        talents = talents,
     }
 end
 
--- Format : BFFR1;cle=valeur;cle=valeur...  (métiers : nom:rang:max,nom:rang:max)
+-- Format : BFFR1;cle=valeur;cle=valeur...
+--   p  = métiers   nom:rang:max,...
+--   tr = arbres de talents, dans l'ordre du jeu   nom:points,...
+--   ta = talents appris   nom:rang:arbre(1-3),...
+--   eq = équipement   emplacement:objet:niveau d'objet:qualité:enchantement:nom,...
 function ns.BuildExportCode()
     local c = ns.GetCharacterInfo()
     local function F(v) return ((tostring(v or "")):gsub("[|;=,:]", " ")) end
     local profs = {}
     for _, p in ipairs(c.professions) do
         tinsert(profs, F(p.name) .. ":" .. p.rank .. ":" .. p.max)
+    end
+    local trees, talentParts, gear = {}, {}, {}
+    for _, t in ipairs(c.talentTabs) do tinsert(trees, F(t.name) .. ":" .. t.points) end
+    for _, t in ipairs(c.talents) do tinsert(talentParts, F(t.name) .. ":" .. t.rank .. ":" .. t.tab) end
+    for _, g in ipairs(c.equipment) do
+        tinsert(gear, g.slot .. ":" .. g.id .. ":" .. g.ilvl .. ":" .. g.quality .. ":" .. g.enchant .. ":" .. F(g.name))
     end
     local parts = {
         "BFFR1",
@@ -719,6 +834,9 @@ function ns.BuildExportCode()
         "ro=" .. ns.EncodeRoles(ns.db.myRoles),
         "rs=" .. F(ns.MyRuleset() or ""),
         "p=" .. table.concat(profs, ","),
+        "tr=" .. table.concat(trees, ","),
+        "ta=" .. table.concat(talentParts, ","),
+        "eq=" .. table.concat(gear, ","),
         "t=" .. time(),
     }
     return table.concat(parts, ";")

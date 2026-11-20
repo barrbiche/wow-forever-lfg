@@ -303,7 +303,7 @@ function pageCommentCaMarche() {
 <h2>L'addon pour le jeu</h2>
 <p>Babillard Forever FR est un addon gratuit pour WoW Forever, offert sur <a href="https://www.curseforge.com/wow/addons/babillard-forever-fr" target="_blank" rel="noopener">CurseForge</a>. Avec l'application CurseForge, il s'installe et se met à jour tout seul. Dans le jeu, tape <code>/bf</code> pour ouvrir le babillard.</p>
 <p>L'addon montre les groupes publiés par les autres joueurs de l'addon, lit les annonces « LFM » du chat, te laisse publier ton groupe (aussi dans le chat si tu veux), chuchoter à un groupe avec un message déjà écrit et être alerté pour tes activités favorites. Pour un raid, tu peux indiquer combien de tanks, de soigneurs et de DPS il te faut. Il n'envoie rien tout seul: chaque annonce et chaque message part quand tu cliques. Les groupes de l'addon et ceux du site sont deux listes séparées pour l'instant.</p>
-<p>L'addon peut aussi remplir ton profil: dans le jeu, <code>/bf perso</code> puis « Copier mon code », et tu le colles dans « Mon profil » sur le site.</p>
+<p>L'addon peut aussi remplir ton profil: dans le jeu, <code>/bf perso</code> puis « Copier mon code », et tu le colles dans « Mon profil » sur le site. Ton nom, ton niveau, ta classe, ta guilde, tes rôles, ta spécialisation, ton équipement et tes talents s'y retrouvent, et les joueurs connectés peuvent voir ton équipement et tes talents sur ta carte. Cette fiche est copiée par toi depuis le jeu: le site ne la vérifie pas, et tu peux l'effacer en tout temps.</p>
 
 <h2>Questions fréquentes</h2>
 <h3>Est-ce que le site est gratuit?</h3>

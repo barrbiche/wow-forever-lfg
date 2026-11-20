@@ -4,8 +4,10 @@
 // code illisible donne une erreur claire plutôt qu'un profil à moitié rempli. Le code n'est pas une preuve:
 // n'importe qui peut en écrire un à la main, donc le résultat sert seulement à pré-remplir le formulaire.
 
+import { specialisationsDe } from './data.js'
+
 export const PREFIXE_CODE = 'BFFR1'
-const LONGUEUR_MAX = 2000
+const LONGUEUR_MAX = 6000 // équipement et talents allongent le code (environ 2 500 caractères au maximum)
 
 // Jeton de classe du jeu (UnitClass) -> identifiant de classe du site (data.js).
 const CLASSES_DU_JEU = {
@@ -28,7 +30,90 @@ const FACTIONS_DU_JEU = { alliance: 'alliance', horde: 'horde' }
 // Type de serveur choisi dans l'addon (mêmes identifiants que le site, voir RULESETS dans data.js).
 const TYPES_DE_SERVEUR = ['normal', 'pvp', 'rp', 'rp_pvp']
 
-// Retourne { ok: true, valeurs, metiers, ilvl, avertissements } ou { ok: false, erreur }.
+// ---------- Équipement, arbres de talents et talents (champs eq, tr, ta) ----------
+// Même méfiance que pour le reste: chaque nombre est borné, chaque nom est nettoyé (pas de < ni >, pas de caractères
+// de contrôle) et les listes ont une longueur maximale. Le site affiche ces noms comme du texte, jamais comme du HTML.
+const nomPropre = (t, max) => String(t ?? '').replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, max)
+const entier = (t, min, max) => {
+  const s = String(t ?? '').trim()
+  if (!/^\d{1,9}$/.test(s)) return null
+  const n = Number(s)
+  return n >= min && n <= max ? n : null
+}
+const sansAccents = (t) => String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+
+export const EMPLACEMENTS_FICHE = 19 // numéros d'emplacement du jeu (1 à 19)
+
+function lireEquipement(brut) {
+  const parSlot = new Map()
+  for (const morceau of String(brut ?? '').split(',')) {
+    const p = morceau.split(':')
+    if (p.length < 6) continue
+    const slot = entier(p[0], 1, EMPLACEMENTS_FICHE)
+    const id = entier(p[1], 1, 9999999)
+    if (slot === null || id === null) continue
+    const ilvl = entier(p[2], 0, 1000) ?? 0
+    const qualite = entier(p[3], 0, 6) ?? 1
+    const enchant = entier(p[4], 0, 999999) ?? 0
+    const nom = nomPropre(p.slice(5).join(' '), 60) || '?'
+    parSlot.set(slot, { slot, id, ilvl, qualite, enchant, nom })
+    if (parSlot.size >= 17) break
+  }
+  return [...parSlot.values()].sort((a, b) => a.slot - b.slot)
+}
+
+function lireArbres(brut) {
+  const arbres = []
+  for (const morceau of String(brut ?? '').split(',')) {
+    const p = morceau.split(':')
+    if (p.length !== 2) continue
+    const points = entier(p[1], 0, 60)
+    const nom = nomPropre(p[0], 30)
+    if (points === null || !nom) continue
+    arbres.push({ nom, points })
+    if (arbres.length >= 3) break
+  }
+  return arbres
+}
+
+function lireTalents(brut, nbArbres) {
+  const talents = []
+  for (const morceau of String(brut ?? '').split(',')) {
+    const p = morceau.split(':')
+    if (p.length !== 3) continue
+    const rang = entier(p[1], 1, 5)
+    const arbre = entier(p[2], 1, 3)
+    const nom = nomPropre(p[0], 40)
+    if (rang === null || arbre === null || !nom || arbre > Math.max(nbArbres, 1)) continue
+    talents.push({ nom, rang, arbre })
+    if (talents.length >= 70) break
+  }
+  return talents
+}
+
+// L'arbre où il y a le plus de points = la spécialisation. On la reconnaît d'abord par son nom (français ou anglais);
+// sinon par sa place: les trois arbres sont toujours dans le même ordre que SPECIALISATIONS (data.js). Dans ce cas
+// `incertaine` est vrai: le formulaire la remplit quand même, et la personne vérifie avant d'enregistrer.
+export function specialisationDeFiche(classe, arbres) {
+  let meilleur = -1
+  let max = 0
+  arbres.forEach((a, i) => {
+    if (a.points > max) {
+      max = a.points
+      meilleur = i
+    }
+  })
+  if (meilleur < 0) return null
+  const specs = specialisationsDe(classe)
+  if (specs.length === 0) return null
+  const nom = sansAccents(arbres[meilleur].nom)
+  const parNom = specs.find((s) => sansAccents(s.fr) === nom || sansAccents(s.en) === nom)
+  if (parNom) return { id: parNom.id, incertaine: false }
+  return specs[meilleur] ? { id: specs[meilleur].id, incertaine: true } : null
+}
+
+// Retourne { ok: true, valeurs, metiers, ilvl, fiche, avertissements } ou { ok: false, erreur }.
+// `fiche` ({ equipement, arbres, talents }) vaut null quand le code n'en contient pas (ancien addon).
 // `valeurs` ne contient que les champs reconnus et valides, avec les identifiants du site.
 export function lireCodeJeu(texte) {
   const brut = String(texte ?? '').trim()
@@ -91,5 +176,19 @@ export function lireCodeJeu(texte) {
 
   const ilvl = Number.isInteger(Number(champs.il)) && Number(champs.il) > 0 ? Number(champs.il) : null
 
-  return { ok: true, valeurs, metiers, ilvl, avertissements, royaume: (champs.r ?? '').slice(0, 40) }
+  // Équipement et talents (addon récent seulement)
+  const equipement = lireEquipement(champs.eq)
+  const arbres = lireArbres(champs.tr)
+  const talents = lireTalents(champs.ta, arbres.length)
+  const fiche = equipement.length > 0 || arbres.length > 0 ? { equipement, arbres, talents } : null
+  let specIncertaine = false
+  if (fiche && valeurs.classe) {
+    const spec = specialisationDeFiche(valeurs.classe, arbres)
+    if (spec) {
+      valeurs.specialisation = spec.id
+      specIncertaine = spec.incertaine
+    }
+  }
+
+  return { ok: true, valeurs, metiers, ilvl, fiche, specIncertaine, avertissements, royaume: (champs.r ?? '').slice(0, 40) }
 }

@@ -1,9 +1,12 @@
 import { useContext, useEffect, useRef, useState } from 'react'
 import {
   ecrireProfil,
+  effacerFiche,
+  enregistrerFiche,
   enregistrerPersosExtra,
   enregistrerProfil,
   etreDisponible,
+  lireFiche,
   lireProfil,
   modeDemo,
   recommander,
@@ -38,6 +41,7 @@ import { BadgeSupporter, BoutonLienSite, ChipClasse, ContextePersos, Icone, Lign
 import { LangueJeu, commandeInviter, useLangueJeu } from './langue.jsx'
 import { BoutonsAmi, SectionAmis } from './Amis.jsx'
 import { lireCodeJeu } from './codeJeu.js'
+import { FicheAffichage, FicheDeJoueur, resumeFiche } from './Fiche.jsx'
 
 // ---------- Onglet « Joueurs »: les profils, qui est en ligne, la réputation ----------
 
@@ -546,6 +550,8 @@ function CarteJoueur({ joueur: j, commande, enLigne, lien, apresAmis, utilisateu
 
         {j.bio && <p className="note">{j.bio}</p>}
 
+        <FicheDeJoueur userId={j.user_id} />
+
         {j.en_revision ? (
           <p className="reputation revision">
             <Icone nom="pouce" taille={16} />
@@ -812,11 +818,17 @@ export function ProfilJoueur({
   const [envoi, setEnvoi] = useState(false)
   const [erreurServeur, setErreurServeur] = useState('')
   const [confirmer, setConfirmer] = useState(false)
+  // Fiche (équipement et talents): celle déjà enregistrée, et celle qui vient d'être importée du jeu (pas encore enregistrée).
+  const [ficheGardee, setFicheGardee] = useState(null)
+  const [ficheImport, setFicheImport] = useState(null)
 
   useEffect(() => {
     const d = dialogue.current
     if (!d) return
     if (ouvert && !d.open) {
+      setFicheImport(null)
+      setFicheGardee(null)
+      if (profil?.user_id) lireFiche(profil.user_id).then((f) => setFicheGardee(f))
       setChamps(champsInitiaux(profil, factionParDefaut, persos))
       setExtras(extrasInitiaux(persos))
       setErreurs({})
@@ -853,6 +865,8 @@ export function ProfilJoueur({
       ...(v.perso && v.perso !== c.perso ? { perso: v.perso, perso2: '' } : {}),
       ...(v.niveau ? { niveau: v.niveau } : {}),
       ...(v.classe ? { classe: v.classe, specialisation: v.classe === c.classe ? c.specialisation : '' } : {}),
+      // La spécialisation vient des talents (l'arbre où il y a le plus de points).
+      ...(v.classe && v.specialisation ? { specialisation: v.specialisation } : {}),
       ...(v.faction ? { faction: v.faction } : {}),
       ...(v.region ? { region: v.region } : {}),
       ...(v.roles ? { roles: v.roles } : {}),
@@ -860,6 +874,7 @@ export function ProfilJoueur({
       guilde: v.guilde,
     }))
     setErreurs({})
+    setFicheImport(lu.fiche ?? null)
     const rempli = [
       v.perso,
       v.niveau && `niveau ${v.niveau}`,
@@ -869,13 +884,22 @@ export function ProfilJoueur({
       v.ruleset && `serveur ${RULESETS.find((x) => x.id === v.ruleset)?.court}`,
       v.guilde ? `guilde ${v.guilde}` : 'aucune guilde',
       v.roles && `rôles ${v.roles.map((r) => ROLES.find((x) => x.id === r)?.nom).join(', ')}`,
+      v.specialisation && v.classe && `spécialisation ${nomSpecialisation(v.classe, v.specialisation)}`,
+      lu.fiche && `fiche (${resumeFiche(lu.fiche)})`,
     ].filter(Boolean)
     const noms = { niveau: 'le niveau', classe: 'la classe', faction: 'la faction', region: 'la région (le site gère US et EU)' }
     const aChoisir = lu.avertissements.map((a) => noms[a]).filter(Boolean)
     return (
       `Rempli: ${rempli.join(', ')}.` +
       (aChoisir.length > 0 ? ` À choisir toi-même: ${aChoisir.join(', ')}.` : '') +
-      ' Le code ne contient pas ta spécialisation. Vérifie le tout, puis enregistre.'
+      (v.specialisation
+        ? lu.specIncertaine
+          ? ' La spécialisation est déduite de l\'ordre de tes arbres de talents: vérifie-la.'
+          : ' La spécialisation vient de tes talents.'
+        : lu.fiche
+          ? ' Choisis ta spécialisation (aucun point de talent trouvé).'
+          : ' Ce code ne contient ni talents ni équipement: mets l\'addon à jour pour les importer. Choisis ta spécialisation.') +
+      ' Vérifie le tout, puis enregistre.'
     )
   }
 
@@ -949,6 +973,24 @@ export function ProfilJoueur({
           return
         }
       }
+      // La fiche (équipement et talents) importée du jeu s'enregistre avec le profil.
+      if (ficheImport) {
+        let etatFiche = 'echec'
+        try {
+          etatFiche = await enregistrerFiche(ficheImport, complet)
+        } catch {
+          etatFiche = 'echec'
+        }
+        if (etatFiche !== 'ok') {
+          await apres()
+          setErreurServeur(
+            etatFiche === 'base'
+              ? "Ton profil est enregistré, mais pas ta fiche d'équipement: la base de données du site n'est pas encore à jour pour ça."
+              : 'Ton profil est enregistré, mais ta fiche d’équipement ne l’a pas été. Réessaie dans un instant.',
+          )
+          return
+        }
+      }
       annoncer('Profil enregistré.')
       await apres()
       apresEnregistrement?.()
@@ -957,6 +999,17 @@ export function ProfilJoueur({
       setErreurServeur("Le profil n'a pas été enregistré. Réessaie dans un instant.")
     } finally {
       setEnvoi(false)
+    }
+  }
+
+  const retirerFiche = async () => {
+    setErreurServeur('')
+    try {
+      await effacerFiche()
+      setFicheGardee(null)
+      annoncer('Fiche effacée.')
+    } catch {
+      setErreurServeur("La fiche n'a pas été effacée. Réessaie dans un instant.")
     }
   }
 
@@ -999,6 +1052,33 @@ export function ProfilJoueur({
         )}
 
         <ImporterDuJeu surImport={importerDuJeu} />
+
+        {(ficheImport || ficheGardee) && (
+          <details className="fiche-profil" open={!!ficheImport}>
+            <summary>
+              {ficheImport ? 'Fiche importée du jeu (pas encore enregistrée)' : 'Ma fiche: équipement et talents'}
+              {' · '}
+              {resumeFiche(ficheImport ?? ficheGardee)}
+            </summary>
+            <FicheAffichage fiche={ficheImport ?? ficheGardee} maj={ficheImport ? null : ficheGardee.maj} />
+            <p className="aide">
+              Les joueurs connectés la voient sur ta carte (si ton profil n'est pas caché).
+              {ficheImport ? ' Elle sera enregistrée avec ton profil.' : ''}
+            </p>
+            <div className="fiche-actions">
+              {ficheImport && (
+                <button type="button" className="bouton petit" onClick={() => setFicheImport(null)}>
+                  Ne pas importer la fiche
+                </button>
+              )}
+              {!ficheImport && ficheGardee && (
+                <button type="button" className="bouton petit" onClick={retirerFiche}>
+                  Effacer ma fiche
+                </button>
+              )}
+            </div>
+          </details>
+        )}
 
         <div className="deux court trois">
           <label className="champ">

@@ -287,7 +287,13 @@ Les addons de WoW n'ont pas accès à Internet: le pont entre le jeu et le site 
 - **Envoi automatique sur CurseForge**: `.github/workflows/curseforge.yml` (voir plus bas).
 - Volontairement **pas** d'invitation automatique sur « inv »: ça ressemble trop à de l'automatisation que Blizzard interdit aux addons.
 
-Tests: `python3 addon/tests/test_v12_addon.py`.
+**1.4.0 — fiche du personnage (équipement et talents)**: le code de `/bf perso` contient maintenant l'équipement porté (`eq`: emplacement, objet, niveau d'objet, qualité, enchantement, nom), les trois arbres de talents avec leurs points (`tr`) et les talents appris (`ta`). Les lectures passent par `pcall` et rendent une liste vide si le jeu n'a pas la fonction (rien n'est inventé); le panneau « Mon perso » montre le nombre de pièces et les points par arbre. Les métiers ont une deuxième méthode de lecture (lignes de compétences de Classic) quand `GetProfessions` n'existe pas.
+
+Côté site (`src/codeJeu.js`, `src/Fiche.jsx`): chaque nombre est borné, les noms sont nettoyés (pas de `<` ni `>`), les listes ont une taille maximale. La spécialisation est l'arbre où il y a le plus de points, reconnu par son nom (français ou anglais) puis, à défaut, par sa place (même ordre que `SPECIALISATIONS` de `data.js`, la personne vérifie avant d'enregistrer). La fiche s'enregistre avec le profil et se voit sur la carte du joueur (« Équipement et talents », chargée à l'ouverture) par les gens connectés; un profil caché cache sa fiche. **Elle n'est pas vérifiée** (copiée par le joueur) et le site le dit.
+
+**À rouler une fois dans Supabase: `supabase/ameliorations26.sql`** (table `fiches_perso`, fonctions `enregistrer_fiche`, `fiche_de`, `effacer_fiche`). Sans lui, le profil s'enregistre quand même et le site dit que la fiche n'a pas pu l'être. Testé sur un vrai Postgres en mémoire: `npm install --no-save @electric-sql/pglite && node supabase/tests/test_fiche.mjs`.
+
+Tests: `python3 addon/tests/test_v12_addon.py`, `python3 addon/tests/test_code_site.py` (l'addon génère le code, le site le relit).
 
 ### Envoyer une nouvelle version sur CurseForge automatiquement
 

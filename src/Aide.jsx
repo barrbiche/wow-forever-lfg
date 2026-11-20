@@ -218,8 +218,12 @@ export default function Aide({ ouvert, fermer }) {
             <li>
               <strong>Importer mon personnage du jeu.</strong> Avec l'addon Babillard Forever FR, tape /bf perso dans le jeu,
               clique « Copier mon code », puis colle-le dans « Mon profil » (« Remplir avec mon personnage du jeu »). Le nom,
-              le niveau, la classe, la faction, la région, la guilde et les rôles se remplissent: tu vérifies, tu choisis ta
-              spécialisation et tu enregistres. Rien ne se met à jour tout seul.
+              le niveau, la classe, la faction, la région, la guilde, les rôles et la spécialisation (l'arbre de talents où
+              tu as le plus de points) se remplissent: tu vérifies et tu enregistres. Le code contient aussi ton équipement
+              et tes talents: ils s'enregistrent avec ton profil et les joueurs connectés les voient sur ta carte
+              (« Équipement et talents »), tant que ton profil n'est pas caché. Cette fiche est copiée par toi depuis le
+              jeu: le site ne la vérifie pas. Tu peux l'effacer dans « Mon profil ». Rien ne se met à jour tout seul:
+              refais la copie quand ton équipement change.
             </li>
             <li>
               <strong>Groupe planifié.</strong> « Ajouter à mon calendrier » télécharge un fichier qui s'ouvre dans Google
