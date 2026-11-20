@@ -13,6 +13,7 @@ local state = {
     cat         = "Donjons",
     akey        = nil,
     lfmRoles    = { DPS = true },
+    lfmCounts   = {},      -- places par rôle (raids et PvP): { TANK = 2, HEAL = 8, DPS = 25 }
     filterCat   = "Tous",
     scroll      = 0,
     guildFocus  = "PVE",
@@ -143,7 +144,8 @@ local function MakeSegmented(parent, items, width, x, y, isSelected, onSelect, s
 end
 
 -- Icônes de rôles (on peut en choisir plusieurs)
-local function MakeRoleIcons(parent, x, y, size, getSet, onChange)
+-- getCounts / countsActive (facultatifs): places par rôle, réglées à la molette quand l'activité a plus de 5 places
+local function MakeRoleIcons(parent, x, y, size, getSet, onChange, getCounts, countsActive)
     local btns = {}
     for i, key in ipairs(ns.ROLE_ORDER) do
         local info = ns.ROLE_INFO[key]
@@ -166,10 +168,28 @@ local function MakeRoleIcons(parent, x, y, size, getSet, onChange)
             btns.Update()
             if onChange then onChange() end
         end)
+        if getCounts then
+            b.num = b:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+            b.num:SetPoint("BOTTOMRIGHT", 2, 0)
+            b:EnableMouseWheel(true)
+            b:SetScript("OnMouseWheel", function(_, delta)
+                if not (countsActive and countsActive()) then return end
+                local set, counts = getSet(), getCounts()
+                local n = (counts[key] or 1) + (delta > 0 and 1 or -1)
+                counts[key] = math.max(1, math.min(40, n))
+                set[key] = true
+                ns.PlayClick()
+                btns.Update()
+                if onChange then onChange() end
+            end)
+        end
         b:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
             GameTooltip:AddLine(info.name)
             GameTooltip:AddLine("Clique pour l'activer ou le désactiver.", 1, 1, 1)
+            if getCounts and countsActive and countsActive() then
+                GameTooltip:AddLine("Molette : combien de joueurs de ce rôle tu cherches (raid, champ de bataille).", 0.7, 0.9, 1, true)
+            end
             GameTooltip:Show()
         end)
         b:SetScript("OnLeave", GameTooltip_Hide)
@@ -182,6 +202,11 @@ local function MakeRoleIcons(parent, x, y, size, getSet, onChange)
             b.icon:SetDesaturated(not sel)
             b.icon:SetAlpha(sel and 1 or 0.35)
             b.check:SetShown(sel)
+            if b.num then
+                local n = getCounts and getCounts()[b.key]
+                local show = sel and n and countsActive and countsActive()
+                b.num:SetText(show and n or "")
+            end
         end
     end
     return btns
@@ -225,8 +250,15 @@ local function MakeCheck(parent, label)
 end
 
 -- Chuchoter / inviter
-local function DoWhisper(name)
+local function DoWhisper(name, d)
     name = ns.WhisperName(name)
+    -- Message de présentation déjà écrit dans la boîte de chat: tu appuies sur Entrée pour l'envoyer.
+    local text = d and ns.db.opts.whisperTemplate and ns.WhisperText(d)
+    if text and ChatFrame_OpenChat and pcall(ChatFrame_OpenChat, "/w " .. name .. " " .. text) then
+        ns.RecordRequest(d)
+        return
+    end
+    if d then ns.RecordRequest(d) end
     if ChatFrame_SendTell then
         ChatFrame_SendTell(name)
     elseif ChatFrameUtil and ChatFrameUtil.SendTell then
@@ -482,7 +514,9 @@ G.picker = MakeActivityPicker(my, 12, -68, 220)
 G.rolesLabel = my:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 G.rolesLabel:SetPoint("TOPRIGHT", my, "TOPLEFT", 326, -77)
 G.rolesLabel:SetJustifyH("RIGHT")
-G.roles = MakeRoleIcons(my, 332, -66, 28, MyRolesSet)
+G.roles = MakeRoleIcons(my, 332, -66, 28, MyRolesSet, nil,
+    function() return state.lfmCounts end,
+    function() local a = state.akey and ns.ACT_BY_KEY[state.akey]; return a and a.size > 5 end)
 
 G.note = MakeInput(my, "Note (optionnel) : ex. QC, vocal Discord, débutants bienvenus", 410, 60, 18, -110)
 
@@ -510,6 +544,7 @@ G.pub:SetScript("OnClick", function()
     end
     local published = ns.PublishListing({
         type = state.mode, akey = state.akey, roles = MyRolesSet(), note = G.note:GetText(),
+        counts = (ns.ACT_BY_KEY[state.akey or ""] or { size = 5 }).size > 5 and state.lfmCounts or nil,
     })
     if published and ns.db.opts.alsoChat then ns.PostToChat(ns.my) end
 end)
@@ -566,7 +601,7 @@ local function GroupTooltip(d)
     GameTooltip:AddLine("Niveaux " .. a.min .. " à " .. a.max, 0.6, 0.8, 1)
     local hasRoles = next(d.roles) ~= nil
     if d.type == "LFM" then
-        if hasRoles then GameTooltip:AddLine("Recherche : " .. ns.RolesText(d.roles), 1, 0.82, 0) end
+        if hasRoles then GameTooltip:AddLine("Recherche : " .. ns.RolesText(d.roles, d.counts), 1, 0.82, 0) end
         if d.source ~= "chat" then GameTooltip:AddLine("Groupe : " .. d.groupCount .. "/" .. d.size, 0.8, 0.8, 0.8) end
     elseif hasRoles then
         GameTooltip:AddLine("Peut jouer : " .. ns.RolesText(d.roles), 1, 0.82, 0)
@@ -608,7 +643,10 @@ for i = 1, GROUP_ROWS do
     -- Boutons au survol (le premier ajouté est le plus à droite)
     AddRowAction(row, "Chuchoter", 80,
         function(d) return not ns.IsMe(d.sender) end,
-        function(d) DoWhisper(d.sender) end)
+        function(d) DoWhisper(d.sender, d) end)
+    AddRowAction(row, "Ignorer", 60,
+        function(d) return not ns.IsMe(d.sender) end,
+        function(d) ns.PlayClick(); ns.Ignore(d.sender) end)
     G.rows[i] = row
 end
 
@@ -649,7 +687,10 @@ local function RestoreFormFromListing()
         state.restoredFor = ns.my
         state.cat = ns.my.cat
         state.akey = ns.my.akey
-        if ns.my.type == "LFM" then state.lfmRoles = CopyTable(ns.my.baseRoles or ns.my.roles) end
+        if ns.my.type == "LFM" then
+            state.lfmRoles = CopyTable(ns.my.baseRoles or ns.my.roles)
+            state.lfmCounts = CopyTable(ns.my.baseCounts or {})
+        end
         G.note:SetText(ns.my.note or "")
         G.note:UpdatePh()
     end
@@ -665,7 +706,7 @@ local function RefreshGroups()
     local latest = {}
     for _, l in pairs(ns.listings) do
         local key = ns.BareName(l.sender)
-        if l.type == "LFM" and (not latest[key] or l.time > latest[key].time) then latest[key] = l end
+        if l.type == "LFM" and not ns.IsIgnored(l.sender) and (not latest[key] or l.time > latest[key].time) then latest[key] = l end
     end
 
     for _, l in pairs(latest) do
@@ -724,6 +765,7 @@ local function RefreshGroups()
                 txt = "|c" .. (ns.CAT_COLORS[d.cat] or "ffffffff") .. d.cat .. "|r  "
             end
             txt = txt .. a.name
+            if ns.HasRequest(d.sender) then txt = txt .. "  |cff88ccff[demandé]|r" end
             if d.source == "chat" then
                 txt = txt .. "  |cff33aaff[chat]|r"
             else

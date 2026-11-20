@@ -215,6 +215,17 @@ do
   if not ok3 then erreur("menu des favoris sans MenuUtil: " .. tostring(e3)) end
 end
 
+-- Molette sur les icônes de rôle (places par rôle) et clics: aucune erreur
+for _, o in ipairs(objets) do
+  local roue = o._scripts.OnMouseWheel
+  if roue then
+    for _, delta in ipairs({ 1, -1 }) do
+      local okr, er = pcall(roue, o, delta)
+      if not okr then erreur("molette: " .. tostring(er)) end
+    end
+  end
+end
+
 -- Toutes les cases et tous les boutons de la fenêtre et des options
   for _, o in ipairs(objets) do
     local clic = o._scripts.OnClick

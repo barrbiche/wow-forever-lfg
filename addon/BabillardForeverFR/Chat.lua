@@ -211,7 +211,10 @@ function ns.ChatText(l, withTag)
     local parts = { l.type == "LFG" and "LFG" or "LFM", a and a.name or "" }
     local names = {}
     for _, key in ipairs(ns.ROLE_ORDER) do
-        if l.roles and l.roles[key] then tinsert(names, ns.ROLE_INFO[key].name) end
+        if l.roles and l.roles[key] then
+            local n = l.counts and l.counts[key]
+            tinsert(names, ns.ROLE_INFO[key].name .. ((n and n > 1) and (" x" .. n) or ""))
+        end
     end
     if #names > 0 then
         tinsert(parts, (l.type == "LFG" and "" or "- ") .. table.concat(names, ", "))

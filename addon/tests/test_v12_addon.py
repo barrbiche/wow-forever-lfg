@@ -46,19 +46,32 @@ GetTime = function() return horloge end
 issecretvalue = function(v) return v == "SECRET" end
 InCombatLockdown = function() return false end
 IsInInstance = function() return false end
-IsInGroup = function() return false end
-IsInRaid = function() return false end
+local enGroupe, enRaid = false, false
+IsInGroup = function() return enGroupe end
+IsInRaid = function() return enRaid end
+wipe = function(t) for k in pairs(t) do t[k] = nil end end
+local ouvertCh = {}
+ChatFrame_OpenChat = function(texte) ouvertCh[#ouvertCh + 1] = texte end
 local membres = 1
 GetNumGroupMembers = function() return membres end
 local roles = {}                                   -- [unité] = rôle assigné
-UnitExists = function(u) return u == "player" or (u:match("^party(%d)$") and tonumber(u:match("%d")) < membres) or false end
+UnitExists = function(u)
+  if u == "player" then return true end
+  local p = u:match("^party(%d)$")
+  if p then return tonumber(p) < membres end
+  local r = u:match("^raid(%d+)$")
+  if r then return tonumber(r) <= membres end
+  return false
+end
+local noms = {}
+local niveau = 20
 UnitGroupRolesAssigned = function(u) return roles[u] or "NONE" end
-UnitName = function() return "Barrbiche" end
+UnitName = function(u) return noms[u] or "Barrbiche" end
 UnitFullName = function() return "Barrbiche", "Forever Realm" end
 GetNormalizedRealmName = function() return "ForeverRealm" end
 UnitClass = function() return "Voleur", "ROGUE" end
 UnitRace = function() return "Orc" end
-UnitLevel = function() return 20 end
+UnitLevel = function() return niveau end
 UnitFactionGroup = function() return "Horde" end
 GetGuildInfo = function() return nil end
 GetCurrentRegionName = function() return "EU" end
@@ -255,20 +268,105 @@ do
   ns.WithdrawListing(); vider()
 end
 
+-- ---------- 3d. Places par rôle (raids, PvP) ----------
+egal(ns.EncodeCounts({ TANK = 2, HEAL = 8, DPS = 25 }), "T2H8D25", "encodage des places")
+local dc = ns.DecodeCounts("T2H8D25")
+verifier(dc.TANK == 2 and dc.HEAL == 8 and dc.DPS == 25, "décodage des places")
+local mauvais = ns.DecodeCounts("T0H99X5Z;;D")
+verifier(next(mauvais) == nil, "places invalides ignorées (0, plus de 40, lettre inconnue)")
+egal(ns.EncodeCounts({ TANK = 400 }), "T40", "places limitées à 40")
+egal(ns.EncodeCounts({ TANK = 0, HEAL = -1 }), "", "zéro place = rien à envoyer")
+egal(ns.RolesText({ TANK = true, DPS = true }, { TANK = 2, DPS = 1 }), "Tank ×2, DPS", "texte des rôles avec places")
+recevoir("L2;LFM;Raids;ONY;THD;WARRIOR;60;Horde;40;3;0;;pvp;1.2.5;T2H8D25", "Raid-ForeverRealm")
+local rl = ns.listings["Raid-ForeverRealm"]
+verifier(rl and rl.counts.TANK == 2 and rl.counts.HEAL == 8 and rl.counts.DPS == 25, "places lues dans l'annonce d'un autre joueur")
+recevoir("L2;LFM;Donjons;VC;T;WARRIOR;20;Horde;5;1;0;;pvp;1.2.5", "Ancien-ForeverRealm")
+verifier(ns.listings["Ancien-ForeverRealm"] and next(ns.listings["Ancien-ForeverRealm"].counts) == nil, "annonce sans places (ancienne version) lue sans erreur")
+vider(); ns.my = nil
+-- Publier un raid avec places, puis le décompte avec les rôles assignés du raid
+niveau = 60
+avancer(100); membres = 1
+ns.PublishListing({ type = "LFM", akey = "ONY", roles = { TANK = true, HEAL = true, DPS = true }, counts = { TANK = 2, HEAL = 8, DPS = 25 }, note = "" })
+verifier(ns.my ~= nil, "raid publié")
+verifier(ENVOYES[#ENVOYES]:match(";([^;]*)$") == "T2H8D25", "les places sont dans le message")
+verifier(ns.ChatText(ns.my):find("Tank x2", 1, true) and ns.ParseChat(ns.ChatText(ns.my)).akey == "ONY", "texte du chat avec places, toujours relisible")
+enRaid, enGroupe, membres = true, true, 12
+roles = {}
+for i = 1, 12 do roles["raid" .. i] = (i <= 2) and "TANK" or ((i <= 5) and "HEALER" or "DAMAGER") end
+minuteries = {}
+cadre(nil, "GROUP_ROSTER_UPDATE")
+egal(ns.EncodeCounts(ns.my.counts), "T0H5D18" == "x" and "" or "H5D18", "places restantes après 2 tanks, 3 heals, 7 dps")
+verifier(ns.my.roles.TANK == nil and ns.my.roles.HEAL and ns.my.roles.DPS, "le rôle tank n'est plus cherché")
+egal(ns.EncodeCounts(ns.my.baseCounts), "T2H8D25", "places de départ intactes")
+egal(ns.my.groupCount, 12, "nombre de joueurs du raid")
+lancerMinuteries()
+verifier(ENVOYES[#ENVOYES]:match(";([^;]*)$") == "H5D18", "le renvoi contient les places restantes")
+avancer(100)
+ns.Republish()
+egal(ns.EncodeCounts(ns.my.counts), "T2H8D25", "republier repart des places demandées")
+enRaid, enGroupe, membres, roles = false, false, 1, {}
+niveau = 20
+ns.my = nil; vider()
+
+-- ---------- 3e. Message de chuchotement ----------
+ns.db.myRoles = { DPS = true }
+local wc = { akey = "WC", roles = { TANK = true, DPS = true } }
+local w1 = ns.WhisperText(wc)
+verifier(w1:find("voleur niv 20", 1, true) and w1:find("je peux faire DPS", 1, true) and w1:find("Lamentations", 1, true), "présentation avec classe, niveau, rôle commun: " .. tostring(w1))
+local w2 = ns.WhisperText({ akey = "WC", roles = { TANK = true } })
+verifier(w2 and not w2:find("je peux faire", 1, true), "sans rôle en commun, pas de rôle annoncé: " .. tostring(w2))
+verifier(ns.WhisperText({ akey = "n'existe pas", roles = {} }) == nil and ns.WhisperText(nil) == nil, "sans activité connue, pas de message")
+verifier(#w1 <= 250, "message court")
+
+-- ---------- 3f. Demandes envoyées ----------
+vider()
+ns.RecordRequest({ akey = "WC", sender = "Chef-ForeverRealm" })
+verifier(ns.HasRequest("Chef Dote") and ns.HasRequest("chef"), "demande retrouvée quelle que soit l'écriture du nom")
+verifier(not ns.HasRequest("Autre-Dote"), "pas de demande pour un autre joueur")
+enGroupe, membres, noms.party1 = true, 2, "Chef"
+ns.UpdateRequests()
+verifier(not ns.HasRequest("Chef"), "demande réglée quand j'entre dans son groupe")
+enGroupe, membres, noms.party1 = false, 1, nil
+ns.RecordRequest({ akey = "WC", sender = "Lent-ForeverRealm" })
+avancer(700)
+verifier(not ns.HasRequest("Lent"), "demande périmée après 10 minutes")
+ns.Prune()
+verifier(next(ns.requests) == nil, "les demandes périmées sont nettoyées")
+
+-- ---------- 3g. Joueurs ignorés ----------
+vider()
+recevoir("L2;LFM;Donjons;VC;T;WARRIOR;20;Horde;5;1;0;;pvp;1.2.5", "Spam-ForeverRealm")
+chat("LFM WC tank", "Spam2-ForeverRealm")
+verifier(ns.listings["Spam-ForeverRealm"] and ns.listings["Spam2-ForeverRealm"], "annonces reçues avant d'ignorer")
+ns.Ignore("Spam-ForeverRealm")
+ns.Ignore("Spam2 Dote")
+verifier(ns.listings["Spam-ForeverRealm"] == nil and ns.listings["Spam2-ForeverRealm"] == nil, "ignorer retire les annonces déjà reçues")
+recevoir("L2;LFM;Donjons;VC;T;WARRIOR;20;Horde;5;1;0;;pvp;1.2.5", "Spam-ForeverRealm")
+chat("LFM WC tank", "Spam2-AutreRoyaume")
+verifier(next(ns.listings) == nil, "les nouvelles annonces d'un joueur ignoré sont refusées (même écrites autrement)")
+verifier(ns.IsIgnored("SPAM") and not ns.IsIgnored("Spamlike"), "ignoré = même nom de personnage seulement")
+ns.Ignore("Barrbiche-Dote")
+verifier(not ns.IsIgnored("Barrbiche"), "on ne peut pas s'ignorer soi-même")
+ns.Unignore("Spam")
+recevoir("L2;LFM;Donjons;VC;T;WARRIOR;20;Horde;5;1;0;;pvp;1.2.5", "Spam-ForeverRealm")
+verifier(ns.listings["Spam-ForeverRealm"] ~= nil, "retirer un joueur de la liste le fait revenir")
+ns.db.ignored = {}
+vider()
+
 -- ---------- 4. Avis de nouvelle version ----------
 egal(ns.VersionNumber("1.2.0"), 1002000, "numéro de version")
 verifier(ns.VersionNumber("1.2") == nil and ns.VersionNumber("a.b.c") == nil and ns.VersionNumber("1.2.0;x") == nil
   and ns.VersionNumber(nil) == nil and ns.VersionNumber("1.2.99999") == nil, "versions invalides refusées")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.1.0", "Vieux-ForeverRealm")
-recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.2.5", "Pareil-ForeverRealm")
+recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.3.0", "Pareil-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;pirate", "Faux-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal", "SansVersion-ForeverRealm")
 egal(ns.newVersion, nil, "pas d'avis pour une version égale, ancienne ou invalide")
-recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.3.0", "Neuf-ForeverRealm")
-egal(ns.newVersion, "1.3.0", "avis pour une version plus récente")
-egal(ns.db.newestSeen, 1003000, "version vue sauvegardée")
-recevoir("G2;Les Pas Fins;PVE;Horde;ROGUE;60;0;note;normal;1.3.0", "Neuf2-ForeverRealm")
-recevoir("H2;20;MAGE;1.3.0", "Neuf3-ForeverRealm")
+recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.3.1", "Neuf-ForeverRealm")
+egal(ns.newVersion, "1.3.1", "avis pour une version plus récente")
+egal(ns.db.newestSeen, 1003001, "version vue sauvegardée")
+recevoir("G2;Les Pas Fins;PVE;Horde;ROGUE;60;0;note;normal;1.3.1", "Neuf2-ForeverRealm")
+recevoir("H2;20;MAGE;1.3.1", "Neuf3-ForeverRealm")
 egal(nbImprimes("nouvelle version"), 1, "l'avis n'est dit qu'une fois par version")
 recevoir("H2;20;MAGE;1.4.0", "Neuf4-ForeverRealm")
 egal(ns.newVersion, "1.4.0", "une version encore plus récente remplace l'avis")
@@ -279,7 +377,7 @@ ns.db.opts.autoRemove = false
 vider()
 avancer(100)
 ns.PublishListing({ type = "LFM", akey = "WC", roles = { TANK = true, HEAL = true, DPS = true }, note = "essai" })
-egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.2.5", "L2 publié termine par la version")
+egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.3.0", "L2 publié termine par la version")
 verifier(#CHAT == 0, "publier ne parle jamais dans le chat tout seul")
 
 -- ---------- 5. Alertes par activités favorites ----------

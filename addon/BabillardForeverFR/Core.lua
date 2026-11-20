@@ -28,8 +28,10 @@ local DEFAULTS = {
         chatTag         = false,   -- ajouter « [Babillard FR] » aux annonces du chat
         autoUpdate      = true,    -- mettre à jour tout seul le nombre de joueurs et les rôles manquants
         favsOnly        = false,   -- alertes seulement pour mes activités favorites
+        whisperTemplate = true,    -- Chuchoter écrit déjà un message de présentation (jamais envoyé tout seul)
     },
     favs     = {},     -- activités favorites : [cléActivité] = true
+    ignored  = {},     -- joueurs ignorés : [nomEnMinuscules] = true
     known    = {},     -- joueurs qui ont l'addon : [Nom-Royaume] = date
     welcomed = false,
 }
@@ -210,10 +212,33 @@ function ns.DecodeRoles(s)
     return set
 end
 
-function ns.RolesText(set)
+-- Places par rôle pour les raids et le PvP: { TANK = 2, HEAL = 8, DPS = 25 } <-> "T2H8D25"
+function ns.EncodeCounts(counts)
+    local s = ""
+    for _, key in ipairs(ns.ROLE_ORDER) do
+        local n = counts and counts[key]
+        if n and n >= 1 then s = s .. ns.ROLE_INFO[key].letter .. math.min(40, math.floor(n)) end
+    end
+    return s
+end
+
+function ns.DecodeCounts(s)
+    local counts = {}
+    for letter, digits in tostring(s or ""):gmatch("(%a)(%d+)") do
+        local key = ns.ROLE_BY_LETTER[letter]
+        local n = tonumber(digits)
+        if key and n and n >= 1 and n <= 40 then counts[key] = n end
+    end
+    return counts
+end
+
+function ns.RolesText(set, counts)
     local t = {}
     for _, key in ipairs(ns.ROLE_ORDER) do
-        if set[key] then tinsert(t, ns.ROLE_INFO[key].name) end
+        if set[key] then
+            local n = counts and counts[key]
+            tinsert(t, ns.ROLE_INFO[key].name .. ((n and n > 1) and (" ×" .. n) or ""))
+        end
     end
     return table.concat(t, ", ")
 end
@@ -298,8 +323,12 @@ end
 ---------------------------------------------------------------------------
 local function ListingMessage(l)
     local age = math.max(0, math.floor(GetTime() - l.time))
-    return table.concat({ "L2", l.type, l.cat, l.akey, ns.EncodeRoles(l.roles), l.class,
-        l.level, l.faction, l.size, l.groupCount, age, l.note, l.ruleset or "", ns.VERSION }, ";")
+    local fields = { "L2", l.type, l.cat, l.akey, ns.EncodeRoles(l.roles), l.class,
+        l.level, l.faction, l.size, l.groupCount, age, l.note, l.ruleset or "", ns.VERSION }
+    -- Places par rôle: champ ajouté seulement s'il y en a (les donjons gardent le même message qu'avant)
+    local counts = ns.EncodeCounts(l.counts)
+    if counts ~= "" then fields[#fields + 1] = counts end
+    return table.concat(fields, ";")
 end
 
 local function GuildMessage(g)
@@ -313,6 +342,7 @@ local function SaveMyState()
     if ns.my then
         ns.db.myListing = { type = ns.my.type, akey = ns.my.akey, roles = CopyTable(ns.my.roles),
             baseRoles = CopyTable(ns.my.baseRoles or ns.my.roles),
+            counts = CopyTable(ns.my.counts or {}), baseCounts = CopyTable(ns.my.baseCounts or {}),
             note = ns.my.note, epoch = now - math.floor(GetTime() - ns.my.time) }
     else
         ns.db.myListing = nil
@@ -354,7 +384,8 @@ function ns.PublishListing(p)
     local _, class = UnitClass("player")
     local l = {
         sender = ns.Me(), type = p.type, cat = a.cat, akey = a.key, roles = CopyTable(p.roles),
-        baseRoles = CopyTable(p.roles), class = class or "", level = ns.MyLevel(), faction = ns.MyFaction(), size = a.size,
+        baseRoles = CopyTable(p.roles), counts = CopyTable(p.counts or {}), baseCounts = CopyTable(p.counts or {}),
+        class = class or "", level = ns.MyLevel(), faction = ns.MyFaction(), size = a.size,
         groupCount = math.max(1, GetNumGroupMembers()), note = ns.Clean(p.note):sub(1, 120),
         time = GetTime(), ruleset = ns.MyRuleset() or "",
     }
@@ -374,7 +405,8 @@ end
 function ns.Republish()
     if not ns.my then return end
     lastPublish = 0
-    ns.PublishListing({ type = ns.my.type, akey = ns.my.akey, roles = ns.my.baseRoles or ns.my.roles, note = ns.my.note })
+    ns.PublishListing({ type = ns.my.type, akey = ns.my.akey, roles = ns.my.baseRoles or ns.my.roles,
+        counts = ns.my.baseCounts, note = ns.my.note })
 end
 
 function ns.WithdrawListing(reason)
@@ -461,6 +493,9 @@ function ns.Prune()
     end
     for k, g in pairs(ns.guilds) do
         if now - g.time > ns.GUILD_EXPIRE then ns.guilds[k] = nil end
+    end
+    for k, r in pairs(ns.requests or {}) do
+        if now - r.time > 600 then ns.requests[k] = nil end
     end
     -- Les annonces lues dans le chat sont nombreuses: on garde les plus récentes seulement.
     local chat = {}
@@ -735,6 +770,7 @@ local function OnMessage(msg, sender)
     if not sender then return end
     -- Mes propres messages reviennent par le canal: mon annonce est déjà dans la liste, on les ignore.
     if ns.IsMe(sender) then return end
+    if ns.IsIgnored(sender) then return end
     msg = msg:gsub("|", "")
     local f = { strsplit(";", msg) }
     local cmd = f[1]
@@ -760,7 +796,7 @@ local function OnMessage(msg, sender)
             size = tonumber(f[9]) or a.size, groupCount = tonumber(f[10]) or 1,
             note = f[12] or "", time = GetTime() - ClampAge(f[11], ns.EXPIRE),
             ruleset = ns.RULESETS[f[13] or ""] and f[13] or "",
-            baseRoles = roles,
+            baseRoles = roles, counts = ns.DecodeCounts(f[15]),
         }
         ns.CheckVersion(f[14])
         ns.listings[sender] = l
@@ -798,6 +834,73 @@ local function OnMessage(msg, sender)
 end
 
 ---------------------------------------------------------------------------
+-- Chuchoter à un chef de groupe: message de présentation, demandes envoyées, joueurs ignorés
+---------------------------------------------------------------------------
+-- « Salut, voleur niv 20, je peux faire DPS pour Mines de la Mort. » Le message est seulement écrit dans la
+-- boîte de chat: c'est toi qui appuies sur Entrée.
+function ns.WhisperText(d)
+    local a = d and ns.ACT_BY_KEY[d.akey or ""]
+    if not a then return nil end
+    local className = UnitClass("player")
+    local who = (className and className ~= "" and (className:lower() .. " ") or "") .. "niv " .. ns.MyLevel()
+    local role = ns.db and ns.db.myRoles and d.roles and FirstCommonRole(d.roles, ns.db.myRoles)
+    local text = "Salut, " .. who
+    if role then text = text .. ", je peux faire " .. ns.ROLE_INFO[role].name end
+    return (text .. " pour " .. a.name .. "."):sub(1, 250)
+end
+
+ns.requests = {}    -- chuchotements envoyés: [nomEnMinuscules] = { akey, time }
+
+function ns.RecordRequest(d)
+    if d and d.akey and d.sender then
+        ns.requests[ns.BareName(d.sender)] = { akey = d.akey, time = GetTime(), sender = d.sender }
+    end
+end
+
+function ns.HasRequest(name)
+    local r = ns.requests[ns.BareName(name)]
+    return r and GetTime() - r.time < 600
+end
+
+-- Quand j'entre dans le groupe de quelqu'un à qui j'ai chuchoté, la demande est réglée.
+function ns.UpdateRequests()
+    if not next(ns.requests) or not IsInGroup() then return end
+    local units = {}
+    if IsInRaid() then
+        for i = 1, GetNumGroupMembers() do tinsert(units, "raid" .. i) end
+    else
+        units = { "party1", "party2", "party3", "party4" }
+    end
+    for _, unit in ipairs(units) do
+        if UnitExists(unit) then
+            local name = UnitName(unit)
+            if name then ns.requests[ns.BareName(name)] = nil end
+        end
+    end
+end
+
+function ns.IsIgnored(name)
+    return ns.db and ns.db.ignored and ns.db.ignored[ns.BareName(name)] and true or false
+end
+
+function ns.Ignore(name)
+    if not ns.db or ns.IsMe(name) then return end
+    local bare = ns.BareName(name)
+    if bare == "" then return end
+    ns.db.ignored[bare] = true
+    for k, l in pairs(ns.listings) do
+        if ns.BareName(l.sender) == bare then ns.listings[k] = nil end
+    end
+    ns.requests[bare] = nil
+    ns.Print(ns.ShortName(name) .. " est ignoré: ses annonces ne s'affichent plus. |cffffd100/bf ignores|r pour voir ou vider la liste.")
+    ns.Refresh()
+end
+
+function ns.Unignore(name)
+    if ns.db and ns.db.ignored then ns.db.ignored[ns.BareName(name)] = nil end
+end
+
+---------------------------------------------------------------------------
 -- Annonces lues dans le chat (général, recherche de groupe, cris...)
 -- Elles remplissent le babillard quand peu de joueurs ont l'addon. Elles portent « source = "chat" »:
 -- une annonce venue de l'addon (plus fiable: classe, niveau, rôles) les remplace toujours.
@@ -807,7 +910,7 @@ function ns.OnChat(text, sender, channelBase)
     if not o or not o.chatReading then return end
     if issecretvalue and (issecretvalue(text) or issecretvalue(sender) or issecretvalue(channelBase)) then return end
     if type(text) ~= "string" or type(sender) ~= "string" or sender == "" then return end
-    if ns.IsMe(sender) then return end
+    if ns.IsMe(sender) or ns.IsIgnored(sender) then return end
     -- La défense locale ne contient pas d'annonces de groupe.
     local base = ns.NormalizeText(tostring(channelBase or ""))
     if base:find("defense", 1, true) or base:find("defence", 1, true) then return end
@@ -885,20 +988,33 @@ end
 ---------------------------------------------------------------------------
 -- Tank et soigneur sont des places uniques: si quelqu'un du groupe a ce rôle d'assigné, on ne le cherche plus.
 -- Le jeu ne donne le rôle que si les joueurs l'ont choisi: sans rôle assigné, on garde ce que tu as demandé.
-local function MissingRoles(base)
-    local wanted = CopyTable(base)
-    if not IsInRaid() and UnitGroupRolesAssigned then
-        local units = { "player", "party1", "party2", "party3", "party4" }
+local ASSIGNED = { TANK = "TANK", HEALER = "HEAL", DAMAGER = "DPS" }
+
+-- Retourne les rôles et les places qui manquent encore. Avec des places par rôle (raids, PvP), chaque joueur du
+-- groupe qui a un rôle assigné en retire une. Sans places (groupe de 5), tank et soigneur sont des places uniques.
+local function MissingRoles(baseRoles, baseCounts)
+    local wanted, counts = CopyTable(baseRoles), CopyTable(baseCounts or {})
+    if UnitGroupRolesAssigned then
+        local units = {}
+        if IsInRaid() then
+            for i = 1, GetNumGroupMembers() do tinsert(units, "raid" .. i) end
+        else
+            units = { "player", "party1", "party2", "party3", "party4" }
+        end
         for _, unit in ipairs(units) do
-            if UnitExists(unit) then
-                local role = UnitGroupRolesAssigned(unit)
-                if role == "TANK" then wanted.TANK = nil
-                elseif role == "HEALER" then wanted.HEAL = nil end
+            local key = UnitExists(unit) and ASSIGNED[UnitGroupRolesAssigned(unit) or ""]
+            if key and wanted[key] then
+                if counts[key] then
+                    counts[key] = counts[key] - 1
+                    if counts[key] <= 0 then counts[key], wanted[key] = nil, nil end
+                elseif not IsInRaid() and (key == "TANK" or key == "HEAL") then
+                    wanted[key] = nil
+                end
             end
         end
     end
-    if not next(wanted) then return CopyTable(base) end
-    return wanted
+    if not next(wanted) then return CopyTable(baseRoles), CopyTable(baseCounts or {}) end
+    return wanted, counts
 end
 
 local resendPending, lastResend = false, -1000
@@ -907,9 +1023,10 @@ function ns.AutoUpdateGroup()
     local o = ns.db and ns.db.opts
     if not ns.my or not o or not o.autoUpdate or ns.my.type ~= "LFM" then return end
     local count = math.max(1, GetNumGroupMembers())
-    local roles = MissingRoles(ns.my.baseRoles or ns.my.roles)
-    if count == ns.my.groupCount and ns.EncodeRoles(roles) == ns.EncodeRoles(ns.my.roles) then return end
-    ns.my.groupCount, ns.my.roles = count, roles
+    local roles, counts = MissingRoles(ns.my.baseRoles or ns.my.roles, ns.my.baseCounts)
+    if count == ns.my.groupCount and ns.EncodeRoles(roles) == ns.EncodeRoles(ns.my.roles)
+       and ns.EncodeCounts(counts) == ns.EncodeCounts(ns.my.counts) then return end
+    ns.my.groupCount, ns.my.roles, ns.my.counts = count, roles, counts
     SaveMyState()
     ns.Refresh()
     if resendPending then return end
@@ -938,6 +1055,7 @@ local function RestoreMyState()
         ns.my = {
             sender = ns.Me(), type = saved.type, cat = a.cat, akey = a.key, roles = saved.roles or {},
             baseRoles = saved.baseRoles or saved.roles or {},
+            counts = saved.counts or {}, baseCounts = saved.baseCounts or saved.counts or {},
             class = class or "", level = ns.MyLevel(), faction = ns.MyFaction(), size = a.size,
             groupCount = math.max(1, GetNumGroupMembers()), note = saved.note or "",
             time = GetTime() - (now - saved.epoch), ruleset = ns.MyRuleset() or "",
@@ -1039,6 +1157,7 @@ ev:SetScript("OnEvent", function(_, event, ...)
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" then
         CheckAutoRemove()
         ns.AutoUpdateGroup()
+        ns.UpdateRequests()
         ns.Refresh()
 
     elseif event == "PLAYER_LEVEL_UP" then
@@ -1064,6 +1183,25 @@ SlashCmdList.BABILLARDFR = function(arg)
         if ns.OpenOptions then ns.OpenOptions() end
     elseif arg == "favoris" then
         ns.OpenFavMenu()
+    elseif arg == "demandes" then
+        local n = 0
+        for _, r in pairs(ns.requests) do
+            n = n + 1
+            local a = ns.ACT_BY_KEY[r.akey]
+            local age = GetTime() - r.time
+            print("  " .. ns.ShortName(r.sender) .. " : " .. (a and a.name or "?") .. " (il y a " .. math.floor(age / 60) .. " min" ..
+                (age > 300 and ", sans réponse" or "") .. ")")
+        end
+        if n == 0 then ns.Print("aucune demande en cours. Elles s'affichent ici après un clic sur Chuchoter.") end
+    elseif arg == "ignores" or arg == "ignorés" then
+        local names = {}
+        for bare in pairs(ns.db.ignored) do tinsert(names, bare) end
+        table.sort(names)
+        if #names == 0 then ns.Print("aucun joueur ignoré.") else ns.Print("joueurs ignorés : " .. table.concat(names, ", ")) end
+    elseif arg == "ignores vider" then
+        wipe(ns.db.ignored)
+        ns.Print("la liste des joueurs ignorés est vide.")
+        ns.Refresh()
     elseif arg == "guildes" then
         if ns.UI then ns.UI.Open(2) end
     elseif arg == "perso" or arg == "code" then
@@ -1075,6 +1213,8 @@ SlashCmdList.BABILLARDFR = function(arg)
         print("  |cffffd100/bf perso|r : mon personnage et code pour le site")
         print("  |cffffd100/bf site|r : lien du site")
         print("  |cffffd100/bf favoris|r : choisir les activités qui déclenchent une alerte")
+        print("  |cffffd100/bf demandes|r : les groupes à qui tu as chuchoté")
+        print("  |cffffd100/bf ignores|r : joueurs ignorés (|cffffd100/bf ignores vider|r pour tout retirer)")
         print("  |cffffd100/bf options|r : options")
     else
         if ns.UI then ns.UI.Toggle() end

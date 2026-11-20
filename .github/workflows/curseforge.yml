@@ -1,0 +1,106 @@
+# Envoie l'addon sur CurseForge quand on pousse une étiquette, par exemple:  git tag v1.3.0 && git push origin v1.3.0
+# Réglages dans GitHub (Settings > Secrets and variables > Actions):
+#   secret    CF_API_KEY        jeton de l'API CurseForge (ne jamais l'écrire dans le code)
+#   variable  CF_PROJECT_ID     numéro du projet CurseForge
+#   variable  CF_GAME_VERSION   facultatif, nom de la version du jeu à cocher (défaut: Forever)
+name: Envoyer sur CurseForge
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  curseforge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vérifier la version
+        id: version
+        run: |
+          ADDON=addon/BabillardForeverFR
+          VERSION=$(sed -n 's/^## Version: *//p' "$ADDON/BabillardForeverFR.toc" | tr -d '\r')
+          LUA=$(sed -n 's/^ns.VERSION *= *"\(.*\)".*/\1/p' "$ADDON/Data.lua")
+          echo "toc=$VERSION data=$LUA tag=$GITHUB_REF_NAME"
+          [ -n "$VERSION" ] || { echo "::error::Version introuvable dans le .toc"; exit 1; }
+          [ "$VERSION" = "$LUA" ] || { echo "::error::Le .toc ($VERSION) et Data.lua ($LUA) n'ont pas la même version"; exit 1; }
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::L'étiquette $GITHUB_REF_NAME ne correspond pas à la version $VERSION de l'addon"; exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Fabriquer le zip
+        run: |
+          cd addon
+          zip -r "../BabillardForeverFR-${{ steps.version.outputs.version }}.zip" BabillardForeverFR -x "*.bak"
+          unzip -l "../BabillardForeverFR-${{ steps.version.outputs.version }}.zip"
+
+      - name: Envoyer sur CurseForge
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+          CF_PROJECT_ID: ${{ vars.CF_PROJECT_ID }}
+          CF_GAME_VERSION: ${{ vars.CF_GAME_VERSION }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re, sys, urllib.request, uuid
+
+          cle, projet = os.environ.get("CF_API_KEY", ""), os.environ.get("CF_PROJECT_ID", "")
+          version = os.environ["VERSION"]
+          voulu = (os.environ.get("CF_GAME_VERSION") or "Forever").strip()
+          if not cle:
+              sys.exit("Il manque le secret CF_API_KEY (GitHub > Settings > Secrets and variables > Actions).")
+          if not projet.isdigit():
+              sys.exit("Il manque la variable CF_PROJECT_ID (le numéro du projet CurseForge, des chiffres seulement).")
+
+          base = "https://wow.curseforge.com/api"
+
+          def appeler(url, data=None, entetes=None):
+              req = urllib.request.Request(url, data=data, headers={"X-Api-Token": cle, **(entetes or {})})
+              try:
+                  with urllib.request.urlopen(req, timeout=120) as r:
+                      return r.status, r.read().decode("utf-8", "replace")
+              except urllib.error.HTTPError as e:
+                  return e.code, e.read().decode("utf-8", "replace")
+
+          # 1. Trouver le numéro de la version du jeu (« Forever »)
+          statut, corps = appeler(base + "/game/versions")
+          if statut != 200:
+              sys.exit(f"Liste des versions du jeu refusée ({statut}): {corps[:300]}")
+          versions = json.loads(corps)
+          choix = [v for v in versions if str(v.get("name", "")).strip().lower() == voulu.lower()]
+          if not choix:
+              choix = [v for v in versions if voulu.lower() in str(v.get("name", "")).lower()]
+          if not choix:
+              noms = sorted({str(v.get("name")) for v in versions})
+              sys.exit(f"Version du jeu « {voulu} » introuvable chez CurseForge. Noms connus: {', '.join(noms[-40:])}. "
+                       "Mets la variable CF_GAME_VERSION au nom exact.")
+          ids = [choix[0]["id"]]
+          print("Version du jeu:", choix[0].get("name"), ids)
+
+          # 2. Texte de la mise à jour: la ligne « **x.y.z** » du README, sinon le message de l'étiquette
+          readme = open("README.md", encoding="utf-8").read()
+          m = re.search(r"\*\*" + re.escape(version) + r"\*\*[^\n]*\n(.*?)(?:\n\n|\Z)", readme, re.S)
+          notes = (m.group(1).strip() if m else "") or f"Version {version}. Détails: https://github.com/barrbiche/wow-forever-lfg"
+          meta = {"changelog": notes, "changelogType": "markdown", "displayName": version,
+                  "gameVersions": ids, "releaseType": "release"}
+
+          # 3. Envoyer le zip
+          chemin = f"BabillardForeverFR-{version}.zip"
+          limite = uuid.uuid4().hex
+          def partie(nom, contenu, fichier=None, type_="text/plain"):
+              tete = f'--{limite}\r\nContent-Disposition: form-data; name="{nom}"' + (f'; filename="{fichier}"' if fichier else "") + f"\r\nContent-Type: {type_}\r\n\r\n"
+              return tete.encode() + (contenu if isinstance(contenu, bytes) else contenu.encode("utf-8")) + b"\r\n"
+          corps = partie("metadata", json.dumps(meta), type_="application/json") \
+                + partie("file", open(chemin, "rb").read(), chemin, "application/zip") + f"--{limite}--\r\n".encode()
+          statut, rep = appeler(f"{base}/projects/{projet}/upload-file", corps,
+                                {"Content-Type": f"multipart/form-data; boundary={limite}"})
+          print(statut, rep[:500])
+          if statut != 200:
+              sys.exit("CurseForge a refusé l'envoi (voir la réponse ci-dessus).")
+          print("Envoyé. La nouvelle version passe par la modération de CurseForge avant d'apparaître.")
+          PY

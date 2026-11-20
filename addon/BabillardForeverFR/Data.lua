@@ -1,7 +1,7 @@
 -- Babillard Forever FR - Données (activités, rôles, constantes)
 local ADDON, ns = ...
 
-ns.VERSION       = "1.2.5"
+ns.VERSION       = "1.3.0"
 ns.PREFIX        = "BabillardFR"          -- préfixe des messages d'addon
 ns.CHANNEL       = "BabillardFR"          -- canal caché partagé
 ns.SITE_URL      = "https://babillard-forever.com"

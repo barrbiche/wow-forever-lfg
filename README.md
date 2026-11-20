@@ -279,7 +279,19 @@ Les addons de WoW n'ont pas accès à Internet: le pont entre le jeu et le site 
 
 **1.2.5**: l'addon ne sert plus qu'à **former des groupes** (tu publies un groupe, ou tu chuchotes à un groupe pour le rejoindre). Le mode « Je cherche un groupe » est retiré: les annonces de ce genre (venues de l'addon ou du chat) sont ignorées.
 
+**1.3.0**:
+- **Chuchotement prérempli**: « Chuchoter » ouvre le chat avec « Salut, voleur niv 20, je peux faire DPS pour Lamentations de l'Effroi. » déjà écrit (tu appuies sur Entrée toi-même; l'addon n'envoie rien tout seul). Option « Message prérempli » pour le couper.
+- **Places par rôle (raids, PvP)**: sur une activité de plus de 5 joueurs, la molette de la souris sur une icône de rôle règle le nombre de places (1 à 40). Le chiffre voyage dans l'annonce (champ `T2H8D25`, ajouté seulement s'il y en a; les anciennes versions l'ignorent), apparaît dans la liste et dans le chat (« Tank x2 »), et baisse tout seul quand des joueurs du raid ont un rôle assigné.
+- **Joueurs ignorés**: bouton « Ignorer » sur chaque annonce, `/bf ignores` pour voir la liste, `/bf ignores vider` pour la vider. Leurs annonces (addon et chat) disparaissent et ne reviennent pas.
+- **Mes demandes**: les groupes à qui tu as chuchoté affichent « [demandé] » pendant 10 minutes, ou jusqu'à ce que tu sois dans leur groupe (`/bf demandes`).
+- **Envoi automatique sur CurseForge**: `.github/workflows/curseforge.yml` (voir plus bas).
+- Volontairement **pas** d'invitation automatique sur « inv »: ça ressemble trop à de l'automatisation que Blizzard interdit aux addons.
+
 Tests: `python3 addon/tests/test_v12_addon.py`.
+
+### Envoyer une nouvelle version sur CurseForge automatiquement
+
+Le fichier `.github/workflows/curseforge.yml` fabrique le zip et l'envoie sur CurseForge quand on pousse une étiquette `v*` (par exemple `v1.3.0`). Il faut une seule fois, dans GitHub (Settings → Secrets and variables → Actions): le secret `CF_API_KEY` (jeton de l'API CurseForge, ne jamais le coller dans le code ni dans un chat) et la variable `CF_PROJECT_ID` (le numéro du projet, affiché sur la page du projet). Facultatif: la variable `CF_GAME_VERSION` si le nom de la version du jeu n'est pas « Forever ». Le texte de la mise à jour vient du dossier « Addon x.y.z » de ce fichier (ou du message de l'étiquette). **Jamais essayé pour de vrai**: la première fois, vérifie l'onglet Actions de GitHub.
 
 Le code source des addons est dans `addon/` (`addon/BabillardForeverFR`, `addon/lfgFR`). `python3 addon/tests/test_code_site.py` (lupa et node) fait générer un vrai code par l'addon et vérifie que le site le lit correctement.
 

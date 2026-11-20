@@ -26,6 +26,8 @@ local OPTIONS = {
       "Choisis-les avec le bouton « Activités favorites » plus bas, ou avec /bf favoris. Si tu n'en as choisi aucune, toutes les activités déclenchent une alerte." },
     { "alertChat",       "Alertes aussi pour les annonces lues dans le chat",
       "Par défaut, seules les annonces des joueurs qui ont l'addon déclenchent une alerte: le chat contient beaucoup d'annonces." },
+    { "whisperTemplate", "Chuchoter écrit un message de présentation",
+      "Le bouton Chuchoter écrit « Salut, voleur niv 20, je peux faire DPS pour Mines de la Mort. » dans la boîte de chat. Rien n'est envoyé tant que tu n'appuies pas sur Entrée." },
     { "header", "Chat" },
     { "chatReading",     "Lire les annonces du chat et les ajouter au babillard",
       "Les annonces « LFM » du chat (un groupe qui cherche des joueurs: général, recherche de groupe, cris) apparaissent avec la mention [chat]. Elles sont lues à l'écran seulement: rien n'est envoyé." },
