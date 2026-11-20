@@ -248,6 +248,41 @@ function Ruban({ connecte, onClick }) {
 
 // ---------- Page ----------
 
+// Bandeau « Addon pour le jeu »: montré jusqu'à ce que la personne le ferme (retenu dans son navigateur seulement).
+const CLE_BANDEAU_ADDON = 'bf-bandeau-addon-ferme'
+function BandeauAddon() {
+  const [ferme, setFerme] = useState(() => {
+    try {
+      return localStorage.getItem(CLE_BANDEAU_ADDON) === '1'
+    } catch {
+      return false
+    }
+  })
+  if (ferme) return null
+  const fermer = () => {
+    setFerme(true)
+    try {
+      localStorage.setItem(CLE_BANDEAU_ADDON, '1')
+    } catch {
+      /* navigateur qui refuse le stockage: le bandeau reviendra, ce n'est pas grave */
+    }
+  }
+  return (
+    <p className="bandeau bandeau-addon" role="note">
+      <span>
+        <strong>Tu joues à WoW Forever?</strong> L'addon gratuit <strong>Babillard Forever FR</strong> met le babillard
+        directement dans ton jeu: tape <code>/bf</code>.
+      </span>
+      <a className="bouton petit principal" href="https://www.curseforge.com/wow/addons/babillard-forever-fr" target="_blank" rel="noopener noreferrer">
+        Télécharger sur CurseForge
+      </a>
+      <button type="button" className="bandeau-fermer" onClick={fermer} aria-label="Fermer ce message">
+        ×
+      </button>
+    </p>
+  )
+}
+
 export default function App() {
   const [annonces, setAnnonces] = useState([])
   const [chargement, setChargement] = useState(true)
@@ -1041,6 +1076,10 @@ export default function App() {
                 </a>
               )}
               <BoutonInstaller classe="bouton bouton-installer" icone="telephone" />
+              <a className="bouton bouton-aide" href="https://www.curseforge.com/wow/addons/babillard-forever-fr" target="_blank" rel="noopener noreferrer">
+                <Icone nom="bouclier" taille={18} />
+                Addon du jeu
+              </a>
               <button type="button" className="bouton bouton-aide" onClick={() => setAideOuverte(true)}>
                 <Icone nom="livre" taille={18} />
                 Comment ça marche?
@@ -1104,6 +1143,8 @@ export default function App() {
             Mode démo: les annonces restent dans ton navigateur et personne d'autre ne les voit.
           </p>
         )}
+
+        <BandeauAddon />
 
         {invitationVisible && (
           <InvitationAlertes
