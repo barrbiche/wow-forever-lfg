@@ -809,6 +809,24 @@ function ns.GetTalentsTraits(debug)
     local nodeIDs = Pack(C_Traits.GetTreeNodes, treeID)[1]
     if type(nodeIDs) ~= "table" then return tabs, talents end
 
+    -- La rangée d'un talent, c'est la « porte » qui le garde: les trois premières rangées demandent 0, 5, 10 points… dépensés
+    -- dans l'arbre (condition `isGate`, `spentAmountRequired`). Le cadre de talents du jeu dessine ces nombres à gauche des
+    -- rangées. C'est plus sûr que les coordonnées, dont on ne connaît pas l'échelle.
+    local condCache = {}
+    local function GateRequired(info)
+        local best = 0
+        if type(info.conditionIDs) == "table" then
+            for _, cid in ipairs(info.conditionIDs) do
+                if condCache[cid] == nil then
+                    local cond = Pack(C_Traits.GetConditionInfo, configID, cid)[1]
+                    condCache[cid] = (type(cond) == "table" and cond.isGate and tonumber(cond.spentAmountRequired)) or false
+                end
+                if condCache[cid] and condCache[cid] > best then best = condCache[cid] end
+            end
+        end
+        return best
+    end
+
     -- Passe 1: tous les nœuds de chaque onglet (pour connaître l'écart entre deux rangées / colonnes).
     local nodes, xs, ys = {}, {}, {}
     for i = 1, #tabs do nodes[i], xs[i], ys[i] = {}, {}, {} end
@@ -820,7 +838,7 @@ function ns.GetTalentsTraits(debug)
                 if byGroup[gid] then tab = byGroup[gid]; break end
             end
             if tab and tonumber(info.posX) and tonumber(info.posY) then
-                tinsert(nodes[tab], { id = id, info = info, x = info.posX, y = info.posY })
+                tinsert(nodes[tab], { id = id, info = info, x = info.posX, y = info.posY, gate = GateRequired(info) })
                 tinsert(xs[tab], info.posX)
                 tinsert(ys[tab], info.posY)
             end
@@ -830,8 +848,30 @@ function ns.GetTalentsTraits(debug)
     -- Passe 2: les talents appris.
     for tab = 1, #tabs do
         local col, colSpan = GridIndex(xs[tab])
-        local row = GridIndex(ys[tab])
-        if debug then debug[tab] = { nodes = #nodes[tab], xs = xs[tab], ys = ys[tab], colSpan = colSpan } end
+        local rowByY = GridIndex(ys[tab])
+        -- Rangée par les portes (points requis) quand l'onglet en a; sinon par la coordonnée Y.
+        local gateValues, anyGate, allFives = {}, false, true
+        for _, nd in ipairs(nodes[tab]) do
+            if nd.gate > 0 then anyGate = true end
+            if nd.gate % 5 ~= 0 then allFives = false end
+            tinsert(gateValues, nd.gate)
+        end
+        local function row(nd)
+            if not anyGate then return rowByY(nd.y) end
+            if allFives then return nd.gate / 5 + 1 end
+            -- Portes qui ne sont pas des multiples de 5: la rangée est le rang de la porte parmi les portes de l'onglet.
+            local sortedGates, seen = {}, {}
+            for _, g in ipairs(gateValues) do if not seen[g] then seen[g] = true; tinsert(sortedGates, g) end end
+            table.sort(sortedGates)
+            for i, g in ipairs(sortedGates) do if g == nd.gate then return i end end
+            return 1
+        end
+        if debug then
+            local gv, seenG = {}, {}
+            for _, g in ipairs(gateValues) do if not seenG[g] then seenG[g] = true; tinsert(gv, g) end end
+            table.sort(gv)
+            debug[tab] = { nodes = #nodes[tab], xs = xs[tab], ys = ys[tab], colSpan = colSpan, gates = gv, byGate = anyGate }
+        end
         table.sort(nodes[tab], function(a, b) if a.y ~= b.y then return a.y < b.y end return a.x < b.x end)
         for _, nd in ipairs(nodes[tab]) do
             local info = nd.info
@@ -854,8 +894,8 @@ function ns.GetTalentsTraits(debug)
             -- Un nœud sans nom et sans point n'est pas un talent à montrer (case de passage, porte…).
             if rank > 0 or hasName then
                 tabs[tab].points = tabs[tab].points + rank
-                local r, c = row(nd.y), (colSpan == 4) and col(nd.x) or nil
-                tinsert(talents, { tab = tab, x = nd.x, y = nd.y, id = nd.id, name = hasName and name or "Talent", rank = rank,
+                local r, c = row(nd), (colSpan == 4) and col(nd.x) or nil
+                tinsert(talents, { tab = tab, x = nd.x, y = nd.y, gate = nd.gate, id = nd.id, name = hasName and name or "Talent", rank = rank,
                     max = tonumber(info.maxRanks) or 0, icon = IconName(icon),
                     tier = (r >= 1 and r <= 9) and r or nil, col = (c and c >= 1 and c <= 4) and c or nil })
             end
@@ -949,11 +989,12 @@ function ns.Diagnostic()
             add("onglet" .. i .. " nœuds/colonnes", d.nodes .. "/" .. tostring(d.colSpan))
             add("onglet" .. i .. " X", uniq(d.xs))
             add("onglet" .. i .. " Y", uniq(d.ys))
+            add("onglet" .. i .. " portes", (#d.gates > 0 and table.concat(d.gates, ",") or "aucune") .. (d.byGate and " (rangées par les portes)" or " (rangées par Y)"))
         end
         local learned = {}
         for _, t in ipairs(talentsT) do
             tinsert(learned, tostring(t.name):sub(1, 18) .. "#" .. tostring(t.id) .. "@" .. tostring(t.x) .. "," .. tostring(t.y) ..
-                " r" .. t.rank .. "/" .. t.max .. " i" .. tostring(t.icon))
+                " r" .. t.rank .. "/" .. t.max .. " porte" .. tostring(t.gate) .. " i" .. tostring(t.icon))
             if #learned >= 8 then break end
         end
         add("appris", table.concat(learned, "; "))

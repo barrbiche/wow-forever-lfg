@@ -106,6 +106,7 @@ if PERSO.traits then
     GetNodeInfo = function(cfg, id) for _, n in ipairs(T.noeuds) do if n.id == id then return n.info end end end,
     GetEntryInfo = function(cfg, e) return { definitionID = e + 1000 } end,
     GetDefinitionInfo = function(d) return { spellID = d - 1000 } end,
+    GetConditionInfo = function(cfg, cid) return T.conditions and T.conditions[cid] end,
   }
   C_Spell = { GetSpellInfo = function(sid) local s = T.sorts[sid]; if s then return { name = s[1], iconID = s[2] } end end }
 end
@@ -203,10 +204,20 @@ CAS += [
     },
 ]
 
-def noeud(id, groupe, col, rangee, rang, maximum, entree):
-    """Un nœud de l'arbre de traits: coordonnées à une échelle arbitraire (300 par colonne, 250 par rangée)."""
-    return dict(id=id, info=dict(groupIDs=[9999, groupe], posX=col * 300 + 100, posY=rangee * 250, currentRank=rang, maxRanks=maximum,
-                                 activeEntry=dict(entryID=entree)))
+def noeud(id, groupe, col, rangee, rang, maximum, entree, porte=None, y=None):
+    """Un nœud de l'arbre de traits: coordonnées à une échelle arbitraire (300 par colonne, 250 par rangée).
+    `porte` = points requis par la porte de la rangée (condition isGate), `y` = coordonnée Y si elle ne suit pas la rangée."""
+    info = dict(groupIDs=[9999, groupe], posX=col * 300 + 100, posY=rangee * 250 if y is None else y, currentRank=rang, maxRanks=maximum,
+                activeEntry=dict(entryID=entree))
+    if porte is not None:
+        info["conditionIDs"] = [7000, 7000 + porte]  # une condition qui n'est pas une porte + la porte
+    return dict(id=id, info=info)
+
+
+# Conditions: 7000 = niveau requis (pas une porte); 7000 + N = porte « N points dépensés »
+CONDITIONS = {7000: dict(condID=7000, isGate=False, type=3)}
+for _n in (0, 5, 10, 15, 20, 25, 30):
+    CONDITIONS[7000 + _n] = dict(condID=7000 + _n, isGate=True, spentAmountRequired=_n, isMet=True, type=2)
 
 
 TRAITS_ROGUE = dict(
@@ -220,6 +231,19 @@ TRAITS_ROGUE = dict(
             noeud(7, 13, 1, 1, 0, 1, 7), noeud(8, 13, 4, 1, 0, 1, 8), noeud(9, 11, 1, 1, 0, 1, 9), noeud(10, 11, 4, 1, 0, 1, 10)],
     sorts={1: ["Malice", 132001], 2: ["Vitalité", 132002], 3: ["Précision", 132003], 4: ["Coups précis", 132004],
            5: ["Frappe", 132005], 6: ["Initiative", 132006], 7: ["A", 1], 8: ["B", 2], 9: ["C", 3], 10: ["D", 4]},
+)
+# Les portes de rangée gagnent sur la coordonnée Y: ici Y est volontairement trompeur (Suppression et Corruption un cran plus
+# bas que Vie volée alors que la porte dit « même rangée », comme dans l'arbre d'Affliction de Forever)
+TRAITS_PORTES = dict(
+    groupes=[dict(groupID=11, displayName="Affliction", icon=1, orderIndex=0),
+             dict(groupID=12, displayName="Demonology", icon=2, orderIndex=1),
+             dict(groupID=13, displayName="Destruction", icon=3, orderIndex=2)],
+    noeuds=[noeud(1, 11, 1, 1, 1, 2, 1, porte=0), noeud(2, 11, 2, 1, 5, 5, 2, porte=0, y=2 * 250), noeud(3, 11, 3, 1, 5, 5, 3, porte=0, y=2 * 250),
+            noeud(4, 11, 1, 2, 0, 5, 4, porte=5, y=3 * 250), noeud(5, 11, 4, 3, 0, 3, 5, porte=10, y=4 * 250),
+            noeud(6, 11, 2, 7, 0, 1, 6, porte=30, y=9 * 250)],
+    sorts={1: ["Vie volée améliorée", 10], 2: ["Suppression", 11], 3: ["Corruption améliorée", 12], 4: ["Malédiction", 13],
+           5: ["Pandémie", 14], 6: ["Ruine", 15]},
+    conditions=CONDITIONS,
 )
 # Onglet qui ne couvre que les colonnes 2 et 3: on ne sait pas laquelle est la première, donc pas de colonne
 TRAITS_INCOMPLET = dict(
@@ -236,6 +260,13 @@ CAS += [
         "attendu": dict(perso="Forever", classe="voleur", specialisation="combat", faction="horde", region="EU", niveau="60", guilde=""),
         "metiers": 0,
         "fiche": dict(equipement=1, arbres=["Assassinat:5", "Combat:8", "Finesse:3"], talents=10),
+    },
+    {
+        "nom": "WoW Forever: rangées par les portes",
+        "perso": dict(nom="Portes", royaume="Forever", region="EU", faction="Horde", classe="WARLOCK", niveau=20, traits=TRAITS_PORTES),
+        "attendu": dict(perso="Portes", classe="demoniste", faction="horde", region="EU", niveau="20", guilde=""),
+        "metiers": 0,
+        "fiche": dict(equipement=0, arbres=["Affliction:11", "Demonology:0", "Destruction:0"], talents=6),
     },
     {
         "nom": "WoW Forever: onglet incomplet",
@@ -336,6 +367,16 @@ verifier((ft["Malice"]["arbre"], ft["Malice"]["ligne"], ft["Malice"]["col"], ft[
 verifier((ft["Précision"]["arbre"], ft["Précision"]["ligne"], ft["Précision"]["col"]) == (2, 1, 1), f"Précision en haut à gauche de Combat: {ft['Précision']}")
 verifier((ft["Coups précis"]["ligne"], ft["Coups précis"]["col"], ft["Coups précis"]["rang"], ft["Coups précis"]["max"]) == (2, 2, 3, 5), f"Coups précis: {ft['Coups précis']}")
 verifier((ft["Initiative"]["arbre"], ft["Initiative"]["ligne"], ft["Initiative"]["col"]) == (3, 2, 3), f"Initiative dans Finesse: {ft['Initiative']}")
+portes = next(lu for c, lu in zip(CAS, lus) if c["nom"] == "WoW Forever: rangées par les portes")
+pt = {x["nom"]: x for x in portes["fiche"]["talents"]}
+verifier((pt["Vie volée améliorée"]["ligne"], pt["Vie volée améliorée"]["col"]) == (1, 1), f"porte 0: rangée 1: {pt['Vie volée améliorée']}")
+verifier((pt["Suppression"]["ligne"], pt["Suppression"]["col"], pt["Corruption améliorée"]["ligne"], pt["Corruption améliorée"]["col"]) == (1, 2, 1, 3),
+         f"Suppression et Corruption dans la rangée 1 même si leur Y est plus bas (la porte gagne): {pt['Suppression']} {pt['Corruption améliorée']}")
+verifier((pt["Malédiction"]["ligne"], pt["Malédiction"]["rang"]) == (2, 0), f"porte 5 = rangée 2, pas appris: {pt['Malédiction']}")
+verifier((pt["Pandémie"]["ligne"], pt["Pandémie"]["col"]) == (3, 4), f"porte 10 = rangée 3: {pt['Pandémie']}")
+verifier(pt["Ruine"]["ligne"] == 7, f"porte 30 = rangée 7: {pt['Ruine']}")
+diag_portes = code_de(next(c["perso"] for c in CAS if c["nom"] == "WoW Forever: rangées par les portes"), "Diagnostic")
+verifier("portes=0,5,10,30 (rangées par les portes)" in diag_portes, f"/bf diag: portes de l'onglet: {diag_portes[-700:]}")
 partiel = next(lu for c, lu in zip(CAS, lus) if c["nom"] == "WoW Forever: onglet incomplet")
 verifier(all("ligne" not in x and "col" not in x for x in partiel["fiche"]["talents"]), f"onglet qui ne couvre pas 4 colonnes: talents gardés sans place (liste): {partiel['fiche']['talents']}")
 verifier(ft["Malice"].get("icone") == "f132001" and forever["fiche"]["arbres"][1].get("icone") == "f626002", "icônes en numéros de fichier gardées")
