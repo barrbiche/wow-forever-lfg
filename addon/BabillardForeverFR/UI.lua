@@ -403,6 +403,11 @@ siteBtn:SetPoint("BOTTOM", 0, 6)
 siteBtn:SetScript("OnClick", function() ns.PlayClick(); ns.ShowSiteLink() end)
 Tooltip(siteBtn, "Le site du Babillard", "Annonces, guildes et profils, même hors du jeu.")
 
+local refreshBtn = MakeButton(f, "Actualiser", 90, 20)
+refreshBtn:SetPoint("BOTTOMRIGHT", -110, 6)
+refreshBtn:SetScript("OnClick", function() ns.RefreshListings() end)
+Tooltip(refreshBtn, "Actualiser", "Redemande les annonces actives aux autres joueurs qui ont l'addon (groupes et guildes). Les nouvelles annonces arrivent d'elles-mêmes: ce bouton sert surtout après ta connexion ou si le babillard te semble vide.")
+
 local optBtn = MakeButton(f, "Options", 90, 20)
 optBtn:SetPoint("BOTTOMRIGHT", -14, 6)
 optBtn:SetScript("OnClick", function()

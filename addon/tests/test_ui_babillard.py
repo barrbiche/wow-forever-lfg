@@ -133,6 +133,19 @@ local function lignesVisibles(vue)
   return table.concat(noms, ",")
 end
 
+-- Bouton « Actualiser » au pied de la fenêtre: il existe et son clic ne plante pas
+do
+  local bouton
+  for _, o in ipairs(objets) do
+    if o._texte == "Actualiser" and o._scripts.OnClick then bouton = o end
+  end
+  if not bouton then erreur("pas de bouton Actualiser")
+  else
+    local ok2, e2 = pcall(bouton._scripts.OnClick, bouton)
+    if not ok2 then erreur("clic sur Actualiser: " .. tostring(e2)) end
+  end
+end
+
 -- Panneau d'options: tout le contenu est dans une zone défilante dont la hauteur couvre toutes les options
 do
   local zone

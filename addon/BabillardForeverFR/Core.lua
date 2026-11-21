@@ -513,9 +513,30 @@ end
 ---------------------------------------------------------------------------
 local lastRequest, lastReply = 0, 0
 
-function ns.RequestAll()
-    if GetTime() - lastRequest < 30 then return end
-    if ns.Send("Q2") then lastRequest = GetTime() end
+-- Retourne true quand la demande est partie, sinon false et le nombre de secondes à attendre (nil si l'envoi a échoué).
+-- Seul le clic sur « Actualiser » (manual) peut demander plus d'une fois par 30 secondes: au plus une fois par 10 secondes.
+function ns.RequestAll(manual)
+    local wait = (manual and 10 or 30) - (GetTime() - lastRequest)
+    if wait > 0 then return false, math.ceil(wait) end
+    if ns.Send("Q2") then
+        lastRequest = GetTime()
+        return true
+    end
+    return false
+end
+
+-- Bouton « Actualiser »: redemande les annonces actives aux autres joueurs et dit ce qui se passe.
+function ns.RefreshListings()
+    ns.PlayClick()
+    local ok, wait = ns.RequestAll(true)
+    if ok then
+        ns.Print("demande envoyée: les annonces actives des autres joueurs arrivent dans quelques secondes.")
+    elseif wait then
+        ns.Print("attends encore " .. wait .. " s avant d'actualiser.")
+    else
+        ns.Print(ns.SendFailureText())
+    end
+    ns.Refresh()
 end
 
 local function ReplyToRequest()
