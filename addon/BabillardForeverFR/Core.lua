@@ -303,19 +303,46 @@ end
 ---------------------------------------------------------------------------
 ns.channelFailed = false
 
+-- Un canal caché par serveur: « BabillardFR » + le nom normalisé du royaume (ex. BabillardFRForeverRealm). On ne voit ainsi
+-- que les annonces des joueurs avec qui on peut vraiment grouper. Le nom du royaume n'est pas toujours connu juste après
+-- la connexion: on retourne nil et on réessaie plus tard (le canal est vérifié toutes les 30 secondes).
+local channelName
+function ns.ChannelName()
+    if channelName then return channelName end
+    local realm = select(2, UnitFullName("player"))
+    if type(realm) ~= "string" or realm == "" then realm = GetNormalizedRealmName and GetNormalizedRealmName() end
+    if type(realm) ~= "string" or realm == "" then return nil end
+    if issecretvalue and issecretvalue(realm) then return nil end
+    local clean = realm:gsub("[^%w]", "")   -- seulement lettres et chiffres (les noms de canal ont une longueur limitée)
+    -- Nom de royaume sans caractère utilisable (alphabet non latin): on retombe sur l'ancien canal partagé.
+    channelName = clean == "" and ns.CHANNEL or (ns.CHANNEL .. clean):sub(1, 30)
+    return channelName
+end
+
 local function ChannelIndex()
-    local id = GetChannelName(ns.CHANNEL)
-    if id and id > 0 then return id end
+    local name = ns.ChannelName()
+    if not name then return nil end
+    local id = GetChannelName(name)
+    if type(id) == "number" and id > 0 then return id end
 end
 ns.ChannelIndex = ChannelIndex
 
-local function HideChannelFromChat()
+local function HideChannelFromChat(name)
     local remove = ChatFrame_RemoveChannel or (ChatFrameUtil and ChatFrameUtil.RemoveChannel)
-    if not remove then return end
+    if not remove or not name then return end
     for i = 1, (NUM_CHAT_WINDOWS or 10) do
         local cf = _G["ChatFrame" .. i]
-        if cf then pcall(remove, cf, ns.CHANNEL) end
+        if cf then pcall(remove, cf, name) end
     end
+end
+
+-- Les versions d'avant 1.6 partageaient un seul canal pour tous les serveurs. Le jeu garde les canaux rejoints d'une
+-- connexion à l'autre: on quitte l'ancien pour ne pas occuper une place de canal pour rien (le jeu en permet dix).
+function ns.LeaveLegacyChannel()
+    local name = ns.ChannelName()
+    if not name or name == ns.CHANNEL or not LeaveChannelByName then return end
+    local id = GetChannelName(ns.CHANNEL)
+    if type(id) == "number" and id > 0 then pcall(LeaveChannelByName, ns.CHANNEL) end
 end
 
 -- Joint le canal s'il ne l'est pas déjà. Appelé aussi lors des clics (plus fiable).
@@ -324,8 +351,10 @@ function ns.EnsureChannel()
         ns.channelFailed = false
         return true
     end
-    pcall(JoinChannelByName, ns.CHANNEL)
-    C_Timer.After(1, HideChannelFromChat)
+    local name = ns.ChannelName()
+    if not name then return false end
+    pcall(JoinChannelByName, name)
+    C_Timer.After(1, function() HideChannelFromChat(name) end)
     C_Timer.After(3, function()
         ns.channelFailed = not ChannelIndex()
         ns.Refresh()
@@ -1033,6 +1062,8 @@ function ns.Diagnostic()
     local b = Pack(GetBuildInfo)
     add("jeu", tostring(b[1]) .. "/" .. tostring(b[4]))
     add("addon", ns.VERSION)
+    -- Le nom du canal contient le nom du serveur: on ne l'écrit pas dans le diagnostic (il se colle dans une conversation).
+    add("canal du serveur", ns.ChannelIndex() and ("rejoint n° " .. ns.ChannelIndex()) or (ns.ChannelName() and "pas rejoint" or "serveur inconnu"))
     add("GetNumTalentTabs", kind(GetNumTalentTabs))
     add("GetTalentInfo", kind(GetTalentInfo))
     add("C_Traits", kind(C_Traits))
@@ -1647,6 +1678,7 @@ ev:SetScript("OnEvent", function(_, event, ...)
         -- Les canaux ne sont pas prêts tout de suite à la connexion
         C_Timer.After(5, function()
             ns.EnsureChannel()
+            ns.LeaveLegacyChannel()
             C_Timer.After(3, function()
                 local _, class = UnitClass("player")
                 ns.Send("H2;" .. ns.MyLevel() .. ";" .. (class or "") .. ";" .. ns.VERSION)
