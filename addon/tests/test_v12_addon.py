@@ -86,8 +86,9 @@ GetChannelName = function() return 5 end
 local canaux = { 1, "1. Général - Elwynn", false, 2, "2. Recherche de groupe", false, 5, "BabillardFR", false }
 GetChannelList = function() return unpack(canaux) end
 local ENVOYES, CHAT = {}, {}
+local resEnvoi = 0   -- ce que SendAddonMessage répond (0 = succès, 3 = limite de débit)
 C_ChatInfo = { RegisterAddonMessagePrefix = function() end,
-               SendAddonMessage = function(prefixe, msg) ENVOYES[#ENVOYES + 1] = msg; return 0 end }
+               SendAddonMessage = function(prefixe, msg) if resEnvoi == 0 then ENVOYES[#ENVOYES + 1] = msg end; return resEnvoi end }
 SendChatMessage = function(texte, type_, langue, cible) CHAT[#CHAT + 1] = { texte = texte, type = type_, cible = cible } end
 local cadre
 CreateFrame = function()
@@ -364,15 +365,15 @@ egal(ns.VersionNumber("1.2.0"), 1002000, "numéro de version")
 verifier(ns.VersionNumber("1.2") == nil and ns.VersionNumber("a.b.c") == nil and ns.VersionNumber("1.2.0;x") == nil
   and ns.VersionNumber(nil) == nil and ns.VersionNumber("1.2.99999") == nil, "versions invalides refusées")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.1.0", "Vieux-ForeverRealm")
-recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.5.6", "Pareil-ForeverRealm")
+recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.5.7", "Pareil-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;pirate", "Faux-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal", "SansVersion-ForeverRealm")
 egal(ns.newVersion, nil, "pas d'avis pour une version égale, ancienne ou invalide")
-recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.5.7", "Neuf-ForeverRealm")
-egal(ns.newVersion, "1.5.7", "avis pour une version plus récente")
-egal(ns.db.newestSeen, 1005007, "version vue sauvegardée")
-recevoir("G2;Les Pas Fins;PVE;Horde;ROGUE;60;0;note;normal;1.5.7", "Neuf2-ForeverRealm")
-recevoir("H2;20;MAGE;1.5.7", "Neuf3-ForeverRealm")
+recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.5.8", "Neuf-ForeverRealm")
+egal(ns.newVersion, "1.5.8", "avis pour une version plus récente")
+egal(ns.db.newestSeen, 1005008, "version vue sauvegardée")
+recevoir("G2;Les Pas Fins;PVE;Horde;ROGUE;60;0;note;normal;1.5.8", "Neuf2-ForeverRealm")
+recevoir("H2;20;MAGE;1.5.8", "Neuf3-ForeverRealm")
 egal(nbImprimes("nouvelle version"), 1, "l'avis n'est dit qu'une fois par version")
 recevoir("H2;20;MAGE;1.6.0", "Neuf4-ForeverRealm")
 egal(ns.newVersion, "1.6.0", "une version encore plus récente remplace l'avis")
@@ -383,7 +384,7 @@ ns.db.opts.autoRemove = false
 vider()
 avancer(100)
 ns.PublishListing({ type = "LFM", akey = "WC", roles = { TANK = true, HEAL = true, DPS = true }, note = "essai" })
-egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.5.6", "L2 publié termine par la version")
+egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.5.7", "L2 publié termine par la version")
 verifier(#CHAT == 0, "publier ne parle jamais dans le chat tout seul")
 
 -- ---------- 5. Alertes par activités favorites ----------
@@ -504,6 +505,59 @@ membres = 1
 ns.PublishListing({ type = "LFG", akey = "WC", roles = { DPS = true }, note = "" })
 egal(ns.my and ns.my.type, "LFM", "même si on demande « LFG », l'annonce publiée est toujours un groupe qui cherche")
 verifier(ENVOYES[#ENVOYES]:find("^L2;LFM;") ~= nil, "le message envoyé est un LFM")
+
+-- ---------- Raison d'un envoi refusé ----------
+resEnvoi = 3
+egal(ns.Send("H2;20;MAGE;1.5.7"), false, "envoi limité par le jeu: échec")
+egal(ns.lastSendFailure, "limite", "la raison est la limite de débit")
+verifier(ns.SendFailureText():find("limite", 1, true) ~= nil, "le message parle de la limite, pas de la connexion")
+resEnvoi = 9
+egal(ns.Send("H2;20;MAGE;1.5.7"), false, "envoi refusé: échec")
+egal(ns.lastSendFailure, "refus", "la raison est un refus du jeu")
+resEnvoi = 0
+egal(ns.Send("H2;20;MAGE;1.5.7"), true, "envoi accepté")
+egal(ns.lastSendFailure, nil, "plus de raison d'échec après un succès")
+
+-- ---------- Coupe sans casser les accents ----------
+egal(ns.CutUtf8("abc", 5), "abc", "texte court: inchangé")
+egal(ns.CutUtf8("abcdef", 4), "abcd", "texte ASCII coupé net")
+egal(ns.CutUtf8("aé", 2), "a", "é (2 octets) ne reste pas à moitié")
+egal(ns.CutUtf8("aé", 3), "aé", "é entier gardé")
+egal(ns.CutUtf8("€uro", 2), "", "€ (3 octets) ne reste pas à moitié")
+egal(ns.CutUtf8("é€", 4), "é", "€ coupé en deux: retiré en entier")
+local long = string.rep("é", 100)
+egal(#ns.CutUtf8(long, 121) % 2, 0, "toujours un nombre pair d'octets pour des é")
+-- Rejet rapide du chat: un message ordinaire n'est pas une annonce, une vraie annonce passe toujours
+egal(ns.ParseChat("salut tout le monde, qui sait où est le maître des gryphons?"), nil, "message ordinaire: pas une annonce")
+verifier(ns.ParseChat("LFM Mortemines tank heal") ~= nil, "annonce en lfm reconnue")
+verifier(ns.ParseChat("cherche un tank pour Ombrecroc") ~= nil, "annonce en « cherche » reconnue")
+verifier(ns.ParseChat("BESOIN D'UN HEAL POUR LES MORTEMINES") ~= nil, "annonce en majuscules reconnue")
+
+-- ---------- Rafraîchissement groupé (messages en rafale) ----------
+do
+  local n, visible = 0, true
+  local vraiUI = ns.UI
+  ns.UI = { IsShown = function() return visible end, Refresh = function() n = n + 1 end }
+  avancer(100)
+  local avant = #minuteries
+  ns.RefreshSoon()
+  egal(n, 1, "premier message d'une série: mise à jour tout de suite")
+  ns.RefreshSoon(); ns.RefreshSoon(); ns.RefreshSoon()
+  egal(n, 1, "rafale: l'interface n'est pas reconstruite à chaque message")
+  egal(#minuteries - avant, 1, "rafale: une seule minuterie en attente")
+  minuteries[#minuteries].f()
+  egal(n, 2, "la minuterie fait une seule mise à jour pour toute la rafale")
+  avancer(1)
+  ns.RefreshSoon()
+  egal(n, 3, "plus tard, un message remet à jour tout de suite")
+  visible = false
+  avancer(1)
+  local avant2 = #minuteries
+  ns.RefreshSoon(); ns.RefreshSoon()
+  egal(n, 3, "fenêtre fermée: aucune mise à jour")
+  egal(#minuteries - avant2, 0, "fenêtre fermée: aucune minuterie")
+  ns.UI = vraiUI
+end
 
 return table.concat(echecs, "\n")
 """, ADDON)

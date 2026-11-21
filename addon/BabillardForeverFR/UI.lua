@@ -1078,6 +1078,10 @@ function UI.Open(view)
     UI.SelectView(view or state.view)
 end
 
+function UI.IsShown()
+    return f:IsShown()
+end
+
 function UI.Toggle()
     if f:IsShown() then f:Hide() else UI.Open() end
 end

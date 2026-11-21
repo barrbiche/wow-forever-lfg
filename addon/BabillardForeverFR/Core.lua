@@ -268,6 +268,26 @@ function ns.Refresh()
     if ns.UI and ns.UI.Refresh then ns.UI.Refresh() end
 end
 
+-- Pour les messages reçus du canal et du chat: quand beaucoup arrivent d'un coup (tout le monde répond à une demande, chat
+-- chargé), l'interface ne se reconstruit pas à chaque message, mais au plus une fois par REFRESH_GAP. Le premier message
+-- d'une série met à jour tout de suite; la fenêtre fermée ne coûte rien.
+local REFRESH_GAP = 0.3
+local lastSoon, soonSince = -1000, nil
+function ns.RefreshSoon()
+    if ns.UI and ns.UI.IsShown and not ns.UI.IsShown() then return end
+    local now = GetTime()
+    if now - lastSoon >= REFRESH_GAP then
+        lastSoon = now
+        ns.Refresh()
+    elseif not soonSince or now - soonSince > 1 then   -- une minuterie perdue ne doit jamais bloquer les mises à jour
+        soonSince = now
+        C_Timer.After(REFRESH_GAP - (now - lastSoon), function()
+            soonSince, lastSoon = nil, GetTime()
+            ns.Refresh()
+        end)
+    end
+end
+
 ---------------------------------------------------------------------------
 -- Canal caché
 ---------------------------------------------------------------------------
@@ -303,16 +323,32 @@ function ns.EnsureChannel()
     return false
 end
 
+-- Pourquoi le dernier envoi a échoué: "canal" (pas encore rejoint) ou "limite" (le jeu limite le débit des messages d'addon:
+-- environ 10 d'un coup, puis un par seconde), sinon "refus". Sert à dire la vraie raison au joueur.
+ns.lastSendFailure = nil
+
 function ns.Send(msg)
     local id = ChannelIndex()
     if not id then
+        ns.lastSendFailure = "canal"
         ns.EnsureChannel()
         return false
     end
     local ok, res = pcall(C_ChatInfo.SendAddonMessage, ns.PREFIX, msg, "CHANNEL", id)
-    if not ok or res == false then return false end
-    if type(res) == "number" and res ~= 0 then return false end   -- Enum.SendAddonMessageResult.Success = 0
+    if not ok or res == false or (type(res) == "number" and res ~= 0) then   -- Enum.SendAddonMessageResult.Success = 0
+        -- 3 = AddonMessageThrottle, 8 = ChannelThrottle
+        ns.lastSendFailure = (res == 3 or res == 8) and "limite" or "refus"
+        return false
+    end
+    ns.lastSendFailure = nil
     return true
+end
+
+-- Texte à montrer quand ns.Send a échoué.
+function ns.SendFailureText()
+    if ns.lastSendFailure == "limite" then return "le jeu limite l'envoi de messages, réessaie dans quelques secondes." end
+    if ns.lastSendFailure == "refus" then return "le jeu a refusé d'envoyer le message, réessaie dans un instant." end
+    return "connexion au canal en cours, réessaie dans quelques secondes."
 end
 
 ---------------------------------------------------------------------------
@@ -386,11 +422,11 @@ function ns.PublishListing(p)
         sender = ns.Me(), type = p.type, cat = a.cat, akey = a.key, roles = CopyTable(p.roles),
         baseRoles = CopyTable(p.roles), counts = CopyTable(p.counts or {}), baseCounts = CopyTable(p.counts or {}),
         class = class or "", level = ns.MyLevel(), faction = ns.MyFaction(), size = a.size,
-        groupCount = math.max(1, GetNumGroupMembers()), note = ns.Clean(p.note):sub(1, 120),
+        groupCount = math.max(1, GetNumGroupMembers()), note = ns.CutUtf8(ns.Clean(p.note), 120),
         time = GetTime(), ruleset = ns.MyRuleset() or "",
     }
     if not ns.Send(ListingMessage(l)) then
-        ns.Print("connexion au canal en cours, réessaie dans quelques secondes.")
+        ns.Print(ns.SendFailureText())
         return false
     end
     lastPublish = GetTime()
@@ -436,11 +472,11 @@ function ns.PublishGuild(focus, note)
     local _, class = UnitClass("player")
     local g = {
         sender = ns.Me(), guild = ns.Clean(guild), focus = focus, faction = ns.MyFaction(),
-        class = class or "", level = ns.MyLevel(), note = ns.Clean(note):sub(1, 120), time = GetTime(),
+        class = class or "", level = ns.MyLevel(), note = ns.CutUtf8(ns.Clean(note), 120), time = GetTime(),
         ruleset = ns.MyRuleset() or "",
     }
     if not ns.Send(GuildMessage(g)) then
-        ns.Print("connexion au canal en cours, réessaie dans quelques secondes.")
+        ns.Print(ns.SendFailureText())
         return false
     end
     ns.myGuild = g
@@ -498,11 +534,15 @@ function ns.Prune()
         if now - r.time > 600 then ns.requests[k] = nil end
     end
     -- Les annonces lues dans le chat sont nombreuses: on garde les plus récentes seulement.
-    local chat = {}
-    for k, l in pairs(ns.listings) do
-        if l.source == "chat" then tinsert(chat, { k, l.time }) end
+    local nChat = 0
+    for _, l in pairs(ns.listings) do
+        if l.source == "chat" then nChat = nChat + 1 end
     end
-    if #chat > ns.CHAT_MAX then
+    if nChat > ns.CHAT_MAX then
+        local chat = {}
+        for k, l in pairs(ns.listings) do
+            if l.source == "chat" then tinsert(chat, { k, l.time }) end
+        end
         table.sort(chat, function(x, y) return x[2] > y[2] end)
         for i = ns.CHAT_MAX + 1, #chat do ns.listings[chat[i][1]] = nil end
     end
@@ -1279,7 +1319,7 @@ local function OnMessage(msg, sender)
     end
     if cmd == "H2" then ns.CheckVersion(f[4]) end
 
-    ns.Refresh()
+    ns.RefreshSoon()
 end
 
 ---------------------------------------------------------------------------
@@ -1295,7 +1335,7 @@ function ns.WhisperText(d)
     local role = ns.db and ns.db.myRoles and d.roles and FirstCommonRole(d.roles, ns.db.myRoles)
     local text = "Salut, " .. who
     if role then text = text .. ", je peux faire " .. ns.ROLE_INFO[role].name end
-    return (text .. " pour " .. a.name .. "."):sub(1, 250)
+    return ns.CutUtf8(text .. " pour " .. a.name .. ".", 250)
 end
 
 ns.requests = {}    -- chuchotements envoyés: [nomEnMinuscules] = { akey, time }
@@ -1354,6 +1394,19 @@ end
 -- Elles remplissent le babillard quand peu de joueurs ont l'addon. Elles portent « source = "chat" »:
 -- une annonce venue de l'addon (plus fiable: classe, niveau, rôles) les remplace toujours.
 ---------------------------------------------------------------------------
+-- Le nom du canal revient à chaque message: on ne le normalise qu'une fois par nom.
+local defenseCache = {}
+local function IsDefenseChannel(channelBase)
+    channelBase = tostring(channelBase or "")
+    local v = defenseCache[channelBase]
+    if v == nil then
+        local base = ns.NormalizeText(channelBase)
+        v = (base:find("defense", 1, true) or base:find("defence", 1, true)) and true or false
+        defenseCache[channelBase] = v
+    end
+    return v
+end
+
 function ns.OnChat(text, sender, channelBase)
     local o = ns.db and ns.db.opts
     if not o or not o.chatReading then return end
@@ -1361,8 +1414,7 @@ function ns.OnChat(text, sender, channelBase)
     if type(text) ~= "string" or type(sender) ~= "string" or sender == "" then return end
     if ns.IsMe(sender) or ns.IsIgnored(sender) then return end
     -- La défense locale ne contient pas d'annonces de groupe.
-    local base = ns.NormalizeText(tostring(channelBase or ""))
-    if base:find("defense", 1, true) or base:find("defence", 1, true) then return end
+    if IsDefenseChannel(channelBase) then return end
 
     local p = ns.ParseChat(text)
     local a = p and p.type == "LFM" and ns.ACT_BY_KEY[p.akey or ""]   -- seulement les groupes qui cherchent des joueurs
@@ -1378,13 +1430,13 @@ function ns.OnChat(text, sender, channelBase)
     local l = {
         sender = sender, type = p.type, cat = a.cat, akey = a.key, roles = p.roles, class = "",
         level = p.level or 0, faction = ns.MyFaction(), size = a.size, groupCount = 1,
-        note = ns.Clean(note):sub(1, 100), time = GetTime(), ruleset = "", source = "chat",
+        note = ns.CutUtf8(ns.Clean(note), 100), time = GetTime(), ruleset = "", source = "chat",
     }
     ns.listings[sender] = l
     if not prev or prev.akey ~= l.akey or prev.type ~= l.type then
         ns.CheckAlert(l)
     end
-    ns.Refresh()
+    ns.RefreshSoon()
 end
 
 -- Canal où publier : « Recherche de groupe » d'abord, sinon « Général ».

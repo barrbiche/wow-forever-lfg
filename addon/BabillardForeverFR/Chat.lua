@@ -81,6 +81,22 @@ function ns.NormalizeText(text)
 end
 local normalize = ns.NormalizeText
 
+-- Coupe un texte à n octets au plus sans couper un caractère accentué en deux (é = 2 octets): un caractère coupé est
+-- invalide pour le jeu et s'affiche comme un symbole brisé chez les autres joueurs.
+function ns.CutUtf8(s, n)
+    s = tostring(s or "")
+    if #s <= n then return s end
+    s = s:sub(1, n)
+    local i = #s
+    while i > 1 and s:byte(i) >= 128 and s:byte(i) < 192 do i = i - 1 end   -- remonte au début du dernier caractère
+    local lead = s:byte(i)
+    if lead and lead >= 192 then
+        local len = lead >= 240 and 4 or lead >= 224 and 3 or 2
+        if #s - i + 1 < len then s = s:sub(1, i - 1) end
+    end
+    return s
+end
+
 local function words(normalized)
     local t = {}
     for w in normalized:gmatch("%S+") do t[#t + 1] = w end
@@ -111,12 +127,12 @@ local function BuildAliases()
     aliasList = {}
     for key, list in pairs(ALIASES) do
         if ns.ACT_BY_KEY[key] then
-            for _, alias in ipairs(list) do tinsert(aliasList, { alias = alias, key = key }) end
+            for _, alias in ipairs(list) do tinsert(aliasList, { alias = alias, padded = " " .. alias .. " ", key = key }) end
         end
     end
     for key, a in pairs(ns.ACT_BY_KEY) do
         local n = normalize(a.name):gsub("^ ", ""):gsub(" $", "")
-        if n ~= "" then tinsert(aliasList, { alias = n, key = key }) end
+        if n ~= "" then tinsert(aliasList, { alias = n, padded = " " .. n .. " ", key = key }) end
     end
 end
 
@@ -124,7 +140,7 @@ local function FindActivity(normalized)
     if not aliasList then BuildAliases() end
     local best, bestPos, bestLen
     for _, e in ipairs(aliasList) do
-        local pos = normalized:find(" " .. e.alias .. " ", 1, true)
+        local pos = normalized:find(e.padded, 1, true)
         if pos and (not bestPos or pos < bestPos or (pos == bestPos and #e.alias > bestLen)) then
             best, bestPos, bestLen = e.key, pos, #e.alias
         end
@@ -138,6 +154,14 @@ end
 ---------------------------------------------------------------------------
 function ns.ParseChat(text)
     if type(text) ~= "string" or text == "" or #text > 400 then return nil end
+    -- Rejet rapide: la grande majorité des messages du chat ne sont pas des annonces de groupe. Une annonce contient toujours
+    -- « lf » (lfm, lfg, lf3m…), un verbe de recherche (cherche, recherche, besoin, need, manque) ou « dispo »; sans l'un
+    -- d'eux, l'analyse complète donnerait de toute façon nil.
+    local low = text:lower()
+    if not (low:find("lf", 1, true) or low:find("cherch", 1, true) or low:find("besoin", 1, true) or low:find("need", 1, true)
+        or low:find("manque", 1, true) or low:find("dispo", 1, true)) then
+        return nil
+    end
     local n = normalize(text)
     local t = words(n)
     if #t == 0 then return nil end
@@ -223,5 +247,5 @@ function ns.ChatText(l, withTag)
     local text = table.concat(parts, " ")
     if l.note and l.note ~= "" then text = text .. " - " .. l.note end
     if withTag then text = text .. " [Babillard FR]" end
-    return text:sub(1, 250)
+    return ns.CutUtf8(text, 250)
 end
