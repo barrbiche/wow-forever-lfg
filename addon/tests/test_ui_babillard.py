@@ -40,6 +40,11 @@ methodes.GetChecked = function(self) return self._coche end
 methodes.SetScript = function(self, n, f) self._scripts[n] = f end
 methodes.HookScript = function(self, n, f) self._scripts["hook_" .. n] = f end
 methodes.GetScript = function(self, n) return self._scripts[n] end
+methodes.SetHeight = function(self, h) self._h = h end
+methodes.SetSize = function(self, w, h) self._h = h end
+methodes.SetVerticalScroll = function(self, v) self._defile = v end
+methodes.GetVerticalScroll = function(self) return self._defile or 0 end
+methodes.GetVerticalScrollRange = function(self) return self._plage or 0 end
 methodes.GetWidth = function() return 100 end
 methodes.GetHeight = function() return 20 end
 methodes.GetStringWidth = function() return 50 end
@@ -126,6 +131,31 @@ local function lignesVisibles(vue)
   end
   table.sort(noms)
   return table.concat(noms, ",")
+end
+
+-- Panneau d'options: tout le contenu est dans une zone défilante dont la hauteur couvre toutes les options
+do
+  local zone
+  for _, o in ipairs(objets) do
+    if o._scripts.OnMouseWheel and o._scripts.OnSizeChanged then zone = o end
+  end
+  if not zone then
+    erreur("panneau d'options: pas de zone défilante")
+  else
+    zone._plage = 300
+    zone._scripts.OnMouseWheel(zone, -1)
+    if zone._defile ~= 40 then erreur("molette vers le bas: défilement de 40, obtenu " .. tostring(zone._defile)) end
+    zone._scripts.OnMouseWheel(zone, 1)
+    zone._scripts.OnMouseWheel(zone, 5)
+    if zone._defile ~= 0 then erreur("molette vers le haut: jamais en dessous de 0, obtenu " .. tostring(zone._defile)) end
+    zone._scripts.OnMouseWheel(zone, -100)
+    if zone._defile ~= 300 then erreur("molette: jamais au-delà de la plage (300), obtenu " .. tostring(zone._defile)) end
+    local haut = 0
+    for _, o in ipairs(objets) do
+      if o._h and o._h > haut and o._h < 5000 then haut = o._h end
+    end
+    if haut < 700 then erreur("le contenu des options doit couvrir toutes les cases (hauteur " .. haut .. ")") end
+  end
 end
 
 -- Ouvre l'interface et rafraîchit

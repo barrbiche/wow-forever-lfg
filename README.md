@@ -309,6 +309,8 @@ Les addons de WoW n'ont pas accès à Internet: le pont entre le jeu et le site 
 
 **1.5.8 — un babillard vide qui explique pourquoi**: quand aucune annonce ne s'affiche, le babillard dit pourquoi: annonces cachées par les options (niveau, faction, type de serveur, lecture du chat), catégorie sans groupe (avec le nombre d'annonces des autres catégories), ou vraiment aucun groupe (avec l'invitation à publier et à faire installer l'addon, et un rappel quand la lecture du chat est coupée).
 
+**1.5.9 — réglages défilants**: le panneau des réglages de l'addon (Échap > Options > AddOns) est plus haut que la fenêtre d'options du jeu: son contenu est maintenant dans une zone défilante (molette de la souris ou barre à droite), pour atteindre toutes les options et les boutons du bas.
+
 Côté site (`src/codeJeu.js`, `src/Fiche.jsx`): chaque nombre est borné, les noms sont nettoyés (pas de `<` ni `>`), les listes ont une taille maximale. La spécialisation est l'arbre où il y a le plus de points, reconnu par son nom (français ou anglais) puis, à défaut, par sa place (même ordre que `SPECIALISATIONS` de `data.js`, la personne vérifie avant d'enregistrer). La fiche s'enregistre avec le profil et se voit sur la carte du joueur (« Équipement et talents », chargée à l'ouverture) par les gens connectés; un profil caché cache sa fiche. **Elle n'est pas vérifiée** (copiée par le joueur) et le site le dit.
 
 **À rouler une fois dans Supabase: `supabase/ameliorations26.sql`** (table `fiches_perso`, fonctions `enregistrer_fiche`, `fiche_de`, `effacer_fiche`). Sans lui, le profil s'enregistre quand même et le site dit que la fiche n'a pas pu l'être. Testé sur un vrai Postgres en mémoire: `npm install --no-save @electric-sql/pglite && node supabase/tests/test_fiche.mjs`.

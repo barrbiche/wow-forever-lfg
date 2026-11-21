@@ -7,11 +7,29 @@ local ADDON, ns = ...
 local panel = CreateFrame("Frame")
 panel.name = "Babillard Forever FR"
 
-local title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+-- Le panneau est plus haut que la fenêtre d'options du jeu: tout le contenu est dans une zone défilante (molette ou barre).
+local scroll = ns.SafeCreate("ScrollFrame", nil, panel, "UIPanelScrollFrameTemplate", "ScrollFrameTemplate")
+scroll:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, -4)
+scroll:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -28, 4)
+local content = CreateFrame("Frame", nil, scroll)
+content:SetSize(560, 900)   -- la hauteur réelle est calculée plus bas
+scroll:SetScrollChild(content)
+scroll:EnableMouseWheel(true)
+scroll:SetScript("OnMouseWheel", function(self, delta)
+    local range = tonumber(self:GetVerticalScrollRange()) or 0
+    local new = (tonumber(self:GetVerticalScroll()) or 0) - (tonumber(delta) or 0) * 40
+    if new < 0 then new = 0 elseif new > range then new = range end
+    self:SetVerticalScroll(new)
+end)
+scroll:SetScript("OnSizeChanged", function(_, w)
+    if w and w > 100 then content:SetWidth(w) end
+end)
+
+local title = content:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
 title:SetPoint("TOPLEFT", 16, -16)
 title:SetText("Babillard Forever FR")
 
-local sub = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+local sub = content:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
 sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
 sub:SetText("Version " .. ns.VERSION .. "  ·  /bf pour ouvrir le babillard  ·  /bf aide pour les commandes")
 
@@ -55,15 +73,15 @@ local y = -64
 for _, opt in ipairs(OPTIONS) do
     if opt[1] == "header" then
         y = y - 8
-        local h = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+        local h = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
         h:SetPoint("TOPLEFT", 16, y)
         h:SetText(opt[2])
         y = y - 22
     else
-        local cb = ns.SafeCreate("CheckButton", nil, panel, "UICheckButtonTemplate", "OptionsBaseCheckButtonTemplate")
+        local cb = ns.SafeCreate("CheckButton", nil, content, "UICheckButtonTemplate", "OptionsBaseCheckButtonTemplate")
         cb:SetSize(26, 26)
         cb:SetPoint("TOPLEFT", 20, y)
-        local label = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        local label = content:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
         label:SetPoint("LEFT", cb, "RIGHT", 4, 0)
         label:SetText(opt[2])
         cb.key = opt[1]
@@ -113,17 +131,20 @@ function ns.OpenFavMenu(owner)
     end)
 end
 
-local favBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+local favBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
 favBtn:SetSize(200, 24)
 favBtn:SetPoint("TOPLEFT", 20, y - 16)
 favBtn:SetText("Activités favorites")
 favBtn:SetScript("OnClick", function(self) ns.OpenFavMenu(self) end)
 
-local siteBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+local siteBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
 siteBtn:SetSize(200, 24)
 siteBtn:SetPoint("TOPLEFT", 230, y - 16)
 siteBtn:SetText("Lien du site")
 siteBtn:SetScript("OnClick", function() ns.ShowSiteLink() end)
+
+-- Hauteur du contenu: jusqu'en bas des boutons, plus une marge.
+content:SetHeight(math.max(100, -(y - 16) + 24 + 24))
 
 panel:SetScript("OnShow", function()
     if not ns.db then return end
