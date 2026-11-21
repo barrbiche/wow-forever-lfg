@@ -253,16 +253,17 @@ end
 local function DoWhisper(name, d)
     name = ns.WhisperName(name)
     -- Message de présentation déjà écrit dans la boîte de chat: tu appuies sur Entrée pour l'envoyer.
+    -- On n'écrit pas « /w Nom Prénom texte »: le jeu prendrait seulement le premier mot comme destinataire. On ouvre plutôt
+    -- la boîte « Chuchoter à » comme le clic droit, puis on y met le texte.
     local text = d and ns.db.opts.whisperTemplate and ns.WhisperText(d)
-    if text and ChatFrame_OpenChat and pcall(ChatFrame_OpenChat, "/w " .. name .. " " .. text) then
-        ns.RecordRequest(d)
-        return
-    end
     if d then ns.RecordRequest(d) end
-    if ChatFrame_SendTell then
-        ChatFrame_SendTell(name)
-    elseif ChatFrameUtil and ChatFrameUtil.SendTell then
-        ChatFrameUtil.SendTell(name)
+    local sendTell = ChatFrame_SendTell or (ChatFrameUtil and ChatFrameUtil.SendTell)
+    if not sendTell then return end
+    sendTell(name)
+    if text then
+        local getActive = ChatEdit_GetActiveWindow or (ChatFrameUtil and ChatFrameUtil.GetActiveWindow)
+        local box = getActive and getActive()
+        if box and box.SetText then box:SetText(text) end
     end
 end
 
@@ -392,6 +393,82 @@ for i = 1, 3 do
     views[i] = CreateFrame("Frame", nil, f)
     views[i]:SetAllPoints()
     views[i]:Hide()
+end
+
+---------------------------------------------------------------------------
+-- Bannière « Communauté », collée au-dessus de la fenêtre: bien visible tant que le joueur n'en fait pas partie.
+--   Une communauté existe pour moi : bouton Rejoindre (ouvre la fenêtre du jeu pour la rejoindre).
+--   Aucune pour ma faction ou ma région : on demande à un joueur de la créer et d'envoyer le lien sur le site.
+---------------------------------------------------------------------------
+local banner = CreateFrame("Frame", nil, f)
+banner:SetSize(600, 56)
+banner:SetPoint("BOTTOM", f, "TOP", 0, 2)
+banner:EnableMouse(true)
+Try(function()
+    Skin.Fill(banner, 0.16, 0.10, 0.02, 0.96)
+    Skin.Border(banner, GOLD, 1)
+end)
+banner.icon = banner:CreateTexture(nil, "ARTWORK")
+banner.icon:SetSize(36, 36)
+banner.icon:SetPoint("LEFT", 10, 0)
+banner.icon:SetTexture(ns.ICON)
+banner.title = banner:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+banner.title:SetPoint("TOPLEFT", banner.icon, "TOPRIGHT", 10, 0)
+banner.title:SetPoint("RIGHT", -150, 0)
+banner.title:SetJustifyH("LEFT")
+banner.text = banner:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+banner.text:SetPoint("TOPLEFT", banner.title, "BOTTOMLEFT", 0, -3)
+banner.text:SetPoint("RIGHT", -150, 0)
+banner.text:SetJustifyH("LEFT")
+banner.join = MakeButton(banner, "Rejoindre", 110, 26)
+banner.join:SetPoint("RIGHT", -34, 0)
+banner.close = CreateFrame("Button", nil, banner, "UIPanelCloseButton")
+banner.close:SetSize(24, 24)
+banner.close:SetPoint("TOPRIGHT", -2, -2)
+banner.close:SetScript("OnClick", function()
+    ns.bannerHidden = true   -- jusqu'à la prochaine connexion
+    banner:Hide()
+end)
+banner:Hide()
+
+banner.join:SetScript("OnClick", function()
+    ns.PlayClick()
+    local code = ns.CommunityInvite()
+    if code and SetItemRef then
+        -- Comme un clic sur le lien dans le chat: le jeu ouvre sa fenêtre pour rejoindre la communauté.
+        local link = "clubTicket:" .. code
+        if pcall(SetItemRef, link, "|H" .. link .. "|h[" .. ns.COMMUNITY_NAME .. "]|h", "LeftButton") then
+            ns.Print("si la fenêtre ne s'est pas ouverte, clique ici: |cff66ccff|H" .. link .. "|h[Rejoindre " .. ns.COMMUNITY_NAME .. "]|h|r")
+            return
+        end
+    end
+    ns.ShowCommunityInvite()
+end)
+banner.join:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine("Rejoindre la communauté")
+    GameTooltip:AddLine("Ouvre la fenêtre du jeu pour rejoindre « " .. ns.COMMUNITY_NAME .. " ». Le lien est aussi écrit dans ton chat et prêt à copier.", 1, 1, 1, true)
+    GameTooltip:Show()
+end)
+banner.join:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+function UI.UpdateBanner()
+    if ns.bannerHidden or ns.CommunityId() then banner:Hide() return end
+    if not ns.MyRuleset() then
+        banner.title:SetText("|cffffd100Joue avec les francophones de TOUS les serveurs!|r")
+        banner.text:SetText("Choisis d'abord ton type de serveur dans l'onglet Mon perso, puis rejoins la communauté.")
+        banner.join:Hide()
+    elseif ns.CommunityInvite() then
+        banner.title:SetText("|cffffd100Joue avec les francophones de TOUS les serveurs!|r")
+        banner.text:SetText("Forever te place sur un serveur parmi plusieurs: sans la communauté, tu ne vois que le tien. Rejoins « "
+            .. ns.COMMUNITY_NAME .. " » en un clic.")
+        banner.join:Show()
+    else
+        banner.title:SetText("|cffffd100Aucune communauté francophone pour ta faction... crée-la!|r")
+        banner.text:SetText("Crée une communauté nommée « " .. ns.COMMUNITY_NAME .. " » (touche J), fais un lien d'invitation qui n'expire pas et envoie-le sur babillard-forever.com.")
+        banner.join:Hide()
+    end
+    banner:Show()
 end
 
 -- Pied de fenêtre
@@ -552,6 +629,7 @@ G.pub:SetScript("OnClick", function()
         counts = (ns.ACT_BY_KEY[state.akey or ""] or { size = 5 }).size > 5 and state.lfmCounts or nil,
     })
     if published and ns.db.opts.alsoChat then ns.PostToChat(ns.my) end
+    if published and ns.db.opts.alsoCommunity then ns.PostToCommunity(ns.my) end
 end)
 G.del:SetScript("OnClick", function()
     ns.PlayClick()
@@ -1081,8 +1159,10 @@ function UI.Refresh()
     else
         status = "|cffffd100●|r Connexion..."
     end
+    if ns.CommunityId() then status = status .. "  |cff33dd55●|r Communauté" end
     if ns.newVersion then status = status .. "  |cffff8800v" .. ns.newVersion .. " disponible|r" end
     channelStatus:SetText(status)
+    UI.UpdateBanner()
     if state.view == 1 then
         RefreshGroups()
     elseif state.view == 2 then

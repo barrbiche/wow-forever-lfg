@@ -51,6 +51,8 @@ local OPTIONS = {
       "Les annonces « LFM » du chat (un groupe qui cherche des joueurs: général, recherche de groupe, cris) apparaissent avec la mention [chat]. Elles sont lues à l'écran seulement: rien n'est envoyé." },
     { "alsoChat",        "Publier aussi mon annonce dans le chat",
       "Quand tu cliques sur Publier, l'annonce est aussi envoyée dans « Recherche de groupe » (ou « Général »). Une fois par minute au maximum, seulement quand tu cliques." },
+    { "alsoCommunity",   "Publier aussi mes annonces dans la communauté Babillard Forever FR",
+      "Au clic sur Publier, l'annonce est aussi envoyée dans la communauté, que voient les francophones de tous les serveurs de Forever. Une fois par minute au maximum. /bf communaute pour la rejoindre." },
     { "chatTag",         "Ajouter « [Babillard FR] » à la fin de mes annonces du chat",
       "Désactivé par défaut. Ça fait connaître l'addon, mais la politique d'addons de Blizzard interdit d'utiliser un addon pour faire de la promotion: à toi de décider." },
     { "header", "Mon annonce" },

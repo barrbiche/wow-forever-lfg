@@ -1,10 +1,31 @@
 -- Babillard Forever FR - Données (activités, rôles, constantes)
 local ADDON, ns = ...
 
-ns.VERSION       = "1.6.2"
+ns.VERSION       = "1.7.2"
 ns.PREFIX        = "BabillardFR"          -- préfixe des messages d'addon
-ns.CHANNEL       = "BabillardFR"          -- canal caché partagé par tous les serveurs
+ns.CHANNEL       = "BabillardFR"          -- canal caché commun (voir ns.ChannelName)
 ns.SITE_URL      = "https://babillard-forever.com"
+
+-- Communauté WoW commune: elle traverse les serveurs internes de Forever (pas le canal caché).
+-- COMMUNITY_NAME: le nom exact de la communauté dans le jeu (on la reconnaît par son nom).
+-- COMMUNITY_INVITES: le code du lien d'invitation (https://www.worldofwarcraft.com/invite/CODE), par région, par type
+-- de serveur et par faction (une communauté est limitée à sa région et à sa faction, et on ne groupe qu'avec son type
+-- de serveur). Toutes portent le même nom. Vide = pas encore de communauté.
+ns.COMMUNITY_NAME    = "Babillard Forever FR"
+ns.COMMUNITY_INVITES = {
+    US = {
+        normal = { Alliance = "LqGO594Uopa", Horde = "" },
+        pvp    = { Alliance = "",            Horde = "" },
+        rp     = { Alliance = "",            Horde = "" },
+        rp_pvp = { Alliance = "",            Horde = "" },
+    },
+    EU = {
+        normal = { Alliance = "",            Horde = "" },
+        pvp    = { Alliance = "",            Horde = "" },
+        rp     = { Alliance = "",            Horde = "" },
+        rp_pvp = { Alliance = "",            Horde = "" },
+    },
+}
 ns.ICON          = "Interface\\Icons\\INV_Misc_GroupNeedMore"
 
 ns.EXPIRE        = 15 * 60                -- durée d'une annonce de groupe

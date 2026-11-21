@@ -26,6 +26,7 @@ local DEFAULTS = {
         alertChat       = false,   -- alertes aussi pour les annonces lues dans le chat
         alsoChat        = false,   -- publier aussi dans le chat (au clic seulement)
         chatTag         = false,   -- ajouter « [Babillard FR] » aux annonces du chat
+        alsoCommunity   = true,    -- publier aussi dans la communauté Babillard Forever FR (au clic seulement)
         autoUpdate      = true,    -- mettre à jour tout seul le nombre de joueurs et les rôles manquants
         favsOnly        = false,   -- alertes seulement pour mes activités favorites
         whisperTemplate = true,    -- Chuchoter écrit déjà un message de présentation (jamais envoyé tout seul)
@@ -104,44 +105,74 @@ function ns.SafeCreate(frameType, name, parent, template, fallback)
     return CreateFrame(frameType, name, parent, fallback)
 end
 
+-- Noms dans Forever: « Prénom Nom », et le jeu ne donne souvent aucun royaume (« Chili Flakes- » avec un tiret vide).
+-- Forme gardée partout: « Prénom Nom » quand le royaume est inconnu ou vide, « Prénom Nom-Royaume » sinon. Jamais de tiret
+-- à la fin: le jeu ne trouve pas « Chili Flakes- » quand on lui chuchote.
+local function MyRealm()
+    local r = GetNormalizedRealmName and GetNormalizedRealmName()
+    if type(r) ~= "string" or (issecretvalue and issecretvalue(r)) then return "" end
+    return r
+end
+
+function ns.CleanName(name)
+    if type(name) ~= "string" then return name end
+    name = name:gsub("^%s+", ""):gsub("[%s%-]+$", "")
+    return name
+end
+
+-- Mon nom complet « Prénom Nom ». Pour son propre personnage, le jeu ne donne normalement aucun royaume à UnitName: une
+-- deuxième valeur est donc le nom de famille (Forever le sépare du prénom, comme le chat le montre: « Barrbiche Dote »).
+function ns.MyFullName()
+    local n, s = UnitName("player")
+    n = n or "?"
+    if type(s) == "string" and s ~= "" and not (issecretvalue and issecretvalue(s)) and not n:find(" ", 1, true) then
+        n = n .. " " .. s
+    end
+    return n
+end
+
 function ns.Me()
-    local n, r = UnitFullName("player")
-    r = (r and r ~= "") and r or (GetNormalizedRealmName() or "")
-    return (n or "?") .. "-" .. r
+    local n = ns.MyFullName()
+    local r = MyRealm()
+    return r ~= "" and (n .. "-" .. r) or n
 end
 
 function ns.NormalizeName(name)
-    if name and not name:find("-", 1, true) then
-        name = name .. "-" .. (GetNormalizedRealmName() or "")
+    name = ns.CleanName(name)
+    if not name or name == "" then return nil end
+    if not name:find("-", 1, true) then
+        local r = MyRealm()
+        if r ~= "" then name = name .. "-" .. r end
     end
     return name
 end
 
+-- Dans Forever, un personnage a un prénom et un nom de famille séparés par une espace (« Mighty Enchilada »): l'espace fait
+-- partie du nom. Seul le tiret sépare le nom du royaume (« Mighty Enchilada-Royaume »).
 function ns.ShortName(name)
-    local short = Ambiguate(name or "?", "none")
-    -- Le jeu écrit parfois « Nom Royaume » (espace) au lieu de « Nom-Royaume »: un nom de personnage n'a jamais d'espace.
-    return (short:gsub("%s.*$", ""))
+    name = ns.CleanName(name) or "?"
+    if name:find("-", 1, true) then name = ns.CleanName(Ambiguate(name, "none")) end
+    return name
 end
 
--- Le nom du personnage seul, en minuscules: sert à comparer deux joueurs même si le royaume est écrit
--- « Nom-Royaume », « Nom Royaume » ou pas du tout.
+-- Le nom complet du personnage, sans royaume, en minuscules: sert à comparer deux joueurs que le royaume soit écrit ou non.
 function ns.BareName(name)
     if type(name) ~= "string" then return "" end
-    return (name:match("^[^%-%s]+") or name):lower()
+    return (name:match("^[^%-]+") or name):gsub("%s+$", ""):lower()
 end
 
--- Nom utilisable pour chuchoter ou inviter: « Nom Royaume » redevient « Nom-Royaume ».
+-- Nom utilisable pour chuchoter ou inviter: le nom complet, avec le royaume seulement s'il n'est pas le mien
+-- (le jeu chuchote à « Mighty Enchilada », comme le clic droit → Chuchoter).
 function ns.WhisperName(name)
     if type(name) ~= "string" then return name end
-    if name:find("-", 1, true) then return name end
-    return (name:gsub("%s+", "-", 1))
+    return ns.ShortName(name)
 end
 
 -- Est-ce moi? Le jeu écrit parfois le royaume autrement dans les messages reçus (« Nom-Royaume »):
 -- on compare seulement le nom, sinon sa propre annonce revenait en double.
 function ns.IsMe(name)
     if not name then return false end
-    return ns.BareName(name) == ns.BareName(UnitName("player"))
+    return ns.BareName(name) == ns.BareName(ns.MyFullName())
 end
 
 -- Type de serveur choisi par le joueur (nil tant qu'il ne l'a pas choisi).
@@ -303,28 +334,16 @@ end
 ---------------------------------------------------------------------------
 ns.channelFailed = false
 
--- Un seul canal caché pour tous les serveurs de Forever (les francophones de partout se retrouvent au même endroit).
--- Les versions 1.6.0 et 1.6.1 avaient un canal par serveur: on garde son calcul seulement pour le quitter (voir plus bas).
+-- Un seul canal caché commun, « BabillardFR », le même nom pour tout le monde. Le jeu garde chaque canal sur son serveur
+-- (Forever a plusieurs serveurs internes par mode de jeu, et un canal ne traverse pas d'un serveur à l'autre), mais un
+-- même nom réunit au moins tous les joueurs du serveur et des serveurs liés, peu importe la version de l'addon.
+-- (La 1.6.0 ajoutait le nom du royaume au canal: ça séparait les serveurs liés et les joueurs restés en 1.5.)
 function ns.ChannelName()
     return ns.CHANNEL
 end
 
--- Nom du canal par serveur des versions 1.6.0 et 1.6.1 (« BabillardFR » + le serveur sans espace), ou nil si le serveur
--- n'est pas connu ou n'a aucun caractère utilisable.
-local function OldRealmChannelName()
-    local realm = select(2, UnitFullName("player"))
-    if type(realm) ~= "string" or realm == "" then realm = GetNormalizedRealmName and GetNormalizedRealmName() end
-    if type(realm) ~= "string" or realm == "" then return nil end
-    if issecretvalue and issecretvalue(realm) then return nil end
-    local clean = realm:gsub("[^%w]", "")
-    if clean == "" then return nil end
-    return (ns.CHANNEL .. clean):sub(1, 30)
-end
-
 local function ChannelIndex()
-    local name = ns.ChannelName()
-    if not name then return nil end
-    local id = GetChannelName(name)
+    local id = GetChannelName(ns.CHANNEL)
     if type(id) == "number" and id > 0 then return id end
 end
 ns.ChannelIndex = ChannelIndex
@@ -338,13 +357,19 @@ local function HideChannelFromChat(name)
     end
 end
 
--- Les versions 1.6.0 et 1.6.1 faisaient rejoindre un canal par serveur, et le jeu garde les canaux rejoints d'une connexion à
--- l'autre: on le quitte pour ne pas occuper une place de canal pour rien (le jeu en permet dix).
-function ns.LeaveRealmChannel()
-    local name = OldRealmChannelName()
-    if not name or name == ns.CHANNEL or not LeaveChannelByName then return end
-    local id = GetChannelName(name)
-    if type(id) == "number" and id > 0 then pcall(LeaveChannelByName, name) end
+-- La 1.6.0 rejoignait « BabillardFR » + nom du royaume. Le jeu garde les canaux rejoints d'une connexion à l'autre: on
+-- quitte celui-là pour ne pas occuper une place de canal pour rien (le jeu en permet dix).
+function ns.LeaveLegacyChannel()
+    if not LeaveChannelByName then return end
+    local realm = select(2, UnitFullName("player"))
+    if type(realm) ~= "string" or realm == "" then realm = GetNormalizedRealmName and GetNormalizedRealmName() end
+    if type(realm) ~= "string" or realm == "" then return end
+    if issecretvalue and issecretvalue(realm) then return end
+    local clean = realm:gsub("[^%w]", "")
+    if clean == "" then return end
+    local old = (ns.CHANNEL .. clean):sub(1, 30)
+    local id = GetChannelName(old)
+    if type(id) == "number" and id > 0 then pcall(LeaveChannelByName, old) end
 end
 
 -- Joint le canal s'il ne l'est pas déjà. Appelé aussi lors des clics (plus fiable).
@@ -367,9 +392,6 @@ end
 -- Pourquoi le dernier envoi a échoué: "canal" (pas encore rejoint) ou "limite" (le jeu limite le débit des messages d'addon:
 -- environ 10 d'un coup, puis un par seconde), sinon "refus". Sert à dire la vraie raison au joueur.
 ns.lastSendFailure = nil
--- Compteurs pour /bf diag: si on envoie mais qu'on ne reçoit jamais son propre message en retour (echo = 0), c'est que le
--- jeu ne livre pas les messages d'addon dans le canal.
-ns.stats = { sent = 0, refused = 0, lastCode = "", received = 0, echo = 0, otherPrefix = 0 }
 
 function ns.Send(msg)
     local id = ChannelIndex()
@@ -382,12 +404,9 @@ function ns.Send(msg)
     if not ok or res == false or (type(res) == "number" and res ~= 0) then   -- Enum.SendAddonMessageResult.Success = 0
         -- 3 = AddonMessageThrottle, 8 = ChannelThrottle
         ns.lastSendFailure = (res == 3 or res == 8) and "limite" or "refus"
-        ns.stats.refused = ns.stats.refused + 1
-        ns.stats.lastCode = ok and tostring(res) or "erreur"
         return false
     end
     ns.lastSendFailure = nil
-    ns.stats.sent = ns.stats.sent + 1
     return true
 end
 
@@ -1070,11 +1089,7 @@ function ns.Diagnostic()
     local b = Pack(GetBuildInfo)
     add("jeu", tostring(b[1]) .. "/" .. tostring(b[4]))
     add("addon", ns.VERSION)
-    -- Le nom du canal contient le nom du serveur: on ne l'écrit pas dans le diagnostic (il se colle dans une conversation).
     add("canal", ns.ChannelIndex() and ("rejoint n° " .. ns.ChannelIndex()) or "pas rejoint")
-    local st = ns.stats
-    add("messages", "envoyés=" .. st.sent .. " refusés=" .. st.refused .. (st.refused > 0 and (" (dernier code " .. st.lastCode .. ")") or "")
-        .. " reçus=" .. st.received .. " dont les miens=" .. st.echo .. (st.otherPrefix > 0 and (" autres canaux=" .. st.otherPrefix) or ""))
     add("GetNumTalentTabs", kind(GetNumTalentTabs))
     add("GetTalentInfo", kind(GetTalentInfo))
     add("C_Traits", kind(C_Traits))
@@ -1178,7 +1193,8 @@ end
 
 function ns.GetCharacterInfo()
     local tabs, talents = ns.GetTalents()
-    local name, realm = UnitFullName("player")
+    -- UnitName donne « Prénom Nom »; UnitFullName mettrait le nom de famille à la place du royaume.
+    local name, realm = ns.MyFullName(), GetNormalizedRealmName and GetNormalizedRealmName()
     local className, classFile = UnitClass("player")
     local race, raceFile = UnitRace("player")
     local sex = UnitSex and UnitSex("player")
@@ -1302,9 +1318,15 @@ local function AddFlagToTooltip(tt)
         local name, realm = UnitName(unit)
         if issecretvalue and (issecretvalue(name) or issecretvalue(realm)) then return end
         if not name then return end
-        realm = (realm and realm ~= "") and realm:gsub("[%s%-]", "") or (GetNormalizedRealmName() or "")
-        local full = name .. "-" .. realm
-        if ns.db.known[full] or full == ns.Me() then
+        -- La deuxième valeur peut être un royaume ou, dans Forever, le nom de famille: on essaie les deux formes.
+        local known = ns.db.known
+        local me = ns.BareName(ns.MyFullName())
+        local found = known[ns.NormalizeName(name)] or ns.BareName(name) == me
+        if not found and type(realm) == "string" and realm ~= "" then
+            found = known[ns.NormalizeName(name .. " " .. realm)] or known[ns.NormalizeName(name .. "-" .. realm:gsub("[%s%-]", ""))]
+                or ns.BareName(name .. " " .. realm) == me
+        end
+        if found then
             tt:AddLine("|cff33aaff[FR]|r |cffaaaaaaBabillard Forever FR|r")
         end
     end)
@@ -1480,7 +1502,7 @@ local function IsDefenseChannel(channelBase)
     return v
 end
 
-function ns.OnChat(text, sender, channelBase)
+function ns.OnChat(text, sender, channelBase, ruleset)
     local o = ns.db and ns.db.opts
     if not o or not o.chatReading then return end
     if issecretvalue and (issecretvalue(text) or issecretvalue(sender) or issecretvalue(channelBase)) then return end
@@ -1503,7 +1525,7 @@ function ns.OnChat(text, sender, channelBase)
     local l = {
         sender = sender, type = p.type, cat = a.cat, akey = a.key, roles = p.roles, class = "",
         level = p.level or 0, faction = ns.MyFaction(), size = a.size, groupCount = 1,
-        note = ns.CutUtf8(ns.Clean(note), 100), time = GetTime(), ruleset = "", source = "chat",
+        note = ns.CutUtf8(ns.Clean(note), 100), time = GetTime(), ruleset = ruleset or "", source = "chat",
     }
     ns.listings[sender] = l
     if not prev or prev.akey ~= l.akey or prev.type ~= l.type then
@@ -1554,6 +1576,133 @@ function ns.PostToChat(l)
         return false
     end
     lastChatPost = GetTime()
+    return true
+end
+
+---------------------------------------------------------------------------
+-- Communauté « Babillard Forever FR »
+-- Le canal caché reste sur un seul serveur interne. La communauté, elle, réunit les joueurs de tous les serveurs de la
+-- même région: les annonces qu'on y publie (texte lisible, même sans l'addon) sont lues comme celles du chat.
+---------------------------------------------------------------------------
+local REGIONS = { [1] = "US", [2] = "KR", [3] = "EU", [4] = "TW", [5] = "CN" }
+
+function ns.MyRegion()
+    local id = GetCurrentRegion and GetCurrentRegion()
+    return REGIONS[id or 0] or ""
+end
+
+-- Code d'invitation de ma région, de mon type de serveur et de ma faction (nil si aucun ou type pas encore choisi).
+function ns.CommunityInvite()
+    local byRuleset = ns.COMMUNITY_INVITES and ns.COMMUNITY_INVITES[ns.MyRegion()]
+    local byFaction = type(byRuleset) == "table" and byRuleset[ns.MyRuleset() or ""]
+    local code = type(byFaction) == "table" and byFaction[ns.MyFaction()]
+    if type(code) == "string" and code ~= "" then return code end
+end
+
+local communityId
+-- Identifiant de la communauté si j'en suis membre, sinon nil. On la reconnaît par son nom.
+function ns.CommunityId()
+    if not C_Club or not C_Club.GetSubscribedClubs then return nil end
+    if communityId then
+        local ok, info = pcall(C_Club.GetClubInfo, communityId)
+        if ok and info then return communityId end
+        communityId = nil
+    end
+    local ok, clubs = pcall(C_Club.GetSubscribedClubs)
+    if not ok or type(clubs) ~= "table" then return nil end
+    local wanted = ns.NormalizeText(ns.COMMUNITY_NAME)
+    for _, c in ipairs(clubs) do
+        local isWowCommunity = not (Enum and Enum.ClubType) or c.clubType == Enum.ClubType.Character
+        if isWowCommunity and type(c.name) == "string" and ns.NormalizeText(c.name) == wanted then
+            communityId = c.clubId
+            return communityId
+        end
+    end
+end
+
+-- Le fil « Général » de la communauté (le premier fil sinon).
+local function CommunityStream(clubId)
+    local ok, streams = pcall(C_Club.GetStreams, clubId)
+    if not ok or type(streams) ~= "table" or #streams == 0 then return nil end
+    for _, s in ipairs(streams) do
+        if Enum and Enum.ClubStreamType and s.streamType == Enum.ClubStreamType.General then return s.streamId end
+    end
+    return streams[1].streamId
+end
+
+-- Nom de l'auteur d'un message de la communauté: le jeu le donne déjà complet (« Prénom Nom »), sans royaume.
+function ns.CommunityAuthorName(clubId, author)
+    return ns.CleanName(author.name)
+end
+
+-- Un message arrive dans une communauté: si c'est la nôtre, on le lit comme une annonce du chat.
+function ns.OnCommunityMessage(clubId, streamId, messageId)
+    if not clubId or clubId ~= ns.CommunityId() then return end
+    local ok, info = pcall(C_Club.GetMessageInfo, clubId, streamId, messageId)
+    if not ok or type(info) ~= "table" or type(info.content) ~= "string" then return end
+    local author = info.author
+    if type(author) ~= "table" or author.isSelf or type(author.name) ~= "string" then return end
+    -- Les annonces de l'addon finissent par « (type de serveur) »: le filtre par type de serveur s'applique alors.
+    local ruleset
+    for id, name in pairs(ns.RULESETS) do
+        if info.content:find("(" .. name .. ")", 1, true) then ruleset = id end
+    end
+    ns.OnChat(info.content, ns.CommunityAuthorName(clubId, author), "communaute", ruleset)
+end
+
+-- Lien cliquable pour rejoindre la communauté (le jeu ouvre sa fenêtre « Rejoindre »), plus le lien web à copier.
+function ns.ShowCommunityInvite()
+    if ns.CommunityId() then
+        ns.Print("tu es déjà dans la communauté |cffffd100" .. ns.COMMUNITY_NAME .. "|r. Tes annonces y sont publiées au clic sur Publier.")
+        return
+    end
+    if not ns.RequireRuleset() then return end
+    local code = ns.CommunityInvite()
+    if not code then
+        ns.Print("la communauté |cffffd100" .. ns.COMMUNITY_NAME .. "|r n'est pas encore ouverte pour toi ("
+            .. (ns.MyRegion() ~= "" and ns.MyRegion() or "?") .. ", " .. (ns.RulesetName(ns.MyRuleset()) or "?") .. ", "
+            .. (ns.MyFaction() ~= "" and ns.MyFaction() or "?") .. ").")
+        return
+    end
+    ns.Print("rejoins les francophones de tous les serveurs: |cff66ccff|HclubTicket:" .. code .. "|h[Rejoindre " .. ns.COMMUNITY_NAME .. "]|h|r")
+    ns.ShowCopy("Lien d'invitation de la communauté :", "https://www.worldofwarcraft.com/invite/" .. code
+        .. "?region=" .. ns.MyRegion() .. "&faction=" .. ns.MyFaction())
+end
+
+-- Rappel à la connexion pour ceux qui ne sont pas membres: une fois par jour au maximum.
+function ns.CommunityReminder()
+    if ns.CommunityId() or not ns.CommunityInvite() or not ns.db then return end
+    local today = date("%Y-%m-%d")
+    if ns.db.communityAsked == today then return end
+    ns.db.communityAsked = today
+    local code = ns.CommunityInvite()
+    ns.Print("joueurs francophones sur les autres serveurs de Forever: |cff66ccff|HclubTicket:" .. code .. "|h[Rejoindre " .. ns.COMMUNITY_NAME .. "]|h|r (ou |cffffd100/bf communaute|r)")
+end
+
+local lastCommunityPost = -1000
+
+-- Publie mon annonce dans la communauté. Appelé seulement par un clic du joueur, jamais en arrière-plan.
+function ns.PostToCommunity(l)
+    l = l or ns.my
+    if not l or not C_Club or not C_Club.SendMessage then return false end
+    local clubId = ns.CommunityId()
+    if not clubId then return false end
+    local wait = ns.CHAT_POST_GAP - (GetTime() - lastCommunityPost)
+    if wait > 0 then
+        ns.Print("annonce non publiée dans la communauté (attends encore " .. math.ceil(wait) .. " s pour ne pas faire de spam).")
+        return false
+    end
+    local streamId = CommunityStream(clubId)
+    if not streamId then return false end
+    local text = ns.ChatText(l, false)
+    local rs = ns.RulesetName(l.ruleset or ns.MyRuleset())
+    if rs then text = ns.CutUtf8(text .. " (" .. rs .. ")", 250) end
+    local ok = pcall(C_Club.SendMessage, clubId, streamId, text)
+    if not ok then
+        ns.Print("le jeu a refusé d'envoyer l'annonce dans la communauté.")
+        return false
+    end
+    lastCommunityPost = GetTime()
     return true
 end
 
@@ -1670,6 +1819,7 @@ ev:RegisterEvent("PLAYER_LEVEL_UP")
 ev:RegisterEvent("PLAYER_GUILD_UPDATE")
 ev:RegisterEvent("CHAT_MSG_CHANNEL")
 ev:RegisterEvent("CHAT_MSG_YELL")
+pcall(ev.RegisterEvent, ev, "CLUB_MESSAGE_ADDED")   -- communautés (absentes de certaines versions du jeu)
 pcall(ev.RegisterEvent, ev, "PLAYER_ROLES_ASSIGNED")   -- n'existe pas dans toutes les versions du jeu
 
 ev:SetScript("OnEvent", function(_, event, ...)
@@ -1689,7 +1839,8 @@ ev:SetScript("OnEvent", function(_, event, ...)
         -- Les canaux ne sont pas prêts tout de suite à la connexion
         C_Timer.After(5, function()
             ns.EnsureChannel()
-            ns.LeaveRealmChannel()
+            ns.LeaveLegacyChannel()
+            C_Timer.After(10, ns.CommunityReminder)
             C_Timer.After(3, function()
                 local _, class = UnitClass("player")
                 ns.Send("H2;" .. ns.MyLevel() .. ";" .. (class or "") .. ";" .. ns.VERSION)
@@ -1718,13 +1869,7 @@ ev:SetScript("OnEvent", function(_, event, ...)
     elseif event == "CHAT_MSG_ADDON" then
         local prefix, msg, channel, sender = ...
         if prefix == ns.PREFIX and channel == "CHANNEL" and msg and sender then
-            ns.stats.received = ns.stats.received + 1
-            if type(sender) == "string" and not (issecretvalue and issecretvalue(sender)) and ns.IsMe(sender) then
-                ns.stats.echo = ns.stats.echo + 1
-            end
             OnMessage(msg, sender)
-        elseif prefix == ns.PREFIX then
-            ns.stats.otherPrefix = ns.stats.otherPrefix + 1   -- notre préfixe, mais pas par le canal
         end
 
     elseif event == "CHAT_MSG_CHANNEL" then
@@ -1734,6 +1879,9 @@ ev:SetScript("OnEvent", function(_, event, ...)
     elseif event == "CHAT_MSG_YELL" then
         local text, sender = ...
         ns.OnChat(text, sender, "")
+
+    elseif event == "CLUB_MESSAGE_ADDED" then
+        ns.OnCommunityMessage(...)
 
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" then
         CheckAutoRemove()
@@ -1760,6 +1908,8 @@ SlashCmdList.BABILLARDFR = function(arg)
     ns.EnsureChannel()
     if arg == "site" then
         ns.ShowSiteLink()
+    elseif arg == "communaute" or arg == "communauté" or arg == "commu" then
+        ns.ShowCommunityInvite()
     elseif arg == "options" then
         if ns.OpenOptions then ns.OpenOptions() end
     elseif arg == "favoris" then
@@ -1795,6 +1945,7 @@ SlashCmdList.BABILLARDFR = function(arg)
         print("  |cffffd100/bf guildes|r : guildes francophones")
         print("  |cffffd100/bf perso|r : mon personnage et code pour le site")
         print("  |cffffd100/bf site|r : lien du site")
+        print("  |cffffd100/bf communaute|r : rejoindre les francophones de tous les serveurs")
         print("  |cffffd100/bf diag|r : diagnostic (si les talents ou l'équipement n'apparaissent pas)")
         print("  |cffffd100/bf favoris|r : choisir les activités qui déclenchent une alerte")
         print("  |cffffd100/bf demandes|r : les groupes à qui tu as chuchoté")
