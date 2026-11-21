@@ -1,4 +1,4 @@
-// Teste supabase/ameliorations26.sql, 27, 28 et 29 (fiche du personnage) sur un vrai Postgres en mémoire (PGlite), sans toucher à
+// Teste supabase/ameliorations26.sql, 27, 28, 29 et 30 (fiche du personnage) sur un vrai Postgres en mémoire (PGlite), sans toucher à
 // la vraie base. Il simule auth.uid() et les rôles anon / authenticated.
 //   npm install --no-save @electric-sql/pglite   (une fois, il n'est pas dans package.json)
 //   node supabase/tests/test_fiche.mjs
@@ -35,6 +35,9 @@ await db.exec(sql28)
 const sql29 = readFileSync(new URL('../ameliorations29.sql', import.meta.url), 'utf8')
 await db.exec(sql29) // le 29 remplace le 28
 await db.exec(sql29)
+const sql30 = readFileSync(new URL('../ameliorations30.sql', import.meta.url), 'utf8')
+await db.exec(sql30) // le 30 ajoute race et sexe sans toucher à enregistrer_fiche
+await db.exec(sql30)
 verifier(true, 'script lancé deux fois')
 
 const moi = async (uid, role = 'authenticated') => {
@@ -187,6 +190,34 @@ r = await essai('select * from public.fiches_perso')
 verifier(!r.ok, 'lecture directe de la table refusée')
 r = await essai('insert into public.fiches_perso (user_id, perso) values ($1, \'x\')', [A])
 verifier(!r.ok, 'écriture directe dans la table refusée')
+
+// --- race et sexe (ameliorations30)
+await moi(A)
+r = await enreg(GEAR, ARBRES, TAL)
+verifier(r.ok, 'ma fiche existe avant l\'apparence: ' + (r.erreur ?? ''))
+r = await essai('select public.fiche_de($1) as f', [A])
+verifier(r.ok && !('apparence' in r.rows[0].f), 'sans apparence, fiche_de n\'en renvoie pas')
+r = await essai('select public.enregistrer_apparence($1)', ['NightElf:3'])
+verifier(r.ok, 'enregistrer l\'apparence: ' + (r.erreur ?? ''))
+r = await essai('select public.fiche_de($1) as f', [A])
+verifier(r.ok && r.rows[0].f.apparence === 'NightElf:3' && r.rows[0].f.talents.length === 1, 'fiche_de renvoie l\'apparence et le reste')
+for (const mauvais of ['NightElf:1', 'Night Elf:3', 'x:3', 'NightElf:33', '<b>:2', '', null, 'NightElf:3;drop']) {
+  r = await essai('select public.enregistrer_apparence($1)', [mauvais])
+  verifier(!r.ok, 'apparence invalide refusée: ' + JSON.stringify(mauvais))
+}
+r = await enreg(GEAR, ARBRES, TAL)
+r = await essai('select public.fiche_de($1) as f', [A])
+verifier(r.ok && r.rows[0].f.apparence === 'NightElf:3', 'ré-enregistrer la fiche garde l\'apparence')
+await moi(B)
+r = await essai('select public.enregistrer_apparence($1)', ['Orc:2'])
+verifier(r.ok, 'sans fiche, enregistrer l\'apparence ne fait rien (et ne plante pas)')
+await moi(A)
+r = await essai('select public.fiche_de($1) as f', [A])
+verifier(r.rows[0].f.apparence === 'NightElf:3', 'l\'apparence de Bob n\'a pas touché la mienne')
+await db.exec(`reset role; select set_config('app.uid', '', false); set role anon;`)
+r = await essai('select public.enregistrer_apparence($1)', ['Orc:2'])
+verifier(!r.ok, 'un visiteur ne peut pas enregistrer l\'apparence')
+await moi(A)
 
 // --- effacer, et effacement avec le profil
 r = await essai('select public.effacer_fiche()')

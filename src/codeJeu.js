@@ -27,6 +27,12 @@ const ROLES_DU_JEU = { T: 'tank', H: 'heal', D: 'dps' }
 
 const FACTIONS_DU_JEU = { alliance: 'alliance', horde: 'horde' }
 
+// Jeton de race du jeu (2e valeur de UnitRace) -> nom utilisé dans l'icône de portrait (achievement_character_<race>_<sexe>).
+export const RACES_DU_JEU = {
+  Human: 'human', Dwarf: 'dwarf', NightElf: 'nightelf', Gnome: 'gnome', Orc: 'orc', Scourge: 'undead', Undead: 'undead',
+  Tauren: 'tauren', Troll: 'troll', BloodElf: 'bloodelf', Draenei: 'draenei', Goblin: 'goblin',
+}
+
 // Type de serveur choisi dans l'addon (mêmes identifiants que le site, voir RULESETS dans data.js).
 const TYPES_DE_SERVEUR = ['normal', 'pvp', 'rp', 'rp_pvp']
 
@@ -205,7 +211,9 @@ export function lireCodeJeu(texte) {
   const equipement = lireEquipement(champs.eq, champs.ic)
   const arbres = lireArbres(champs.tr, champs.tri)
   const talents = lireTalents(champs.ta, arbres.length, champs.ti, champs.tp)
-  const fiche = equipement.length > 0 || arbres.length > 0 ? { equipement, arbres, talents } : null
+  // Race et sexe (UnitRace / UnitSex): sert au portrait au centre de la fiche. Absent d'un ancien addon ou d'une race inconnue.
+  const apparence = RACES_DU_JEU[champs.rk] && ['2', '3'].includes(String(champs.sx ?? '').trim()) ? `${champs.rk}:${String(champs.sx).trim()}` : null
+  const fiche = equipement.length > 0 || arbres.length > 0 ? { equipement, arbres, talents, ...(apparence ? { apparence } : {}) } : null
   let specIncertaine = false
   if (fiche && valeurs.classe) {
     const spec = specialisationDeFiche(valeurs.classe, arbres)

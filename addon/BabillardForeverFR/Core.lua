@@ -1067,7 +1067,8 @@ function ns.GetCharacterInfo()
     local tabs, talents = ns.GetTalents()
     local name, realm = UnitFullName("player")
     local className, classFile = UnitClass("player")
-    local race = UnitRace("player")
+    local race, raceFile = UnitRace("player")
+    local sex = UnitSex and UnitSex("player")
     return {
         name = name or "?",
         realm = (realm and realm ~= "") and realm or (GetNormalizedRealmName() or ""),
@@ -1076,6 +1077,8 @@ function ns.GetCharacterInfo()
         className = className or "",
         classFile = classFile or "",
         race = race or "",
+        raceFile = type(raceFile) == "string" and raceFile or "",
+        sex = (sex == 2 or sex == 3) and sex or 0,
         level = ns.MyLevel(),
         guild = GetGuildInfo("player") or "",
         ilvl = ns.GetItemLevel(),
@@ -1150,6 +1153,8 @@ function ns.BuildExportCode()
         "f=" .. F(c.faction),
         "c=" .. F(c.classFile),
         "ra=" .. F(c.race),
+        "rk=" .. F(c.raceFile),
+        "sx=" .. ((c.sex == 2 or c.sex == 3) and c.sex or ""),
         "lv=" .. c.level,
         "g=" .. F(c.guild),
         "il=" .. (c.ilvl or ""),

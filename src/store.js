@@ -1151,7 +1151,7 @@ export async function enregistrerFiche(fiche, perso) {
     try {
       localStorage.setItem(
         CLE_FICHE_DEMO,
-        JSON.stringify({ perso, maj: new Date().toISOString(), equipement: fiche.equipement, arbres: fiche.arbres, talents: fiche.talents }),
+        JSON.stringify({ perso, maj: new Date().toISOString(), equipement: fiche.equipement, arbres: fiche.arbres, talents: fiche.talents, apparence: fiche.apparence }),
       )
     } catch {
       // navigation privée: la fiche n'est pas gardée
@@ -1168,6 +1168,14 @@ export async function enregistrerFiche(fiche, perso) {
   if (error) {
     if (error.code === 'PGRST202' || /could not find the function|schema cache/i.test(error.message ?? '')) return 'base'
     throw error
+  }
+  // Race et sexe pour le portrait (ameliorations30.sql). Sans ce fichier ou sans cette info, la fiche reste valide: on ignore.
+  if (fiche.apparence) {
+    try {
+      await supabase.rpc('enregistrer_apparence', { p_apparence: fiche.apparence })
+    } catch {
+      // le portrait de la classe s'affichera à la place
+    }
   }
   return 'ok'
 }

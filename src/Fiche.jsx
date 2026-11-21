@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import './fiche.css'
 import { depuis } from './commun.jsx'
 import { lireFiche } from './store.js'
+import { RACES_DU_JEU } from './codeJeu.js'
 import { CLASSES, couleurTexteClasse } from './data.js'
 
 // Numéros d'emplacement de l'API du jeu (sans la chemise ni le tabard).
@@ -134,7 +135,7 @@ function describePiece(p) {
   return `${NOMS_EMPLACEMENTS[p.slot] ?? `Emplacement ${p.slot}`}: ${p.nom}${morceaux.filter(Boolean).length ? ` (${morceaux.filter(Boolean).join(', ')})` : ''}`
 }
 
-function Poupee({ equipement, nom, classe, niveau }) {
+function Poupee({ equipement, nom, classe, niveau, apparence }) {
   const parSlot = new Map(equipement.map((p) => [p.slot, p]))
   const [choisi, setChoisi] = useState(null)
   const cls = CLASSES.find((c) => c.id === classe)
@@ -164,19 +165,30 @@ function Poupee({ equipement, nom, classe, niveau }) {
     )
   }
 
+  // Portrait de la race et du sexe du personnage (icône officielle du jeu), sinon l'icône de la classe.
+  const [rk, sx] = String(apparence ?? '').split(':')
+  const portrait = RACES_DU_JEU[rk] && (sx === '2' || sx === '3') ? `achievement_character_${RACES_DU_JEU[rk]}_${sx === '3' ? 'female' : 'male'}` : null
+  const silhouette = (
+    <svg className="silhouette" viewBox="0 0 100 160" aria-hidden="true" focusable="false">
+      <circle cx="50" cy="28" r="17" />
+      <path d="M20 150c0-38 8-80 30-80s30 42 30 80z" />
+    </svg>
+  )
+
   return (
     <div className="poupee">
       <ul className="poupee-col gauche">{COLONNE_GAUCHE.map(caseDe)}</ul>
       <div className="poupee-centre">
         <div className="poupee-classe" style={{ '--classe': couleurTexteClasse(classe) }}>
           <Icone
-            nom={ICONE_CLASSE[classe]}
+            nom={portrait ?? ICONE_CLASSE[classe]}
             grande
             repli={
-              <svg className="silhouette" viewBox="0 0 100 160" aria-hidden="true" focusable="false">
-                <circle cx="50" cy="28" r="17" />
-                <path d="M20 150c0-38 8-80 30-80s30 42 30 80z" />
-              </svg>
+              portrait ? (
+                <Icone nom={ICONE_CLASSE[classe]} grande repli={silhouette} />
+              ) : (
+                silhouette
+              )
             }
           />
         </div>
@@ -281,7 +293,7 @@ export function FicheAffichage({ fiche, maj, nom, classe, niveau }) {
       {equipement.length > 0 && (
         <section aria-label="Équipement">
           <h4>Équipement</h4>
-          <Poupee equipement={equipement} nom={fiche.perso || nom} classe={classe} niveau={niveau} />
+          <Poupee equipement={equipement} nom={fiche.perso || nom} classe={classe} niveau={niveau} apparence={fiche.apparence} />
         </section>
       )}
 

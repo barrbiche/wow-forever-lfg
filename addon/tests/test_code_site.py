@@ -52,7 +52,8 @@ issecretvalue = function() return false end
 UnitFullName = function() return PERSO.nom, PERSO.royaume end
 GetNormalizedRealmName = function() return PERSO.royaume end
 UnitClass = function() return PERSO.classeNom or "Classe", PERSO.classe end
-UnitRace = function() return PERSO.race or "Orc" end
+UnitRace = function() return PERSO.race or "Orc", PERSO.raceFile or "Orc" end
+UnitSex = function() return PERSO.sexe or 2 end
 UnitLevel = function() return PERSO.niveau end
 UnitFactionGroup = function() return PERSO.faction end
 GetGuildInfo = function() return PERSO.guilde end
@@ -271,7 +272,7 @@ CAS += [
     },
     {
         "nom": "WoW Forever: coordonnées réelles",
-        "perso": dict(nom="Reels", royaume="Forever", region="EU", faction="Horde", classe="WARLOCK", niveau=20, traits=TRAITS_REELS),
+        "perso": dict(nom="Reels", royaume="Forever", region="EU", faction="Horde", classe="WARLOCK", niveau=20, traits=TRAITS_REELS, raceFile="NightElf", sexe=3),
         "attendu": dict(perso="Reels", classe="demoniste", faction="horde", region="EU", niveau="20", guilde=""),
         "metiers": 0,
         "fiche": dict(equipement=0, arbres=["Affliction:11", "Demonology:0", "Destruction:0"], talents=14),
@@ -375,6 +376,10 @@ verifier((ft["Malice"]["arbre"], ft["Malice"]["ligne"], ft["Malice"]["col"], ft[
 verifier((ft["Précision"]["arbre"], ft["Précision"]["ligne"], ft["Précision"]["col"]) == (2, 1, 1), f"Précision en haut à gauche de Combat: {ft['Précision']}")
 verifier((ft["Coups précis"]["ligne"], ft["Coups précis"]["col"], ft["Coups précis"]["rang"], ft["Coups précis"]["max"]) == (2, 2, 3, 5), f"Coups précis: {ft['Coups précis']}")
 verifier((ft["Initiative"]["arbre"], ft["Initiative"]["ligne"], ft["Initiative"]["col"]) == (3, 2, 3), f"Initiative dans Finesse: {ft['Initiative']}")
+# Race et sexe: l'addon envoie le jeton de race et UnitSex; le site en fait « Race:sexe » pour le portrait de la fiche.
+verifier(furtif["fiche"].get("apparence") == "Orc:2", f"apparence par défaut (orc, homme): {furtif['fiche'].get('apparence')}")
+elfe = [lu for c, lu in zip(CAS, lus) if c["nom"] == "WoW Forever: coordonnées réelles"][0]
+verifier(elfe["fiche"].get("apparence") == "NightElf:3", f"apparence: elfe de la nuit, femme: {elfe['fiche'].get('apparence')}")
 reels = next(lu for c, lu in zip(CAS, lus) if c["nom"] == "WoW Forever: coordonnées réelles")
 pt = {x["nom"]: x for x in reels["fiche"]["talents"]}
 place = lambda n: (pt[n]["arbre"], pt[n]["ligne"], pt[n]["col"], pt[n]["max"])
