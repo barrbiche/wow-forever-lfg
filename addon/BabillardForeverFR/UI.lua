@@ -466,9 +466,9 @@ local function MakeActivityPicker(parent, x, y, width)
         if dd.SetDefaultText then dd:SetDefaultText("Choisir une activité") end
         dd:SetupMenu(function(_, root)
             local list = ns.AvailableActivities(state.cat)
-            root:CreateTitle(state.cat .. " pour ton niveau (" .. ns.MyLevel() .. ")")
+            root:CreateTitle(state.cat .. " faisables à ton niveau (" .. ns.MyLevel() .. ")")
             if #list == 0 then
-                root:CreateTitle("|cff888888Rien à ton niveau dans cette catégorie|r")
+                root:CreateTitle("|cff888888Rien de faisable à ton niveau dans cette catégorie|r")
             end
             for _, a in ipairs(list) do
                 root:CreateRadio(ns.ActivityLabel(a),
@@ -488,7 +488,7 @@ local function MakeActivityPicker(parent, x, y, width)
     end
     dd:SetScript("OnClick", function(self)
         local list = ns.AvailableActivities(state.cat)
-        if #list == 0 then ns.Print("rien à ton niveau dans cette catégorie.") return end
+        if #list == 0 then ns.Print("rien de faisable à ton niveau dans cette catégorie.") return end
         local idx = 0
         for i, a in ipairs(list) do if a.key == state.akey then idx = i end end
         state.akey = list[idx % #list + 1].key
@@ -714,7 +714,7 @@ local function RefreshGroups()
         local a = ns.ACT_BY_KEY[l.akey]
         local show = a ~= nil
         if show and l.source == "chat" and not o.chatReading then show = false end
-        if show and o.levelOnly and not ns.ActivityFits(a, myLevel) then show = false end
+        if show and o.levelOnly and not ns.ActivityInRange(a, myLevel) then show = false end
         if show and o.sameFaction and l.faction ~= myFaction then show = false end
         if show and not ns.RulesetOK(l.ruleset) then show = false end
         if ns.IsMe(l.sender) then show = true end

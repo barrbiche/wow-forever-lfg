@@ -243,17 +243,27 @@ function ns.RolesText(set, counts)
     return table.concat(t, ", ")
 end
 
+-- Faisable: le niveau minimum est atteint. Un joueur de niveau 40 peut très bien former un groupe pour les Mines de la
+-- Mort (niveaux 17-26): il les garde dans sa liste (pour aider un ami, pour un reroll, pour le butin).
 function ns.ActivityFits(a, level)
+    return a ~= nil and level >= a.min
+end
+
+-- Dans la tranche de niveaux prévue pour l'activité (alertes et filtre « à mon niveau »: pas de bruit avec les petits donjons).
+function ns.ActivityInRange(a, level)
     return a ~= nil and level >= a.min and level <= a.max
 end
 
--- Activités d'une catégorie faisables à ton niveau
+-- Activités d'une catégorie faisables à ton niveau: d'abord celles de ta tranche de niveaux, puis les plus basses (la plus
+-- proche de ton niveau en premier).
 function ns.AvailableActivities(cat)
-    local level, out = ns.MyLevel(), {}
+    local level, inRange, below = ns.MyLevel(), {}, {}
     for _, a in ipairs(ns.ACTIVITIES[cat] or {}) do
-        if ns.ActivityFits(a, level) then tinsert(out, a) end
+        if ns.ActivityInRange(a, level) then tinsert(inRange, a)
+        elseif ns.ActivityFits(a, level) then tinsert(below, a) end
     end
-    return out
+    for i = #below, 1, -1 do tinsert(inRange, below[i]) end
+    return inRange
 end
 
 function ns.ActivityLabel(a)
@@ -409,7 +419,7 @@ function ns.PublishListing(p)
         return false
     end
     if not ns.ActivityFits(a, ns.MyLevel()) then
-        ns.Print("cette activité n'est pas à ton niveau.")
+        ns.Print("ton niveau est trop bas pour cette activité (niveau " .. a.min .. " minimum).")
         return false
     end
     if not p.roles or not next(p.roles) then
@@ -583,7 +593,7 @@ function ns.CheckAlert(l)
     local who = "|c" .. ns.ClassHex(l.class) .. ns.ShortName(l.sender) .. "|r"
     local text
 
-    if l.type == "LFM" and not IsInGroup() and ns.ActivityFits(a, ns.MyLevel()) then
+    if l.type == "LFM" and not IsInGroup() and ns.ActivityInRange(a, ns.MyLevel()) then
         -- Un groupe cherche un de mes rôles
         local r = FirstCommonRole(l.roles, ns.db.myRoles)
         if r then

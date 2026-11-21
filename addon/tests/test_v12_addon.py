@@ -365,15 +365,15 @@ egal(ns.VersionNumber("1.2.0"), 1002000, "numéro de version")
 verifier(ns.VersionNumber("1.2") == nil and ns.VersionNumber("a.b.c") == nil and ns.VersionNumber("1.2.0;x") == nil
   and ns.VersionNumber(nil) == nil and ns.VersionNumber("1.2.99999") == nil, "versions invalides refusées")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.1.0", "Vieux-ForeverRealm")
-recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.5.9", "Pareil-ForeverRealm")
+recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.5.10", "Pareil-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;pirate", "Faux-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal", "SansVersion-ForeverRealm")
 egal(ns.newVersion, nil, "pas d'avis pour une version égale, ancienne ou invalide")
-recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.5.10", "Neuf-ForeverRealm")
-egal(ns.newVersion, "1.5.10", "avis pour une version plus récente")
-egal(ns.db.newestSeen, 1005010, "version vue sauvegardée")
-recevoir("G2;Les Pas Fins;PVE;Horde;ROGUE;60;0;note;normal;1.5.10", "Neuf2-ForeverRealm")
-recevoir("H2;20;MAGE;1.5.10", "Neuf3-ForeverRealm")
+recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.5.11", "Neuf-ForeverRealm")
+egal(ns.newVersion, "1.5.11", "avis pour une version plus récente")
+egal(ns.db.newestSeen, 1005011, "version vue sauvegardée")
+recevoir("G2;Les Pas Fins;PVE;Horde;ROGUE;60;0;note;normal;1.5.11", "Neuf2-ForeverRealm")
+recevoir("H2;20;MAGE;1.5.11", "Neuf3-ForeverRealm")
 egal(nbImprimes("nouvelle version"), 1, "l'avis n'est dit qu'une fois par version")
 recevoir("H2;20;MAGE;1.6.0", "Neuf4-ForeverRealm")
 egal(ns.newVersion, "1.6.0", "une version encore plus récente remplace l'avis")
@@ -384,7 +384,7 @@ ns.db.opts.autoRemove = false
 vider()
 avancer(100)
 ns.PublishListing({ type = "LFM", akey = "WC", roles = { TANK = true, HEAL = true, DPS = true }, note = "essai" })
-egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.5.9", "L2 publié termine par la version")
+egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.5.10", "L2 publié termine par la version")
 verifier(#CHAT == 0, "publier ne parle jamais dans le chat tout seul")
 
 -- ---------- 5. Alertes par activités favorites ----------
@@ -505,6 +505,33 @@ membres = 1
 ns.PublishListing({ type = "LFG", akey = "WC", roles = { DPS = true }, note = "" })
 egal(ns.my and ns.my.type, "LFM", "même si on demande « LFG », l'annonce publiée est toujours un groupe qui cherche")
 verifier(ENVOYES[#ENVOYES]:find("^L2;LFM;") ~= nil, "le message envoyé est un LFM")
+
+-- ---------- Activités faisables à mon niveau ----------
+do
+  local rfc, wc = ns.ACT_BY_KEY.RFC, ns.ACT_BY_KEY.WC            -- RFC 13-18, WC 15-24
+  verifier(ns.ActivityFits(rfc, 60) and ns.ActivityFits(rfc, 13), "un petit donjon reste faisable à un niveau plus haut")
+  verifier(not ns.ActivityFits(rfc, 12), "pas faisable sous le niveau minimum")
+  verifier(not ns.ActivityInRange(rfc, 60) and ns.ActivityInRange(rfc, 15), "la tranche de niveaux garde son sens (alertes, filtre)")
+  local cat = rfc.cat
+  local ancienNiveau = niveau
+  niveau = 20
+  local liste = ns.AvailableActivities(cat)
+  local pos = {}
+  for i, a in ipairs(liste) do pos[a.key] = i end
+  verifier(pos.RFC and pos.WC, "niveau 20: le Gouffre de Ragefeu (13-18) et WC (15-24) sont dans la liste")
+  verifier(pos.WC < pos.RFC, "niveau 20: ceux de ma tranche (WC) viennent avant les plus bas (RFC)")
+  verifier(not pos.BRD, "niveau 20: Rochenoire (52+) n'est pas dans la liste")
+  niveau = 60
+  local liste60 = ns.AvailableActivities(cat)
+  local n = 0
+  for _, a in ipairs(ns.ACTIVITIES[cat]) do if a.min <= 60 then n = n + 1 end end
+  egal(#liste60, n, "niveau 60: toutes les activités de la catégorie sont faisables")
+  niveau = 12
+  local sans = {}
+  for _, a in ipairs(ns.AvailableActivities(cat)) do sans[a.key] = true end
+  verifier(not sans.RFC, "niveau 12: pas encore le Gouffre de Ragefeu")
+  niveau = ancienNiveau
+end
 
 -- ---------- Raison d'un envoi refusé ----------
 resEnvoi = 3
