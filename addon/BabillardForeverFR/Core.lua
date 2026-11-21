@@ -303,20 +303,22 @@ end
 ---------------------------------------------------------------------------
 ns.channelFailed = false
 
--- Un canal caché par serveur: « BabillardFR » + le nom normalisé du royaume (ex. BabillardFRForeverRealm). On ne voit ainsi
--- que les annonces des joueurs avec qui on peut vraiment grouper. Le nom du royaume n'est pas toujours connu juste après
--- la connexion: on retourne nil et on réessaie plus tard (le canal est vérifié toutes les 30 secondes).
-local channelName
+-- Un seul canal caché pour tous les serveurs de Forever (les francophones de partout se retrouvent au même endroit).
+-- Les versions 1.6.0 et 1.6.1 avaient un canal par serveur: on garde son calcul seulement pour le quitter (voir plus bas).
 function ns.ChannelName()
-    if channelName then return channelName end
+    return ns.CHANNEL
+end
+
+-- Nom du canal par serveur des versions 1.6.0 et 1.6.1 (« BabillardFR » + le serveur sans espace), ou nil si le serveur
+-- n'est pas connu ou n'a aucun caractère utilisable.
+local function OldRealmChannelName()
     local realm = select(2, UnitFullName("player"))
     if type(realm) ~= "string" or realm == "" then realm = GetNormalizedRealmName and GetNormalizedRealmName() end
     if type(realm) ~= "string" or realm == "" then return nil end
     if issecretvalue and issecretvalue(realm) then return nil end
-    local clean = realm:gsub("[^%w]", "")   -- seulement lettres et chiffres (les noms de canal ont une longueur limitée)
-    -- Nom de royaume sans caractère utilisable (alphabet non latin): on retombe sur l'ancien canal partagé.
-    channelName = clean == "" and ns.CHANNEL or (ns.CHANNEL .. clean):sub(1, 30)
-    return channelName
+    local clean = realm:gsub("[^%w]", "")
+    if clean == "" then return nil end
+    return (ns.CHANNEL .. clean):sub(1, 30)
 end
 
 local function ChannelIndex()
@@ -336,13 +338,13 @@ local function HideChannelFromChat(name)
     end
 end
 
--- Les versions d'avant 1.6 partageaient un seul canal pour tous les serveurs. Le jeu garde les canaux rejoints d'une
--- connexion à l'autre: on quitte l'ancien pour ne pas occuper une place de canal pour rien (le jeu en permet dix).
-function ns.LeaveLegacyChannel()
-    local name = ns.ChannelName()
+-- Les versions 1.6.0 et 1.6.1 faisaient rejoindre un canal par serveur, et le jeu garde les canaux rejoints d'une connexion à
+-- l'autre: on le quitte pour ne pas occuper une place de canal pour rien (le jeu en permet dix).
+function ns.LeaveRealmChannel()
+    local name = OldRealmChannelName()
     if not name or name == ns.CHANNEL or not LeaveChannelByName then return end
-    local id = GetChannelName(ns.CHANNEL)
-    if type(id) == "number" and id > 0 then pcall(LeaveChannelByName, ns.CHANNEL) end
+    local id = GetChannelName(name)
+    if type(id) == "number" and id > 0 then pcall(LeaveChannelByName, name) end
 end
 
 -- Joint le canal s'il ne l'est pas déjà. Appelé aussi lors des clics (plus fiable).
@@ -1069,7 +1071,7 @@ function ns.Diagnostic()
     add("jeu", tostring(b[1]) .. "/" .. tostring(b[4]))
     add("addon", ns.VERSION)
     -- Le nom du canal contient le nom du serveur: on ne l'écrit pas dans le diagnostic (il se colle dans une conversation).
-    add("canal du serveur", ns.ChannelIndex() and ("rejoint n° " .. ns.ChannelIndex()) or (ns.ChannelName() and "pas rejoint" or "serveur inconnu"))
+    add("canal", ns.ChannelIndex() and ("rejoint n° " .. ns.ChannelIndex()) or "pas rejoint")
     local st = ns.stats
     add("messages", "envoyés=" .. st.sent .. " refusés=" .. st.refused .. (st.refused > 0 and (" (dernier code " .. st.lastCode .. ")") or "")
         .. " reçus=" .. st.received .. " dont les miens=" .. st.echo .. (st.otherPrefix > 0 and (" autres canaux=" .. st.otherPrefix) or ""))
@@ -1687,7 +1689,7 @@ ev:SetScript("OnEvent", function(_, event, ...)
         -- Les canaux ne sont pas prêts tout de suite à la connexion
         C_Timer.After(5, function()
             ns.EnsureChannel()
-            ns.LeaveLegacyChannel()
+            ns.LeaveRealmChannel()
             C_Timer.After(3, function()
                 local _, class = UnitClass("player")
                 ns.Send("H2;" .. ns.MyLevel() .. ";" .. (class or "") .. ";" .. ns.VERSION)

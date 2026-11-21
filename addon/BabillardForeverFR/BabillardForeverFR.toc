@@ -2,7 +2,7 @@
 ## Title: Babillard Forever FR
 ## Notes: Recherche de groupe et de guilde francophone pour WoW Forever - babillard-forever.com
 ## Author: Barrbiche
-## Version: 1.6.1
+## Version: 1.6.2
 ## X-Website: https://babillard-forever.com
 ## IconTexture: Interface\Icons\INV_Misc_GroupNeedMore
 ## SavedVariables: BabillardForeverFRDB

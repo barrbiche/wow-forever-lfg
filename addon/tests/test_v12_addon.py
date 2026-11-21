@@ -365,15 +365,15 @@ egal(ns.VersionNumber("1.2.0"), 1002000, "numéro de version")
 verifier(ns.VersionNumber("1.2") == nil and ns.VersionNumber("a.b.c") == nil and ns.VersionNumber("1.2.0;x") == nil
   and ns.VersionNumber(nil) == nil and ns.VersionNumber("1.2.99999") == nil, "versions invalides refusées")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.1.0", "Vieux-ForeverRealm")
-recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.6.1", "Pareil-ForeverRealm")
+recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.6.2", "Pareil-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;pirate", "Faux-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal", "SansVersion-ForeverRealm")
 egal(ns.newVersion, nil, "pas d'avis pour une version égale, ancienne ou invalide")
-recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.6.2", "Neuf-ForeverRealm")
-egal(ns.newVersion, "1.6.2", "avis pour une version plus récente")
-egal(ns.db.newestSeen, 1006002, "version vue sauvegardée")
-recevoir("G2;Les Pas Fins;PVE;Horde;ROGUE;60;0;note;normal;1.6.2", "Neuf2-ForeverRealm")
-recevoir("H2;20;MAGE;1.6.2", "Neuf3-ForeverRealm")
+recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.6.3", "Neuf-ForeverRealm")
+egal(ns.newVersion, "1.6.3", "avis pour une version plus récente")
+egal(ns.db.newestSeen, 1006003, "version vue sauvegardée")
+recevoir("G2;Les Pas Fins;PVE;Horde;ROGUE;60;0;note;normal;1.6.3", "Neuf2-ForeverRealm")
+recevoir("H2;20;MAGE;1.6.3", "Neuf3-ForeverRealm")
 egal(nbImprimes("nouvelle version"), 1, "l'avis n'est dit qu'une fois par version")
 recevoir("H2;20;MAGE;1.7.0", "Neuf4-ForeverRealm")
 egal(ns.newVersion, "1.7.0", "une version encore plus récente remplace l'avis")
@@ -384,7 +384,7 @@ ns.db.opts.autoRemove = false
 vider()
 avancer(100)
 ns.PublishListing({ type = "LFM", akey = "WC", roles = { TANK = true, HEAL = true, DPS = true }, note = "essai" })
-egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.6.1", "L2 publié termine par la version")
+egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.6.2", "L2 publié termine par la version")
 verifier(#CHAT == 0, "publier ne parle jamais dans le chat tout seul")
 
 -- ---------- 5. Alertes par activités favorites ----------
@@ -524,35 +524,35 @@ do
   resEnvoi = 0
 end
 
--- ---------- Un canal caché par serveur ----------
+-- ---------- Un seul canal caché pour tous les serveurs ----------
 do
-  egal(ns.ChannelName(), "BabillardFRForeverRealm", "le canal porte le nom du serveur (sans espace)")
+  egal(ns.ChannelName(), "BabillardFR", "le canal est le même pour tous les serveurs")
   local joints, quittes = {}, {}
   local vraiJoin, vraiLeave, vraiGCN = JoinChannelByName, LeaveChannelByName, GetChannelName
   JoinChannelByName = function(n) joints[#joints + 1] = n end
   LeaveChannelByName = function(n) quittes[#quittes + 1] = n end
-  -- Pas encore dans le canal du serveur: l'addon le rejoint (et pas l'ancien canal partagé)
+  -- Pas encore dans le canal: l'addon rejoint le canal partagé
   GetChannelName = function() return 0 end
   ns.EnsureChannel()
-  egal(joints[1], "BabillardFRForeverRealm", "il rejoint le canal de son serveur")
+  egal(joints[1], "BabillardFR", "il rejoint le canal partagé")
   egal(#joints, 1, "une seule jonction")
-  -- Déjà dans le canal du serveur ET dans l'ancien canal partagé: il quitte l'ancien seulement
+  -- Resté dans le canal par serveur des versions 1.6.0 et 1.6.1: il le quitte, pas le canal partagé
   GetChannelName = function(n) return 5 end
-  ns.LeaveLegacyChannel()
-  egal(quittes[1], "BabillardFR", "il quitte l'ancien canal partagé")
-  egal(#quittes, 1, "il ne quitte que l'ancien canal")
-  -- Pas dans l'ancien canal: rien à quitter
-  GetChannelName = function(n) if n == "BabillardFR" then return 0 end return 5 end
+  ns.LeaveRealmChannel()
+  egal(quittes[1], "BabillardFRForeverRealm", "il quitte le canal par serveur de la 1.6.0")
+  egal(#quittes, 1, "il ne quitte que celui-là")
+  -- Pas dans le canal par serveur: rien à quitter
+  GetChannelName = function(n) if n == "BabillardFRForeverRealm" then return 0 end return 5 end
   quittes = {}
-  ns.LeaveLegacyChannel()
-  egal(#quittes, 0, "pas dans l'ancien canal: rien à quitter")
-  -- Les messages partent dans le canal du serveur (numéro de ce canal)
+  ns.LeaveRealmChannel()
+  egal(#quittes, 0, "pas dans le canal par serveur: rien à quitter")
+  -- Les messages partent dans le canal partagé (numéro de ce canal)
   local messageVers
   local vraiSend = C_ChatInfo.SendAddonMessage
-  GetChannelName = function(n) if n == "BabillardFRForeverRealm" then return 7 end return 0 end
+  GetChannelName = function(n) if n == "BabillardFR" then return 7 end return 0 end
   C_ChatInfo.SendAddonMessage = function(prefixe, msg, type_, cible) messageVers = { type_, cible } return 0 end
-  ns.Send("H2;20;MAGE;1.5.12")
-  egal(messageVers and messageVers[2], 7, "envoi dans le canal du serveur")
+  ns.Send("H2;20;MAGE;1.6.2")
+  egal(messageVers and messageVers[2], 7, "envoi dans le canal partagé")
   C_ChatInfo.SendAddonMessage = vraiSend
   JoinChannelByName, LeaveChannelByName, GetChannelName = vraiJoin, vraiLeave, vraiGCN
 end
