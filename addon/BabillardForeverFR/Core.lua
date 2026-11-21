@@ -1,5 +1,6 @@
 -- Babillard Forever FR - Cœur : communication, annonces, alertes, retrait auto, rappel, export
 local ADDON, ns = ...
+local L = ns.L
 
 ns.listings = {}   -- [expediteur] = annonce de groupe
 ns.guilds   = {}   -- [nomGuilde-faction] = annonce de guilde
@@ -29,7 +30,8 @@ local DEFAULTS = {
         alsoCommunity   = true,    -- publier aussi dans la communauté Babillard Forever FR (au clic seulement)
         autoUpdate      = true,    -- mettre à jour tout seul le nombre de joueurs et les rôles manquants
         favsOnly        = false,   -- alertes seulement pour mes activités favorites
-        whisperTemplate = true,    -- Chuchoter écrit déjà un message de présentation (jamais envoyé tout seul)
+        whisperTemplate = true,
+        lang            = "auto",  -- langue: "auto" (celle du jeu), "fr" ou "en" (après /reload)    -- Chuchoter écrit déjà un message de présentation (jamais envoyé tout seul)
     },
     favs     = {},     -- activités favorites : [cléActivité] = true
     ignored  = {},     -- joueurs ignorés : [nomEnMinuscules] = true
@@ -96,7 +98,7 @@ end
 
 function ns.Ago(t)
     local m = math.floor((GetTime() - t) / 60)
-    return m < 1 and "à l'instant" or (m .. " min")
+    return m < 1 and L["à l'instant"] or (m .. L[" min"])
 end
 
 function ns.SafeCreate(frameType, name, parent, template, fallback)
@@ -185,7 +187,7 @@ end
 -- (PvE, PvP, RP, RP-PvP). Sans ce choix, l'annonce partirait sans étiquette et tout le monde la verrait.
 function ns.RequireRuleset()
     if ns.MyRuleset() then return true end
-    ns.Print("choisis d'abord ton type de serveur (PvE, PvP, RP ou RP-PvP) dans l'onglet |cffffd100Mon perso|r: ton annonce restera visible seulement pour les joueurs du même type.")
+    ns.Print(L["choisis d'abord ton type de serveur (PvE, PvP, RP ou RP-PvP) dans l'onglet |cffffd100Mon perso|r: ton annonce restera visible seulement pour les joueurs du même type."])
     if ns.UI and ns.UI.Open then pcall(ns.UI.Open, 3) end
     return false
 end
@@ -218,7 +220,7 @@ function ns.CheckVersion(v)
     if theirs > (ns.db.newestSeen or 0) then
         ns.db.newestSeen, ns.db.newestText = theirs, v
         ns.newVersion = v
-        ns.Print("une nouvelle version de l'addon est disponible (" .. v .. "). Tape |cffffd100/bf site|r pour le lien de téléchargement.")
+        ns.Print(L["une nouvelle version de l'addon est disponible ("] .. v .. L["). Tape |cffffd100/bf site|r pour le lien de téléchargement."])
         ns.Refresh()
     end
 end
@@ -300,7 +302,7 @@ end
 function ns.ActivityLabel(a)
     local s = a.name .. "  |cff888888(" .. (a.min == a.max and a.min or (a.min .. "-" .. a.max))
     if a.cat == "Raids" or (a.cat == "PvP" and a.size > 5) then
-        s = s .. ", " .. a.size .. " joueurs"
+        s = s .. ", " .. a.size .. L[" joueurs"]
     end
     return s .. ")|r"
 end
@@ -412,9 +414,9 @@ end
 
 -- Texte à montrer quand ns.Send a échoué.
 function ns.SendFailureText()
-    if ns.lastSendFailure == "limite" then return "le jeu limite l'envoi de messages, réessaie dans quelques secondes." end
-    if ns.lastSendFailure == "refus" then return "le jeu a refusé d'envoyer le message, réessaie dans un instant." end
-    return "connexion au canal en cours, réessaie dans quelques secondes."
+    if ns.lastSendFailure == "limite" then return L["le jeu limite l'envoi de messages, réessaie dans quelques secondes."] end
+    if ns.lastSendFailure == "refus" then return L["le jeu a refusé d'envoyer le message, réessaie dans un instant."] end
+    return L["connexion au canal en cours, réessaie dans quelques secondes."]
 end
 
 ---------------------------------------------------------------------------
@@ -465,21 +467,21 @@ local lastPublish = 0
 -- p = { type = "LFG"/"LFM", akey, roles = {TANK=true...}, note, keepTime }
 function ns.PublishListing(p)
     if GetTime() - lastPublish < 5 then
-        ns.Print("attends quelques secondes avant de republier.")
+        ns.Print(L["attends quelques secondes avant de republier."])
         return false
     end
     p.type = "LFM"   -- l'addon sert à former des groupes, pas à en chercher un
     local a = ns.ACT_BY_KEY[p.akey or ""]
     if not a then
-        ns.Print("choisis une activité avant de publier.")
+        ns.Print(L["choisis une activité avant de publier."])
         return false
     end
     if not ns.ActivityFits(a, ns.MyLevel()) then
-        ns.Print("ton niveau est trop bas pour cette activité (niveau " .. a.min .. " minimum).")
+        ns.Print(L["ton niveau est trop bas pour cette activité (niveau "] .. a.min .. L[" minimum)."])
         return false
     end
     if not p.roles or not next(p.roles) then
-        ns.Print("choisis au moins un rôle.")
+        ns.Print(L["choisis au moins un rôle."])
         return false
     end
     if not ns.RequireRuleset() then return false end
@@ -527,11 +529,11 @@ end
 function ns.PublishGuild(focus, note)
     local guild = GetGuildInfo("player")
     if not guild then
-        ns.Print("tu dois être dans une guilde pour l'annoncer.")
+        ns.Print(L["tu dois être dans une guilde pour l'annoncer."])
         return false
     end
     if not ns.GUILD_FOCUS[focus or ""] then
-        ns.Print("choisis le type de ta guilde.")
+        ns.Print(L["choisis le type de ta guilde."])
         return false
     end
     if not ns.RequireRuleset() then return false end
@@ -586,9 +588,9 @@ function ns.RefreshListings()
     ns.PlayClick()
     local ok, wait = ns.RequestAll(true)
     if ok then
-        ns.Print("demande envoyée: les annonces actives des autres joueurs arrivent dans quelques secondes.")
+        ns.Print(L["demande envoyée: les annonces actives des autres joueurs arrivent dans quelques secondes."])
     elseif wait then
-        ns.Print("attends encore " .. wait .. " s avant d'actualiser.")
+        ns.Print(L["attends encore "] .. wait .. L[" s avant d'actualiser."])
     else
         ns.Print(ns.SendFailureText())
     end
@@ -674,7 +676,7 @@ function ns.CheckAlert(l)
         -- Un groupe cherche un de mes rôles
         local r = FirstCommonRole(l.roles, ns.db.myRoles)
         if r then
-            text = string.format("%s cherche un %s pour %s", who, ns.ROLE_INFO[r].name:lower(), a.name)
+            text = string.format(L["%s cherche un %s pour %s"], who, ns.ROLE_INFO[r].name:lower(), a.name)
         end
     end
     if not text then return end
@@ -684,7 +686,7 @@ function ns.CheckAlert(l)
     if RaidNotice_AddMessage and RaidWarningFrame and ChatTypeInfo and ChatTypeInfo["RAID_WARNING"] then
         RaidNotice_AddMessage(RaidWarningFrame, "|cff33aaff[Babillard FR]|r " .. text, ChatTypeInfo["RAID_WARNING"])
     end
-    ns.Print(text .. ". Tape |cffffd100/bf|r pour voir.")
+    ns.Print(text .. L[". Tape |cffffd100/bf|r pour voir."])
     if ns.FlashMinimap then ns.FlashMinimap() end
 end
 
@@ -694,7 +696,7 @@ end
 local function CheckAutoRemove()
     if not ns.my or not ns.db or not ns.db.opts.autoRemove then return end
     if ns.my.type == "LFM" and GetNumGroupMembers() >= (ns.my.size or 5) then
-        ns.WithdrawListing("annonce retirée : ton groupe est complet!")
+        ns.WithdrawListing(L["annonce retirée : ton groupe est complet!"])
     end
 end
 
@@ -702,7 +704,7 @@ local function CheckEnteredInstance()
     if not ns.my or not ns.db or not ns.db.opts.autoRemove then return end
     local inInstance, instanceType = IsInInstance()
     if inInstance and (instanceType == "party" or instanceType == "raid" or instanceType == "pvp") then
-        ns.WithdrawListing("annonce retirée : tu es entré dans une instance.")
+        ns.WithdrawListing(L["annonce retirée : tu es entré dans une instance."])
     end
 end
 
@@ -710,9 +712,9 @@ end
 -- Rappel avant expiration
 ---------------------------------------------------------------------------
 StaticPopupDialogs["BABILLARDFR_REMIND"] = {
-    text = "Ton annonce sur le Babillard expire dans 2 minutes.\n\nVeux-tu la republier?",
-    button1 = "Republier",
-    button2 = "Laisser expirer",
+    text = L["Ton annonce sur le Babillard expire dans 2 minutes.\n\nVeux-tu la republier?"],
+    button1 = L["Republier"],
+    button2 = L["Laisser expirer"],
     OnAccept = function() ns.Republish() end,
     timeout = 110,
     whileDead = true,
@@ -740,8 +742,8 @@ local function GetPopupEditBox(popup)
 end
 
 StaticPopupDialogs["BABILLARDFR_COPY"] = {
-    text = "%s\n\nFais |cffffd100Ctrl+C|r pour copier.",
-    button1 = CLOSE or "Fermer",
+    text = L["%s\n\nFais |cffffd100Ctrl+C|r pour copier."],
+    button1 = CLOSE or L["Fermer"],
     hasEditBox = true,
     editBoxWidth = 320,
     maxLetters = 0,
@@ -775,7 +777,7 @@ function ns.ShowCopy(title, value)
 end
 
 function ns.ShowSiteLink()
-    ns.ShowCopy("Lien du site Babillard Forever :", ns.SITE_URL)
+    ns.ShowCopy(L["Lien du site Babillard Forever :"], ns.SITE_URL)
 end
 
 ---------------------------------------------------------------------------
@@ -1426,11 +1428,11 @@ function ns.WhisperText(d)
     local a = d and ns.ACT_BY_KEY[d.akey or ""]
     if not a then return nil end
     local className = UnitClass("player")
-    local who = (className and className ~= "" and (className:lower() .. " ") or "") .. "niv " .. ns.MyLevel()
+    local who = (className and className ~= "" and (className:lower() .. " ") or "") .. L["niv "] .. ns.MyLevel()
     local role = ns.db and ns.db.myRoles and d.roles and FirstCommonRole(d.roles, ns.db.myRoles)
-    local text = "Salut, " .. who
-    if role then text = text .. ", je peux faire " .. ns.ROLE_INFO[role].name end
-    return ns.CutUtf8(text .. " pour " .. a.name .. ".", 250)
+    local text = L["Salut, "] .. who
+    if role then text = text .. L[", je peux faire "] .. ns.ROLE_INFO[role].name end
+    return ns.CutUtf8(text .. L[" pour "] .. a.name .. ".", 250)
 end
 
 ns.requests = {}    -- chuchotements envoyés: [nomEnMinuscules] = { akey, time }
@@ -1476,7 +1478,7 @@ function ns.Ignore(name)
         if ns.BareName(l.sender) == bare then ns.listings[k] = nil end
     end
     ns.requests[bare] = nil
-    ns.Print(ns.ShortName(name) .. " est ignoré: ses annonces ne s'affichent plus. |cffffd100/bf ignores|r pour voir ou vider la liste.")
+    ns.Print(ns.ShortName(name) .. L[" est ignoré: ses annonces ne s'affichent plus. |cffffd100/bf ignores|r pour voir ou vider la liste."])
     ns.Refresh()
 end
 
@@ -1561,18 +1563,18 @@ function ns.PostToChat(l)
     if not l then return false end
     local wait = ns.CHAT_POST_GAP - (GetTime() - lastChatPost)
     if wait > 0 then
-        ns.Print("annonce non publiée dans le chat (attends encore " .. math.ceil(wait) .. " s pour ne pas faire de spam).")
+        ns.Print(L["annonce non publiée dans le chat (attends encore "] .. math.ceil(wait) .. L[" s pour ne pas faire de spam)."])
         return false
     end
     local id = FindChatChannel()
     if not id then
-        ns.Print("aucun canal « Recherche de groupe » ou « Général » trouvé: ton annonce n'est pas dans le chat.")
+        ns.Print(L["aucun canal « Recherche de groupe » ou « Général » trouvé: ton annonce n'est pas dans le chat."])
         return false
     end
     local send = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
     local ok = pcall(send, ns.ChatText(l, ns.db.opts.chatTag), "CHANNEL", nil, id)
     if not ok then
-        ns.Print("le jeu a refusé d'envoyer l'annonce dans le chat.")
+        ns.Print(L["le jeu a refusé d'envoyer l'annonce dans le chat."])
         return false
     end
     lastChatPost = GetTime()
@@ -1644,8 +1646,10 @@ function ns.OnCommunityMessage(clubId, streamId, messageId)
     if type(author) ~= "table" or author.isSelf or type(author.name) ~= "string" then return end
     -- Les annonces de l'addon finissent par « (type de serveur) »: le filtre par type de serveur s'applique alors.
     local ruleset
-    for id, name in pairs(ns.RULESETS) do
-        if info.content:find("(" .. name .. ")", 1, true) then ruleset = id end
+    for _, names in ipairs({ ns.RULESETS_FR, ns.RULESETS }) do
+        for id, name in pairs(names) do
+            if info.content:find("(" .. name .. ")", 1, true) then ruleset = id end
+        end
     end
     ns.OnChat(info.content, ns.CommunityAuthorName(clubId, author), "communaute", ruleset)
 end
@@ -1653,19 +1657,19 @@ end
 -- Lien cliquable pour rejoindre la communauté (le jeu ouvre sa fenêtre « Rejoindre »), plus le lien web à copier.
 function ns.ShowCommunityInvite()
     if ns.CommunityId() then
-        ns.Print("tu es déjà dans la communauté |cffffd100" .. ns.COMMUNITY_NAME .. "|r. Tes annonces y sont publiées au clic sur Publier.")
+        ns.Print(L["tu es déjà dans la communauté |cffffd100"] .. ns.COMMUNITY_NAME .. L["|r. Tes annonces y sont publiées au clic sur Publier."])
         return
     end
     if not ns.RequireRuleset() then return end
     local code = ns.CommunityInvite()
     if not code then
-        ns.Print("la communauté |cffffd100" .. ns.COMMUNITY_NAME .. "|r n'est pas encore ouverte pour toi ("
+        ns.Print(L["la communauté |cffffd100"] .. ns.COMMUNITY_NAME .. L["|r n'est pas encore ouverte pour toi ("]
             .. (ns.MyRegion() ~= "" and ns.MyRegion() or "?") .. ", " .. (ns.RulesetName(ns.MyRuleset()) or "?") .. ", "
             .. (ns.MyFaction() ~= "" and ns.MyFaction() or "?") .. ").")
         return
     end
-    ns.Print("rejoins les francophones de tous les serveurs: |cff66ccff|HclubTicket:" .. code .. "|h[Rejoindre " .. ns.COMMUNITY_NAME .. "]|h|r")
-    ns.ShowCopy("Lien d'invitation de la communauté :", "https://www.worldofwarcraft.com/invite/" .. code
+    ns.Print(L["rejoins les francophones de tous les serveurs: |cff66ccff|HclubTicket:"] .. code .. L["|h[Rejoindre "] .. ns.COMMUNITY_NAME .. "]|h|r")
+    ns.ShowCopy(L["Lien d'invitation de la communauté :"], "https://www.worldofwarcraft.com/invite/" .. code
         .. "?region=" .. ns.MyRegion() .. "&faction=" .. ns.MyFaction())
 end
 
@@ -1676,7 +1680,7 @@ function ns.CommunityReminder()
     if ns.db.communityAsked == today then return end
     ns.db.communityAsked = today
     local code = ns.CommunityInvite()
-    ns.Print("joueurs francophones sur les autres serveurs de Forever: |cff66ccff|HclubTicket:" .. code .. "|h[Rejoindre " .. ns.COMMUNITY_NAME .. "]|h|r (ou |cffffd100/bf communaute|r)")
+    ns.Print(L["joueurs francophones sur les autres serveurs de Forever: |cff66ccff|HclubTicket:"] .. code .. L["|h[Rejoindre "] .. ns.COMMUNITY_NAME .. L["]|h|r (ou |cffffd100/bf communaute|r)"])
 end
 
 local lastCommunityPost = -1000
@@ -1689,7 +1693,7 @@ function ns.PostToCommunity(l)
     if not clubId then return false end
     local wait = ns.CHAT_POST_GAP - (GetTime() - lastCommunityPost)
     if wait > 0 then
-        ns.Print("annonce non publiée dans la communauté (attends encore " .. math.ceil(wait) .. " s pour ne pas faire de spam).")
+        ns.Print(L["annonce non publiée dans la communauté (attends encore "] .. math.ceil(wait) .. L[" s pour ne pas faire de spam)."])
         return false
     end
     local streamId = CommunityStream(clubId)
@@ -1699,7 +1703,7 @@ function ns.PostToCommunity(l)
     if rs then text = ns.CutUtf8(text .. " (" .. rs .. ")", 250) end
     local ok = pcall(C_Club.SendMessage, clubId, streamId, text)
     if not ok then
-        ns.Print("le jeu a refusé d'envoyer l'annonce dans la communauté.")
+        ns.Print(L["le jeu a refusé d'envoyer l'annonce dans la communauté."])
         return false
     end
     lastCommunityPost = GetTime()
@@ -1829,6 +1833,10 @@ ev:SetScript("OnEvent", function(_, event, ...)
         ns.db = BabillardForeverFRDB
         ApplyDefaults(ns.db, DEFAULTS)
         PruneKnown()
+        -- La langue d'abord: les fenêtres sont bâties avec les textes de la langue choisie.
+        ns.SetupLanguage()
+        xpcall(ns.BuildUI, geterrorhandler())
+        xpcall(ns.BuildOptions, geterrorhandler())
         if ns.OnDBReady then ns.OnDBReady() end
 
     elseif event == "PLAYER_LOGIN" then
@@ -1850,7 +1858,7 @@ ev:SetScript("OnEvent", function(_, event, ...)
         if not ns.db.welcomed then
             ns.db.welcomed = true
             C_Timer.After(8, function()
-                ns.Print("installé! Tape |cffffd100/bf|r ou clique sur le bouton de la minimap pour ouvrir le babillard.")
+                ns.Print(L["installé! Tape |cffffd100/bf|r ou clique sur le bouton de la minimap pour ouvrir le babillard."])
             end)
         end
         -- Vérifications régulières : expiration, rappel, canal
@@ -1908,6 +1916,14 @@ SlashCmdList.BABILLARDFR = function(arg)
     ns.EnsureChannel()
     if arg == "site" then
         ns.ShowSiteLink()
+    elseif arg:match("^lang") then
+        -- /bf langue fr | en | auto
+        local choice = arg:match("%s(%a+)$")
+        if choice then
+            ns.SetLanguageChoice(choice)
+        else
+            ns.Print("Langue / Language : " .. ns.LanguageName(ns.db.opts.lang) .. " — /bf langue fr, en, auto")
+        end
     elseif arg == "communaute" or arg == "communauté" or arg == "commu" then
         ns.ShowCommunityInvite()
     elseif arg == "options" then
@@ -1920,37 +1936,38 @@ SlashCmdList.BABILLARDFR = function(arg)
             n = n + 1
             local a = ns.ACT_BY_KEY[r.akey]
             local age = GetTime() - r.time
-            print("  " .. ns.ShortName(r.sender) .. " : " .. (a and a.name or "?") .. " (il y a " .. math.floor(age / 60) .. " min" ..
-                (age > 300 and ", sans réponse" or "") .. ")")
+            print("  " .. ns.ShortName(r.sender) .. " : " .. (a and a.name or "?") .. L[" (il y a "] .. math.floor(age / 60) .. L[" min"] ..
+                (age > 300 and L[", sans réponse"] or "") .. ")")
         end
-        if n == 0 then ns.Print("aucune demande en cours. Elles s'affichent ici après un clic sur Chuchoter.") end
+        if n == 0 then ns.Print(L["aucune demande en cours. Elles s'affichent ici après un clic sur Chuchoter."]) end
     elseif arg == "ignores" or arg == "ignorés" then
         local names = {}
         for bare in pairs(ns.db.ignored) do tinsert(names, bare) end
         table.sort(names)
-        if #names == 0 then ns.Print("aucun joueur ignoré.") else ns.Print("joueurs ignorés : " .. table.concat(names, ", ")) end
+        if #names == 0 then ns.Print(L["aucun joueur ignoré."]) else ns.Print(L["joueurs ignorés : "] .. table.concat(names, ", ")) end
     elseif arg == "ignores vider" then
         wipe(ns.db.ignored)
-        ns.Print("la liste des joueurs ignorés est vide.")
+        ns.Print(L["la liste des joueurs ignorés est vide."])
         ns.Refresh()
     elseif arg == "guildes" then
         if ns.UI then ns.UI.Open(2) end
     elseif arg == "perso" or arg == "code" then
         if ns.UI then ns.UI.Open(3) end
     elseif arg == "diag" then
-        ns.ShowCopy("Diagnostic Babillard Forever FR (colle-le dans la conversation):", ns.Diagnostic())
+        ns.ShowCopy(L["Diagnostic Babillard Forever FR (colle-le dans la conversation):"], ns.Diagnostic())
     elseif arg == "aide" then
-        ns.Print("commandes :")
-        print("  |cffffd100/bf|r : ouvrir ou fermer le babillard")
-        print("  |cffffd100/bf guildes|r : guildes francophones")
-        print("  |cffffd100/bf perso|r : mon personnage et code pour le site")
-        print("  |cffffd100/bf site|r : lien du site")
-        print("  |cffffd100/bf communaute|r : rejoindre les francophones de tous les serveurs")
-        print("  |cffffd100/bf diag|r : diagnostic (si les talents ou l'équipement n'apparaissent pas)")
-        print("  |cffffd100/bf favoris|r : choisir les activités qui déclenchent une alerte")
-        print("  |cffffd100/bf demandes|r : les groupes à qui tu as chuchoté")
-        print("  |cffffd100/bf ignores|r : joueurs ignorés (|cffffd100/bf ignores vider|r pour tout retirer)")
-        print("  |cffffd100/bf options|r : options")
+        ns.Print(L["commandes :"])
+        print(L["  |cffffd100/bf|r : ouvrir ou fermer le babillard"])
+        print(L["  |cffffd100/bf guildes|r : guildes francophones"])
+        print(L["  |cffffd100/bf perso|r : mon personnage et code pour le site"])
+        print(L["  |cffffd100/bf site|r : lien du site"])
+        print(L["  |cffffd100/bf communaute|r : rejoindre les francophones de tous les serveurs"])
+        print(L["  |cffffd100/bf diag|r : diagnostic (si les talents ou l'équipement n'apparaissent pas)"])
+        print(L["  |cffffd100/bf favoris|r : choisir les activités qui déclenchent une alerte"])
+        print(L["  |cffffd100/bf demandes|r : les groupes à qui tu as chuchoté"])
+        print(L["  |cffffd100/bf ignores|r : joueurs ignorés (|cffffd100/bf ignores vider|r pour tout retirer)"])
+        print(L["  |cffffd100/bf options|r : options"])
+        print("  |cffffd100/bf langue fr|r, |cffffd100en|r ou |cffffd100auto|r : Langue / Language")
     else
         if ns.UI then ns.UI.Toggle() end
     end

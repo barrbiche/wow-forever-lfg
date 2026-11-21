@@ -131,8 +131,10 @@ local function BuildAliases()
         end
     end
     for key, a in pairs(ns.ACT_BY_KEY) do
-        local n = normalize(a.name):gsub("^ ", ""):gsub(" $", "")
-        if n ~= "" then tinsert(aliasList, { alias = n, padded = " " .. n .. " ", key = key }) end
+        for _, name in ipairs({ a.name, a.fr }) do   -- a.fr: nom français quand l'addon est en anglais
+            local n = normalize(name):gsub("^ ", ""):gsub(" $", "")
+            if n ~= "" then tinsert(aliasList, { alias = n, padded = " " .. n .. " ", key = key }) end
+        end
     end
 end
 
@@ -243,7 +245,7 @@ function ns.ChatText(l, withTag)
     if #names > 0 then
         tinsert(parts, (l.type == "LFG" and "" or "- ") .. table.concat(names, ", "))
     end
-    if l.type == "LFG" and l.level and l.level > 0 then tinsert(parts, "niv " .. l.level) end
+    if l.type == "LFG" and l.level and l.level > 0 then tinsert(parts, ((ns.lang == "en") and "lvl " or "niv ") .. l.level) end
     local text = table.concat(parts, " ")
     if l.note and l.note ~= "" then text = text .. " - " .. l.note end
     if withTag then text = text .. " [Babillard FR]" end

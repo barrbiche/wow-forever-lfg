@@ -1,5 +1,9 @@
 -- Babillard Forever FR - Options et bouton de la minimap
 local ADDON, ns = ...
+local L = ns.L
+
+-- Bâti à ADDON_LOADED (Core.lua), une fois la langue choisie: tous les textes passent par L.
+function ns.BuildOptions()
 
 ---------------------------------------------------------------------------
 -- Panneau d'options (Échap > Options > AddOns > Babillard Forever FR)
@@ -31,43 +35,43 @@ title:SetText("Babillard Forever FR")
 
 local sub = content:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
 sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
-sub:SetText("Version " .. ns.VERSION .. "  ·  /bf pour ouvrir le babillard  ·  /bf aide pour les commandes")
+sub:SetText(L["Version "] .. ns.VERSION .. L["  ·  /bf pour ouvrir le babillard  ·  /bf aide pour les commandes"])
 
 -- { clé, texte, aide }
 local OPTIONS = {
-    { "header", "Alertes" },
-    { "alerts",          "Alertes quand un groupe cherche un de mes rôles",
-      "Message à l'écran quand un groupe cherche ton rôle pour une activité à ton niveau, ou quand quelqu'un cherche un groupe pour ce que ton groupe fait." },
-    { "alertSound",      "Jouer un son avec les alertes" },
-    { "alertInInstance", "Alertes même dans un donjon, un raid ou un champ de bataille" },
-    { "favsOnly",        "Alertes seulement pour mes activités favorites",
-      "Choisis-les avec le bouton « Activités favorites » plus bas, ou avec /bf favoris. Si tu n'en as choisi aucune, toutes les activités déclenchent une alerte." },
-    { "alertChat",       "Alertes aussi pour les annonces lues dans le chat",
-      "Par défaut, seules les annonces des joueurs qui ont l'addon déclenchent une alerte: le chat contient beaucoup d'annonces." },
-    { "whisperTemplate", "Chuchoter écrit un message de présentation",
-      "Le bouton Chuchoter écrit « Salut, voleur niv 20, je peux faire DPS pour Mines de la Mort. » dans la boîte de chat. Rien n'est envoyé tant que tu n'appuies pas sur Entrée." },
-    { "header", "Chat" },
-    { "chatReading",     "Lire les annonces du chat et les ajouter au babillard",
-      "Les annonces « LFM » du chat (un groupe qui cherche des joueurs: général, recherche de groupe, cris) apparaissent avec la mention [chat]. Elles sont lues à l'écran seulement: rien n'est envoyé." },
-    { "alsoChat",        "Publier aussi mon annonce dans le chat",
-      "Quand tu cliques sur Publier, l'annonce est aussi envoyée dans « Recherche de groupe » (ou « Général »). Une fois par minute au maximum, seulement quand tu cliques." },
-    { "alsoCommunity",   "Publier aussi mes annonces dans la communauté Babillard Forever FR",
-      "Au clic sur Publier, l'annonce est aussi envoyée dans la communauté, que voient les francophones de tous les serveurs de Forever. Une fois par minute au maximum. /bf communaute pour la rejoindre." },
-    { "chatTag",         "Ajouter « [Babillard FR] » à la fin de mes annonces du chat",
-      "Désactivé par défaut. Ça fait connaître l'addon, mais la politique d'addons de Blizzard interdit d'utiliser un addon pour faire de la promotion: à toi de décider." },
-    { "header", "Mon annonce" },
-    { "autoRemove",      "Retirer mon annonce automatiquement",
-      "Quand tu rejoins un groupe, quand ton groupe est complet ou quand tu entres dans une instance." },
-    { "remind",          "Me rappeler 2 minutes avant que mon annonce expire" },
-    { "autoUpdate",      "Mettre à jour mon annonce quand des joueurs rejoignent mon groupe",
-      "Met à jour le nombre de joueurs et retire le rôle tank ou soigneur quand quelqu'un du groupe l'a d'assigné." },
-    { "header", "Affichage" },
-    { "sameFaction",     "Montrer seulement ma faction" },
-    { "sameRuleset",     "Montrer seulement mon type de serveur (PvE, PvP, RP)",
-      "Cache les annonces d'un autre type de serveur: on ne peut pas grouper ensemble. Choisis ton type dans l'onglet Mon perso." },
-    { "levelOnly",       "Montrer seulement les activités à mon niveau" },
-    { "tooltipFlag",     "Afficher [FR] dans l'info-bulle des joueurs qui ont l'addon" },
-    { "minimap",         "Afficher le bouton de la minimap" },
+    { "header", L["Alertes"] },
+    { "alerts",          L["Alertes quand un groupe cherche un de mes rôles"],
+      L["Message à l'écran quand un groupe cherche ton rôle pour une activité à ton niveau, ou quand quelqu'un cherche un groupe pour ce que ton groupe fait."] },
+    { "alertSound",      L["Jouer un son avec les alertes"] },
+    { "alertInInstance", L["Alertes même dans un donjon, un raid ou un champ de bataille"] },
+    { "favsOnly",        L["Alertes seulement pour mes activités favorites"],
+      L["Choisis-les avec le bouton « Activités favorites » plus bas, ou avec /bf favoris. Si tu n'en as choisi aucune, toutes les activités déclenchent une alerte."] },
+    { "alertChat",       L["Alertes aussi pour les annonces lues dans le chat"],
+      L["Par défaut, seules les annonces des joueurs qui ont l'addon déclenchent une alerte: le chat contient beaucoup d'annonces."] },
+    { "whisperTemplate", L["Chuchoter écrit un message de présentation"],
+      L["Le bouton Chuchoter écrit « Salut, voleur niv 20, je peux faire DPS pour Mines de la Mort. » dans la boîte de chat. Rien n'est envoyé tant que tu n'appuies pas sur Entrée."] },
+    { "header", L["Chat"] },
+    { "chatReading",     L["Lire les annonces du chat et les ajouter au babillard"],
+      L["Les annonces « LFM » du chat (un groupe qui cherche des joueurs: général, recherche de groupe, cris) apparaissent avec la mention [chat]. Elles sont lues à l'écran seulement: rien n'est envoyé."] },
+    { "alsoChat",        L["Publier aussi mon annonce dans le chat"],
+      L["Quand tu cliques sur Publier, l'annonce est aussi envoyée dans « Recherche de groupe » (ou « Général »). Une fois par minute au maximum, seulement quand tu cliques."] },
+    { "alsoCommunity",   L["Publier aussi mes annonces dans la communauté Babillard Forever FR"],
+      L["Au clic sur Publier, l'annonce est aussi envoyée dans la communauté, que voient les francophones de tous les serveurs de Forever. Une fois par minute au maximum. /bf communaute pour la rejoindre."] },
+    { "chatTag",         L["Ajouter « [Babillard FR] » à la fin de mes annonces du chat"],
+      L["Désactivé par défaut. Ça fait connaître l'addon, mais la politique d'addons de Blizzard interdit d'utiliser un addon pour faire de la promotion: à toi de décider."] },
+    { "header", L["Mon annonce"] },
+    { "autoRemove",      L["Retirer mon annonce automatiquement"],
+      L["Quand tu rejoins un groupe, quand ton groupe est complet ou quand tu entres dans une instance."] },
+    { "remind",          L["Me rappeler 2 minutes avant que mon annonce expire"] },
+    { "autoUpdate",      L["Mettre à jour mon annonce quand des joueurs rejoignent mon groupe"],
+      L["Met à jour le nombre de joueurs et retire le rôle tank ou soigneur quand quelqu'un du groupe l'a d'assigné."] },
+    { "header", L["Affichage"] },
+    { "sameFaction",     L["Montrer seulement ma faction"] },
+    { "sameRuleset",     L["Montrer seulement mon type de serveur (PvE, PvP, RP)"],
+      L["Cache les annonces d'un autre type de serveur: on ne peut pas grouper ensemble. Choisis ton type dans l'onglet Mon perso."] },
+    { "levelOnly",       L["Montrer seulement les activités à mon niveau"] },
+    { "tooltipFlag",     L["Afficher [FR] dans l'info-bulle des joueurs qui ont l'addon"] },
+    { "minimap",         L["Afficher le bouton de la minimap"] },
 }
 
 local checks = {}
@@ -116,11 +120,11 @@ end
 function ns.OpenFavMenu(owner)
     if not ns.db then return end
     if not (MenuUtil and MenuUtil.CreateContextMenu) then
-        ns.Print("le menu des favoris n'est pas disponible dans cette version du jeu.")
+        ns.Print(L["le menu des favoris n'est pas disponible dans cette version du jeu."])
         return
     end
     MenuUtil.CreateContextMenu(owner or UIParent, function(_, root)
-        root:CreateTitle("Alertes : activités favorites")
+        root:CreateTitle(L["Alertes : activités favorites"])
         for _, cat in ipairs(ns.CATEGORIES) do
             local sub = root:CreateButton(cat)
             for _, a in ipairs(ns.ACTIVITIES[cat]) do
@@ -129,24 +133,41 @@ function ns.OpenFavMenu(owner)
                     function() ns.db.favs[a.key] = (not ns.db.favs[a.key]) or nil end)
             end
         end
-        root:CreateButton("Tout décocher", function() wipe(ns.db.favs) end)
+        root:CreateButton(L["Tout décocher"], function() wipe(ns.db.favs) end)
     end)
 end
 
 local favBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+if ns.Skin and ns.Skin.Button then ns.Skin.Button(favBtn) end
 favBtn:SetSize(200, 24)
 favBtn:SetPoint("TOPLEFT", 20, y - 16)
-favBtn:SetText("Activités favorites")
+favBtn:SetText(L["Activités favorites"])
 favBtn:SetScript("OnClick", function(self) ns.OpenFavMenu(self) end)
 
 local siteBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+if ns.Skin and ns.Skin.Button then ns.Skin.Button(siteBtn) end
 siteBtn:SetSize(200, 24)
 siteBtn:SetPoint("TOPLEFT", 230, y - 16)
-siteBtn:SetText("Lien du site")
+siteBtn:SetText(L["Lien du site"])
 siteBtn:SetScript("OnClick", function() ns.ShowSiteLink() end)
 
+-- Langue: un clic passe à la suivante (Auto → Français → English).
+local langBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+if ns.Skin and ns.Skin.Button then ns.Skin.Button(langBtn) end
+langBtn:SetSize(410, 24)
+langBtn:SetPoint("TOPLEFT", 20, y - 48)
+local function LangText()
+    langBtn:SetText("Langue / Language : " .. ns.LanguageName(ns.db and ns.db.opts.lang or "auto"))
+end
+LangText()
+langBtn:SetScript("OnClick", function()
+    local order = { auto = "fr", fr = "en", en = "auto" }
+    ns.SetLanguageChoice(order[ns.db.opts.lang or "auto"] or "auto")
+    LangText()
+end)
+
 -- Hauteur du contenu: jusqu'en bas des boutons, plus une marge.
-content:SetHeight(math.max(100, -(y - 16) + 24 + 24))
+content:SetHeight(math.max(100, -(y - 48) + 24 + 24))
 
 panel:SetScript("OnShow", function()
     if not ns.db then return end
@@ -242,12 +263,12 @@ mm:SetScript("OnEnter", function(self)
     GameTooltip:AddLine("Babillard Forever FR")
     local n = 0
     for _ in pairs(ns.listings) do n = n + 1 end
-    GameTooltip:AddLine(n .. " annonce(s) active(s)", 0.6, 0.8, 1)
-    if ns.my then GameTooltip:AddLine("Ton annonce est active", 0.2, 0.87, 0.33) end
+    GameTooltip:AddLine(n .. L[" annonce(s) active(s)"], 0.6, 0.8, 1)
+    if ns.my then GameTooltip:AddLine(L["Ton annonce est active"], 0.2, 0.87, 0.33) end
     GameTooltip:AddLine(" ")
-    GameTooltip:AddLine("Clic gauche : ouvrir le babillard", 1, 1, 1)
-    GameTooltip:AddLine("Clic droit : lien du site", 1, 1, 1)
-    GameTooltip:AddLine("Glisser : déplacer ce bouton", 0.7, 0.7, 0.7)
+    GameTooltip:AddLine(L["Clic gauche : ouvrir le babillard"], 1, 1, 1)
+    GameTooltip:AddLine(L["Clic droit : lien du site"], 1, 1, 1)
+    GameTooltip:AddLine(L["Glisser : déplacer ce bouton"], 0.7, 0.7, 0.7)
     GameTooltip:Show()
 end)
 mm:SetScript("OnLeave", GameTooltip_Hide)
@@ -295,3 +316,5 @@ end
 ns.OnDBReady = function()
     ns.UpdateMinimapButton()
 end
+
+end -- ns.BuildOptions
