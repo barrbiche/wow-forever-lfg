@@ -365,6 +365,9 @@ end
 -- Pourquoi le dernier envoi a échoué: "canal" (pas encore rejoint) ou "limite" (le jeu limite le débit des messages d'addon:
 -- environ 10 d'un coup, puis un par seconde), sinon "refus". Sert à dire la vraie raison au joueur.
 ns.lastSendFailure = nil
+-- Compteurs pour /bf diag: si on envoie mais qu'on ne reçoit jamais son propre message en retour (echo = 0), c'est que le
+-- jeu ne livre pas les messages d'addon dans le canal.
+ns.stats = { sent = 0, refused = 0, lastCode = "", received = 0, echo = 0, otherPrefix = 0 }
 
 function ns.Send(msg)
     local id = ChannelIndex()
@@ -377,9 +380,12 @@ function ns.Send(msg)
     if not ok or res == false or (type(res) == "number" and res ~= 0) then   -- Enum.SendAddonMessageResult.Success = 0
         -- 3 = AddonMessageThrottle, 8 = ChannelThrottle
         ns.lastSendFailure = (res == 3 or res == 8) and "limite" or "refus"
+        ns.stats.refused = ns.stats.refused + 1
+        ns.stats.lastCode = ok and tostring(res) or "erreur"
         return false
     end
     ns.lastSendFailure = nil
+    ns.stats.sent = ns.stats.sent + 1
     return true
 end
 
@@ -1064,6 +1070,9 @@ function ns.Diagnostic()
     add("addon", ns.VERSION)
     -- Le nom du canal contient le nom du serveur: on ne l'écrit pas dans le diagnostic (il se colle dans une conversation).
     add("canal du serveur", ns.ChannelIndex() and ("rejoint n° " .. ns.ChannelIndex()) or (ns.ChannelName() and "pas rejoint" or "serveur inconnu"))
+    local st = ns.stats
+    add("messages", "envoyés=" .. st.sent .. " refusés=" .. st.refused .. (st.refused > 0 and (" (dernier code " .. st.lastCode .. ")") or "")
+        .. " reçus=" .. st.received .. " dont les miens=" .. st.echo .. (st.otherPrefix > 0 and (" autres canaux=" .. st.otherPrefix) or ""))
     add("GetNumTalentTabs", kind(GetNumTalentTabs))
     add("GetTalentInfo", kind(GetTalentInfo))
     add("C_Traits", kind(C_Traits))
@@ -1707,7 +1716,13 @@ ev:SetScript("OnEvent", function(_, event, ...)
     elseif event == "CHAT_MSG_ADDON" then
         local prefix, msg, channel, sender = ...
         if prefix == ns.PREFIX and channel == "CHANNEL" and msg and sender then
+            ns.stats.received = ns.stats.received + 1
+            if type(sender) == "string" and not (issecretvalue and issecretvalue(sender)) and ns.IsMe(sender) then
+                ns.stats.echo = ns.stats.echo + 1
+            end
             OnMessage(msg, sender)
+        elseif prefix == ns.PREFIX then
+            ns.stats.otherPrefix = ns.stats.otherPrefix + 1   -- notre préfixe, mais pas par le canal
         end
 
     elseif event == "CHAT_MSG_CHANNEL" then

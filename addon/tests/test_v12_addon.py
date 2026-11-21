@@ -365,15 +365,15 @@ egal(ns.VersionNumber("1.2.0"), 1002000, "numéro de version")
 verifier(ns.VersionNumber("1.2") == nil and ns.VersionNumber("a.b.c") == nil and ns.VersionNumber("1.2.0;x") == nil
   and ns.VersionNumber(nil) == nil and ns.VersionNumber("1.2.99999") == nil, "versions invalides refusées")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.1.0", "Vieux-ForeverRealm")
-recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.6.0", "Pareil-ForeverRealm")
+recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.6.1", "Pareil-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;pirate", "Faux-ForeverRealm")
 recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal", "SansVersion-ForeverRealm")
 egal(ns.newVersion, nil, "pas d'avis pour une version égale, ancienne ou invalide")
-recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.6.1", "Neuf-ForeverRealm")
-egal(ns.newVersion, "1.6.1", "avis pour une version plus récente")
-egal(ns.db.newestSeen, 1006001, "version vue sauvegardée")
-recevoir("G2;Les Pas Fins;PVE;Horde;ROGUE;60;0;note;normal;1.6.1", "Neuf2-ForeverRealm")
-recevoir("H2;20;MAGE;1.6.1", "Neuf3-ForeverRealm")
+recevoir("L2;LFM;Donjons;WC;T;WARRIOR;20;Horde;5;1;0;;normal;1.6.2", "Neuf-ForeverRealm")
+egal(ns.newVersion, "1.6.2", "avis pour une version plus récente")
+egal(ns.db.newestSeen, 1006002, "version vue sauvegardée")
+recevoir("G2;Les Pas Fins;PVE;Horde;ROGUE;60;0;note;normal;1.6.2", "Neuf2-ForeverRealm")
+recevoir("H2;20;MAGE;1.6.2", "Neuf3-ForeverRealm")
 egal(nbImprimes("nouvelle version"), 1, "l'avis n'est dit qu'une fois par version")
 recevoir("H2;20;MAGE;1.7.0", "Neuf4-ForeverRealm")
 egal(ns.newVersion, "1.7.0", "une version encore plus récente remplace l'avis")
@@ -384,7 +384,7 @@ ns.db.opts.autoRemove = false
 vider()
 avancer(100)
 ns.PublishListing({ type = "LFM", akey = "WC", roles = { TANK = true, HEAL = true, DPS = true }, note = "essai" })
-egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.6.0", "L2 publié termine par la version")
+egal(ENVOYES[#ENVOYES]:match(";([^;]*)$"), "1.6.1", "L2 publié termine par la version")
 verifier(#CHAT == 0, "publier ne parle jamais dans le chat tout seul")
 
 -- ---------- 5. Alertes par activités favorites ----------
@@ -505,6 +505,24 @@ membres = 1
 ns.PublishListing({ type = "LFG", akey = "WC", roles = { DPS = true }, note = "" })
 egal(ns.my and ns.my.type, "LFM", "même si on demande « LFG », l'annonce publiée est toujours un groupe qui cherche")
 verifier(ENVOYES[#ENVOYES]:find("^L2;LFM;") ~= nil, "le message envoyé est un LFM")
+
+-- ---------- Compteurs de messages (/bf diag) ----------
+do
+  local e0, r0, m0 = ns.stats.sent, ns.stats.received, ns.stats.echo
+  ns.Send("H2;20;MAGE;1.6.0")
+  egal(ns.stats.sent - e0, 1, "un envoi réussi est compté")
+  recevoir("H2;20;MAGE;1.6.0", "Barrbiche-ForeverRealm")
+  egal(ns.stats.received - r0, 1, "un message reçu est compté")
+  egal(ns.stats.echo - m0, 1, "mon propre message qui revient est compté comme écho")
+  recevoir("H2;20;MAGE;1.6.0", "Autre-ForeverRealm")
+  egal(ns.stats.echo - m0, 1, "le message d'un autre joueur n'est pas un écho")
+  local refuses = ns.stats.refused
+  resEnvoi = 3
+  ns.Send("H2;20;MAGE;1.6.0")
+  egal(ns.stats.refused - refuses, 1, "un envoi refusé est compté")
+  egal(ns.stats.lastCode, "3", "le code de refus est gardé")
+  resEnvoi = 0
+end
 
 -- ---------- Un canal caché par serveur ----------
 do
