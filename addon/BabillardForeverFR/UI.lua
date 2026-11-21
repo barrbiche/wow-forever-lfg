@@ -701,6 +701,7 @@ local function RefreshGroups()
     local myLevel, myFaction = ns.MyLevel(), ns.MyFaction()
     local counts = { Tous = 0 }
     local visible = {}
+    local hiddenByOptions = 0   -- annonces cachées par les options (niveau, faction, type de serveur, lecture du chat)
 
     -- Une seule annonce par joueur (la plus récente), même si le jeu a écrit son royaume de deux façons.
     local latest = {}
@@ -717,6 +718,7 @@ local function RefreshGroups()
         if show and o.sameFaction and l.faction ~= myFaction then show = false end
         if show and not ns.RulesetOK(l.ruleset) then show = false end
         if ns.IsMe(l.sender) then show = true end
+        if not show and a then hiddenByOptions = hiddenByOptions + 1 end
         if show then
             counts.Tous = counts.Tous + 1
             counts[l.cat] = (counts[l.cat] or 0) + 1
@@ -782,7 +784,19 @@ local function RefreshGroups()
     end
 
     if #visible == 0 then
-        G.empty:SetText("Personne pour l'instant.\nChoisis une activité en haut et clique sur |cffffd100Publier|r!")
+        local msg
+        if hiddenByOptions > 0 and counts.Tous == 0 then
+            msg = hiddenByOptions .. (hiddenByOptions > 1 and " annonces sont cachées" or " annonce est cachée")
+                .. " par tes options (niveau, faction, type de serveur ou lecture du chat).\nOuvre |cffffd100/bf options|r pour les voir."
+        elseif counts.Tous > 0 then
+            msg = "Aucun groupe dans cette catégorie.\nClique sur |cffffd100Tous|r pour voir les " .. counts.Tous .. " autres."
+        else
+            msg = "Aucun groupe pour l'instant.\nPublie le tien en haut avec |cffffd100Publier|r: plus il y a de joueurs avec l'addon,\nplus le babillard se remplit. Invite tes amis à l'installer!"
+            if not o.chatReading then
+                msg = msg .. "\n|cff888888La lecture du chat est coupée: active-la dans |cffffd100/bf options|r|cff888888 pour voir les annonces du général.|r"
+            end
+        end
+        G.empty:SetText(msg)
         G.empty:Show()
     else
         G.empty:Hide()

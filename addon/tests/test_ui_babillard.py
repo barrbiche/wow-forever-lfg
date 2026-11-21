@@ -187,7 +187,26 @@ if ns.OnChat then
   for _, o in ipairs(objets) do
     if o.data and o.data.source == "chat" and o.IsShown(o) then erreur("annonce du chat visible alors que la lecture est coupée") end
   end
+  -- Message du babillard vide: dit pourquoi il est vide (options, catégorie ou vraiment rien)
+  local function texteVisible(motif)
+    for _, o in ipairs(objets) do
+      if o._texte and o._texte:find(motif) and o.IsShown(o) then return true end
+    end
+    return false
+  end
+  for k in pairs(ns.listings) do ns.listings[k] = nil end
   ns.db.opts.chatReading = true
+  cadre(nil, "CHAT_MSG_CHANNEL", "LFM RFC tank heal", "Zoe-ForeverRealm", "", "2. Recherche de groupe", "", "", 0, 2, "LookingForGroup")
+  ns.db.opts.chatReading = false
+  pcall(ns.UI.Refresh)
+  if not texteVisible("annonce est cach") then erreur("babillard vide à cause des options: le message doit le dire") end
+  for k in pairs(ns.listings) do ns.listings[k] = nil end
+  pcall(ns.UI.Refresh)
+  if not texteVisible("Aucun groupe pour l'instant") then erreur("babillard vraiment vide: message attendu") end
+  if not texteVisible("lecture du chat est coup") then erreur("lecture du chat coupée: le message doit le rappeler") end
+  ns.db.opts.chatReading = true
+  pcall(ns.UI.Refresh)
+  if texteVisible("lecture du chat est coup") then erreur("lecture du chat active: pas de rappel") end
   -- Menu des activités favorites (faux menu du jeu qui garde les cases à cocher)
 do
   local cases = {}
