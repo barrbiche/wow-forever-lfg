@@ -1,7 +1,7 @@
 -- Babillard Forever FR - Données (activités, rôles, constantes)
 local ADDON, ns = ...
 
-ns.VERSION       = "1.9.0"
+ns.VERSION       = "2.3.1"
 ns.PREFIX        = "BabillardFR"          -- préfixe des messages d'addon
 ns.CHANNEL       = "BabillardFR"          -- canal caché commun (voir ns.ChannelName)
 ns.SITE_URL      = "https://babillard-forever.com"
@@ -27,6 +27,11 @@ ns.COMMUNITY_INVITES = {
     },
 }
 ns.ICON          = "Interface\\Icons\\INV_Misc_GroupNeedMore"
+-- Emblème de l'addon (Media/*.tga): 128 pour le portrait et l'accueil, 64 pour la bannière, 32 pour la minimap.
+ns.MEDIA         = "Interface\\AddOns\\BabillardForeverFR\\Media\\"
+ns.EMBLEM        = ns.MEDIA .. "Emblem128"
+ns.EMBLEM64      = ns.MEDIA .. "Emblem64"
+ns.EMBLEM32      = ns.MEDIA .. "Emblem32"
 
 ns.EXPIRE        = 15 * 60                -- durée d'une annonce de groupe
 ns.GUILD_EXPIRE  = 60 * 60                -- durée d'une annonce de guilde

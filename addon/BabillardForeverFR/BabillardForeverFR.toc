@@ -1,10 +1,12 @@
 ## Interface: 16001
 ## Title: Babillard Forever FR
 ## Notes: Recherche de groupe et de guilde francophone pour WoW Forever - babillard-forever.com
+## Notes-enUS: French-speaking group and guild finder for WoW Forever, in English or French - babillard-forever.com
+## Notes-enGB: French-speaking group and guild finder for WoW Forever, in English or French - babillard-forever.com
 ## Author: Barrbiche
-## Version: 1.9.0
+## Version: 2.3.1
 ## X-Website: https://babillard-forever.com
-## IconTexture: Interface\Icons\INV_Misc_GroupNeedMore
+## IconTexture: Interface\AddOns\BabillardForeverFR\Media\Emblem64
 ## SavedVariables: BabillardForeverFRDB
 ## AddonCompartmentFunc: BabillardFR_OnCompartmentClick
 ## AddonCompartmentFuncOnEnter: BabillardFR_OnCompartmentEnter

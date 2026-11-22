@@ -10,6 +10,7 @@ ns.UI = UI
 
 local GROUP_ROWS = 10
 local GUILD_ROWS = 12
+local ONLINE_ROWS = 16
 
 local state = {
     view        = 1,
@@ -377,12 +378,12 @@ local function MakeCheck(parent, label)
 end
 
 -- Chuchoter / inviter
-local function DoWhisper(name, d)
+local function DoWhisper(name, d, customText)
     name = ns.WhisperName(name)
     -- Message de présentation déjà écrit dans la boîte de chat: tu appuies sur Entrée pour l'envoyer.
     -- On n'écrit pas « /w Nom Prénom texte »: le jeu prendrait seulement le premier mot comme destinataire. On ouvre plutôt
     -- la boîte « Chuchoter à » comme le clic droit, puis on y met le texte.
-    local text = d and ns.db.opts.whisperTemplate and ns.WhisperText(d)
+    local text = customText or (d and ns.db.opts.whisperTemplate and ns.WhisperText(d))
     if d then ns.RecordRequest(d) end
     local sendTell = ChatFrame_SendTell or (ChatFrameUtil and ChatFrameUtil.SendTell)
     if not sendTell then return end
@@ -527,7 +528,9 @@ else
     t:SetPoint("TOP", 0, -5)
     t:SetText("Babillard Forever FR")
 end
-if f.SetPortraitToAsset then f:SetPortraitToAsset(ns.ICON) end
+if f.SetPortraitToAsset then
+    if not pcall(f.SetPortraitToAsset, f, ns.EMBLEM) then pcall(f.SetPortraitToAsset, f, ns.ICON) end
+end
 -- Fond nuit derrière tout le contenu (sous le cadre et le titre du jeu)
 Try(function()
     local night = f:CreateTexture(nil, "BACKGROUND", nil, 7)
@@ -556,13 +559,10 @@ Try(function()
     line:SetHeight(1)
     line:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], 0.45)
 end)
--- Ouverture en fondu
-f:HookScript("OnShow", function(self)
-    if UIFrameFadeIn then pcall(UIFrameFadeIn, self, 0.15, 0, 1) end
-end)
+
 
 local views = {}
-for i = 1, 3 do
+for i = 1, 5 do
     views[i] = CreateFrame("Frame", nil, f)
     views[i]:SetAllPoints()
     views[i]:Hide()
@@ -582,9 +582,9 @@ Try(function()
     Skin.Border(banner, GOLD, 1)
 end)
 banner.icon = banner:CreateTexture(nil, "ARTWORK")
-banner.icon:SetSize(36, 36)
+banner.icon:SetSize(42, 42)
 banner.icon:SetPoint("LEFT", 10, 0)
-banner.icon:SetTexture(ns.ICON)
+banner.icon:SetTexture(ns.EMBLEM64)
 banner.title = banner:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 banner.title:SetPoint("TOPLEFT", banner.icon, "TOPRIGHT", 10, 0)
 banner.title:SetPoint("RIGHT", -150, 0)
@@ -605,7 +605,7 @@ banner.close:SetScript("OnClick", function()
 end)
 banner:Hide()
 
-banner.join:SetScript("OnClick", function()
+function UI.JoinCommunity()
     ns.PlayClick()
     local code = ns.CommunityInvite()
     if code and SetItemRef then
@@ -617,7 +617,8 @@ banner.join:SetScript("OnClick", function()
         end
     end
     ns.ShowCommunityInvite()
-end)
+end
+banner.join:SetScript("OnClick", function() UI.JoinCommunity() end)
 banner.join:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:AddLine(L["Rejoindre la communauté"])
@@ -627,7 +628,7 @@ end)
 banner.join:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
 function UI.UpdateBanner()
-    if ns.bannerHidden or ns.CommunityId() then banner:Hide() return end
+    if ns.bannerHidden or ns.CommunityId() or (UI.WelcomeShown and UI.WelcomeShown()) then banner:Hide() return end
     if not ns.MyRuleset() then
         banner.title:SetText(L["|cffffd100Joue avec les francophones de TOUS les serveurs!|r"])
         banner.text:SetText(L["Choisis d'abord ton type de serveur dans l'onglet Mon perso, puis rejoins la communauté."])
@@ -669,7 +670,7 @@ end)
 
 -- Onglets du bas
 local tabs = {}
-local TAB_NAMES = { L["Groupes"], L["Guildes"], L["Mon perso"] }
+local TAB_NAMES = { L["Groupes"], L["Guildes"], L["Mon perso"], L["En ligne"], L["Commandes"] }
 for i, name in ipairs(TAB_NAMES) do
     local t = ns.SafeCreate("Button", "BabillardFRFrameTab" .. i, f, "PanelTabButtonTemplate", "UIPanelButtonTemplate")
     t:SetID(i)
@@ -836,7 +837,7 @@ local glist = MakePanel(gv, -258, 32)
 HeaderText(glist, L["Type"], 8)
 HeaderText(glist, L["Rôles"], 100)
 HeaderText(glist, L["Joueur"], 152)
-HeaderText(glist, "Niv.", 282)
+HeaderText(glist, L["Niv."], 282)
 HeaderText(glist, L["Activité"], 314)
 local ageH = glist:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 ageH:SetPoint("TOPRIGHT", -10, -8)
@@ -991,7 +992,7 @@ local function RefreshGroups()
     end)
 
     for i, b in ipairs(G.filter) do
-        b:SetText(b.value .. " (" .. (counts[b.value] or 0) .. ")")
+        b:SetText(ns.CatName(b.value) .. " (" .. (counts[b.value] or 0) .. ")")
     end
     G.filter.Update()
     G.levelCB:SetChecked(o.levelOnly)
@@ -1124,6 +1125,13 @@ HeaderText(gulist, L["Description"], 392)
 HeaderLine(gulist)
 
 local function GuildTooltip(d)
+    if d.detected then
+        GameTooltip:AddLine("|cffc28cff<" .. d.guild .. ">|r" .. FactionTag(d.faction))
+        GameTooltip:AddLine(L["Guilde francophone repérée en jeu, pas encore annoncée avec l'addon."], 1, 1, 1, true)
+        if d.sender ~= "" then GameTooltip:AddLine(L["Dernier membre croisé : "] .. ns.ShortName(d.sender), 0.8, 0.8, 0.8) end
+        GameTooltip:AddLine(L["Vue le "] .. date(ns.lang == "en" and "%Y-%m-%d" or "%d/%m/%Y", d.seenAt), 0.5, 0.5, 0.5)
+        return
+    end
     GameTooltip:AddLine("|cff40ff40<" .. d.guild .. ">|r" .. FactionTag(d.faction))
     GameTooltip:AddLine(ns.GUILD_FOCUS[d.focus] .. "  ·  " .. d.faction, 0.8, 0.8, 0.8)
     if ns.RulesetName(d.ruleset) then GameTooltip:AddLine(L["Serveur : "] .. ns.RulesetName(d.ruleset), 0.8, 0.8, 0.8) end
@@ -1159,7 +1167,7 @@ for i = 1, GUILD_ROWS do
     row.desc:SetJustifyH("LEFT")
     row.desc:SetWordWrap(false)
     AddRowAction(row, L["Chuchoter"], 80,
-        function(d) return not ns.IsMe(d.sender) end,
+        function(d) return d.sender ~= "" and not ns.IsMe(d.sender) end,
         function(d) DoWhisper(d.sender) end)
     GU.rows[i] = row
 end
@@ -1202,13 +1210,31 @@ local function RefreshGuilds()
         if (not o.sameFaction or g.faction == ns.MyFaction()) and ns.RulesetOK(g.ruleset) then tinsert(visible, g) end
     end
     table.sort(visible, function(x, y) return x.time > y.time end)
+    -- Puis les guildes francophones repérées en jeu qui ne sont pas (encore) annoncées avec l'addon
+    if o.spotGuilds then
+        local announced = {}
+        for _, g in pairs(ns.guilds) do announced[g.guild] = true end
+        local mine = ns.MyFaction()
+        for _, e in ipairs(ns.KnownFrenchGuilds()) do
+            if not announced[e.guild] and (not o.sameFaction or not e.faction or e.faction == mine) then
+                tinsert(visible, { guild = e.guild, detected = true, sender = e.who or "", faction = e.faction or "",
+                    class = "", level = 0, note = L["Repérée en jeu"], seenAt = e.t })
+            end
+        end
+    end
 
     local maxOffset = math.max(0, #visible - GUILD_ROWS)
     state.guildScroll = math.min(state.guildScroll, maxOffset)
     for i, row in ipairs(GU.rows) do
         local d = visible[i + state.guildScroll]
         row.data = d
-        if d then
+        if d and d.detected then
+            row.guild:SetText("|cffc28cff<" .. d.guild .. ">|r" .. FactionTag(d.faction))
+            row.focus:SetText("|cffc28cff" .. L["Repérée"] .. "|r")
+            row.contact:SetText(d.sender ~= "" and ns.ShortName(d.sender) or "-")
+            row.desc:SetText(L["Croisée en jeu"])
+            row:Show()
+        elseif d then
             row.guild:SetText("|cff40ff40<" .. d.guild .. ">|r" .. FactionTag(d.faction))
             row.focus:SetText(ns.GUILD_FOCUS[d.focus] or "")
             row.contact:SetText("|c" .. ns.ClassHex(d.class) .. ns.ShortName(d.sender) .. "|r")
@@ -1294,17 +1320,18 @@ end)
 
 local function RefreshMe()
     local c = ns.GetCharacterInfo()
-    M.values[1]:SetText("|c" .. ns.ClassHex(c.classFile) .. c.name .. "|r - " .. c.realm .. (c.region ~= "" and (" (" .. c.region .. ")") or ""))
+    M.values[1]:SetText("|c" .. ns.ClassHex(c.classFile) .. c.name .. "|r" .. ((c.realm or "") ~= "" and (" - " .. c.realm) or "")
+        .. (c.region ~= "" and (" (" .. c.region .. ")") or ""))
     M.values[2]:SetText(c.level .. "  ·  " .. c.race .. " " .. c.className)
     M.values[3]:SetText(c.faction)
     local rs = ns.MyRuleset()
     M.ruleset:SetText(rs and (L["Serveur : "] .. ns.RulesetName(rs)) or L["|cffff8800Choisis ton type de serveur|r"])
-    M.values[4]:SetText(c.guild ~= "" and ("<" .. c.guild .. ">") or "|cff888888Aucune|r")
+    M.values[4]:SetText(c.guild ~= "" and ("<" .. c.guild .. ">") or ("|cff888888" .. L["Aucune"] .. "|r"))
     local pieces = #c.equipment > 0 and ("  |cff888888(" .. #c.equipment .. L[" pièces)|r"]) or ""
-    M.values[5]:SetText(c.ilvl and (tostring(c.ilvl) .. pieces) or "|cff888888Inconnu|r")
+    M.values[5]:SetText(c.ilvl and (tostring(c.ilvl) .. pieces) or ("|cff888888" .. L["Inconnu"] .. "|r"))
     local profs = {}
     for _, p in ipairs(c.professions) do tinsert(profs, p.name .. " " .. p.rank .. "/" .. p.max) end
-    M.values[6]:SetText(#profs > 0 and table.concat(profs, ", ") or "|cff888888Aucun|r")
+    M.values[6]:SetText(#profs > 0 and table.concat(profs, ", ") or ("|cff888888" .. L["Aucun"] .. "|r"))
     local main = ns.MainTalentTab(c.talentTabs)
     local trees = {}
     for i, t in ipairs(c.talentTabs) do
@@ -1318,6 +1345,276 @@ end
 ---------------------------------------------------------------------------
 -- Navigation et rafraîchissement
 ---------------------------------------------------------------------------
+---------------------------------------------------------------------------
+-- Vue 4 : En ligne
+---------------------------------------------------------------------------
+local ov = views[4]
+local O = {}
+SectionTitle(ov, L["Francophones en ligne"], 18, -40)
+O.summary = ov:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+O.summary:SetPoint("TOPLEFT", 20, -64)
+O.summary:SetPoint("RIGHT", -20, 0)
+O.summary:SetJustifyH("LEFT")
+
+-- Rejoindre la communauté, ou afficher son chat si on en fait déjà partie
+O.commu = MakeButton(ov, "", 230, 24)
+O.commu:SetPoint("TOPRIGHT", -18, -34)
+Skin.Primary(O.commu)
+O.commu:SetScript("OnClick", function()
+    if ns.CommunityId() then ns.PlayClick(); ns.ShowCommunityInChat(true) else UI.JoinCommunity() end
+end)
+
+local olist = MakePanel(ov, -84, 32)
+O.scrollText = olist:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+O.scrollText:SetPoint("TOPRIGHT", -8, -8)
+HeaderText(olist, L["Joueur"], 8)
+HeaderText(olist, L["Niv."], 192)
+HeaderText(olist, L["Où"], 232)
+HeaderText(olist, "Addon", 406)
+HeaderLine(olist)
+
+local function WhereText(d)
+    if d.here and d.commu then return L["Ton serveur + communauté"] end
+    if d.here then return L["Ton serveur"] end
+    if d.commu then return L["Autre serveur (communauté)"] end
+    if d.spotted then return L["Repéré dans le chat"] end
+    return "<" .. (d.guildFr or "?") .. ">"
+end
+
+local function WhereColor(d)
+    if d.here then return "|cff33dd55" end
+    if d.commu then return "|cff66aaff" end
+    if d.spotted then return "|cffffb347" end
+    return "|cffc28cff"
+end
+
+local function OnlineTooltip(d)
+    GameTooltip:AddLine("|c" .. ns.ClassHex(d.class) .. ns.ShortName(d.sender) .. "|r")
+    if (d.level or 0) > 0 then GameTooltip:AddLine(L["Niveau "] .. d.level, 0.8, 0.8, 0.8) end
+    GameTooltip:AddLine(WhereText(d), 0.6, 0.8, 1)
+    if d.version then
+        GameTooltip:AddLine("Babillard Forever FR " .. d.version, 0.2, 0.67, 1)
+    elseif d.commu then
+        GameTooltip:AddLine(L["Dans la communauté (addon pas vu sur ton serveur)"], 0.6, 0.6, 0.6, true)
+    else
+        if d.spotted then
+            GameTooltip:AddLine(L["Parle français dans le chat, mais n'a pas encore l'addon ni la communauté."], 1, 0.7, 0.28, true)
+        end
+        if d.guildFr then
+            GameTooltip:AddLine(L["Membre de la guilde francophone <"] .. d.guildFr .. ">.", 0.76, 0.55, 1, true)
+        end
+        GameTooltip:AddLine(L["« Faire connaître » écrit une invitation dans ta boîte de chuchotement : tu l'envoies avec Entrée."], 0.7, 0.7, 0.7, true)
+    end
+    if d.away then GameTooltip:AddLine(L["Absent"], 1, 0.6, 0.2) end
+end
+
+O.rows = {}
+for i = 1, ONLINE_ROWS do
+    local row = MakeRow(olist, i, OnlineTooltip)
+    row.name = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.name:SetPoint("LEFT", 4, 0)
+    row.name:SetWidth(182)
+    row.name:SetJustifyH("LEFT")
+    row.name:SetWordWrap(false)
+    row.level = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.level:SetPoint("LEFT", 188, 0)
+    row.level:SetWidth(36)
+    row.level:SetJustifyH("LEFT")
+    row.where = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.where:SetPoint("LEFT", 228, 0)
+    row.where:SetWidth(172)
+    row.where:SetJustifyH("LEFT")
+    row.where:SetWordWrap(false)
+    row.age = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")   -- version (cachée au survol)
+    row.age:SetPoint("LEFT", 402, 0)
+    AddRowAction(row, L["Chuchoter"], 80,
+        function(d) return not ns.IsMe(d.sender) end,
+        function(d) DoWhisper(d.sender) end)
+    AddRowAction(row, L["Inviter"], 60,
+        function(d) return not ns.IsMe(d.sender) end,
+        function(d) ns.PlayClick(); DoInvite(d.sender) end)
+    AddRowAction(row, L["Faire connaître"], 110,
+        function(d) return (d.spotted or d.guildFr) and not d.here and not d.commu end,
+        function(d) DoWhisper(d.sender, nil, ns.RecruitText()) end)
+    O.rows[i] = row
+end
+
+O.empty = olist:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+O.empty:SetPoint("CENTER", 0, 10)
+O.empty:SetWidth(460)
+
+ov:EnableMouseWheel(true)
+ov:SetScript("OnMouseWheel", function(_, delta)
+    state.onlineScroll = math.max(0, (state.onlineScroll or 0) - delta)
+    UI.Refresh()
+end)
+ov:SetScript("OnShow", function() ns.FocusCommunity() end)
+
+local function RefreshOnline()
+    if ns.CommunityId() then
+        O.commu:SetText(L["Afficher le chat de la communauté"])
+        O.commu:Show()
+    elseif ns.CommunityInvite() then
+        O.commu:SetText(L["Rejoindre la communauté"])
+        O.commu:Show()
+    else
+        O.commu:Hide()
+    end
+    local list = ns.OnlineList()
+    local here, commu, spotted, guild = 0, 0, 0, 0
+    for _, d in ipairs(list) do
+        if d.here then here = here + 1
+        elseif d.commu then commu = commu + 1
+        elseif d.spotted then spotted = spotted + 1
+        elseif d.guildFr then guild = guild + 1 end
+    end
+    O.summary:SetText("|cffffd100" .. #list .. "|r " .. L["en ligne"] .. "  ·  |cff33dd55" .. here .. "|r "
+        .. L["avec l'addon"] .. "  ·  |cff66aaff" .. commu .. "|r " .. L["autres serveurs"] .. "  ·  |cffffb347"
+        .. spotted .. "|r " .. L["repérés au chat"] .. "  ·  |cffc28cff" .. guild .. "|r " .. L["par leur guilde"])
+    local maxOffset = math.max(0, #list - ONLINE_ROWS)
+    state.onlineScroll = math.min(state.onlineScroll or 0, maxOffset)
+    for i, row in ipairs(O.rows) do
+        local d = list[i + state.onlineScroll]
+        row.data = d
+        if d then
+            row.name:SetText("|c" .. ns.ClassHex(d.class) .. ns.ShortName(d.sender) .. "|r" .. (d.away and (" |cffff9933" .. L["(absent)"] .. "|r") or ""))
+            row.level:SetText((d.level or 0) > 0 and d.level or "")
+            row.where:SetText(WhereColor(d) .. WhereText(d) .. "|r")
+            row.age:SetText(d.version and ("v" .. d.version) or "-")
+            row:Show()
+        else
+            row:Hide()
+        end
+    end
+    if #list == 0 then
+        O.empty:SetText(ns.CommunityId() and L["Personne d'autre en ligne pour l'instant.\nLes joueurs avec l'addon apparaissent ici quelques secondes après leur connexion."]
+            or L["Personne d'autre en ligne sur ton serveur pour l'instant.\nRejoins la communauté (|cffffd100/bf communaute|r) pour voir aussi les autres serveurs."])
+    end
+    O.empty:SetShown(#list == 0)
+    O.scrollText:SetText(#list > ONLINE_ROWS and string.format(L["%d-%d sur %d (molette)"], state.onlineScroll + 1,
+        math.min(#list, state.onlineScroll + ONLINE_ROWS), #list) or "")
+end
+
+---------------------------------------------------------------------------
+-- Vue 5 : Commandes. Un bouton par commande /bf, avec la commande écrite dessous pour l'apprendre.
+-- Chaque bouton fait exactement la même chose que la commande tapée dans le chat.
+---------------------------------------------------------------------------
+local cv = views[5]
+local CMD = {}
+
+StaticPopupDialogs["BABILLARDFR_CLEAR_IGNORED"] = {
+    text = L["Retirer tous les joueurs de ta liste d'ignorés?"],
+    button1 = YES or "Oui",
+    button2 = NO or "Non",
+    OnAccept = function() SlashCmdList.BABILLARDFR("ignores vider") end,
+    timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
+}
+
+local function RunSlash(arg)
+    SlashCmdList.BABILLARDFR(arg)
+end
+
+local LANG_NEXT = { auto = "fr", fr = "en", en = "auto" }
+
+-- { titre de section, { { étiquette, commande affichée, description, action(bouton) }, ... } }
+local SECTIONS = {
+    { L["Babillard"], {
+        { L["Groupes"], ns.Cmd(""), L["Ouvre ou ferme le babillard des groupes."], function() UI.SelectView(1) end },
+        { L["Guildes"], ns.Cmd("guildes"), L["Les guildes francophones qui recrutent ou qui ont été repérées."], function() UI.SelectView(2) end },
+        { L["Mon perso"], ns.Cmd("perso"), L["Ton personnage, tes rôles et ton code pour le site."], function() UI.SelectView(3) end },
+        { L["En ligne"], ns.Cmd("enligne"), L["Les francophones en ligne en ce moment."], function() UI.SelectView(4) end },
+    } },
+    { L["Communauté"], {
+        { L["Communauté"], ns.Cmd("communaute"), L["Rejoindre la communauté qui réunit les francophones de tous les serveurs, ou afficher son chat si tu en fais déjà partie."], function() ns.PlayClick(); RunSlash("communaute") end },
+        { L["Site web"], ns.Cmd("site"), L["Le lien de babillard-forever.com, prêt à copier."], function() ns.PlayClick(); RunSlash("site") end },
+        { L["Accueil"], ns.Cmd("bienvenue"), L["Revoir l'accueil: langue, type de serveur, rôles et communauté."], function() ns.PlayClick(); RunSlash("bienvenue") end },
+        { L["Aide"], ns.Cmd("aide"), L["Écrit la liste de toutes les commandes dans le chat."], function() ns.PlayClick(); RunSlash("aide") end },
+    } },
+    { L["Alertes et joueurs"], {
+        { L["Favoris"], ns.Cmd("favoris"), L["Choisir les activités qui déclenchent une alerte."], function(b) ns.PlayClick(); if ns.OpenFavMenu then ns.OpenFavMenu(b) end end },
+        { L["Demandes"], ns.Cmd("demandes"), L["Les groupes à qui tu as chuchoté, écrits dans le chat."], function() ns.PlayClick(); RunSlash("demandes") end },
+        { L["Ignorés"], ns.Cmd("ignores"), L["Les joueurs que tu as ignorés, écrits dans le chat."], function() ns.PlayClick(); RunSlash("ignores") end },
+        { L["Vider les ignorés"], ns.Cmd("ignores vider"), L["Retire tous les joueurs de ta liste d'ignorés (on te demande de confirmer)."], function() ns.PlayClick(); StaticPopup_Show("BABILLARDFR_CLEAR_IGNORED") end },
+    } },
+    { L["Réglages"], {
+        { L["Options"], ns.Cmd("options"), L["Alertes, chat, affichage et repérage des francophones."], function() ns.PlayClick(); RunSlash("options") end },
+        { L["Langue"], ns.Cmd("langue"), L["Français, English ou Auto (la langue du jeu). Un clic passe à la suivante; l'interface se recharge."], function() ns.PlayClick(); RunSlash("langue " .. (LANG_NEXT[ns.db.opts.lang or "auto"] or "auto")) end },
+        { L["Diagnostic"], ns.Cmd("diag"), L["Un texte à copier si les talents ou l'équipement n'apparaissent pas sur le site."], function() ns.PlayClick(); RunSlash("diag") end },
+        { L["Fermer"], L["Échap"], L["Ferme la fenêtre du babillard."], function() ns.PlayClick(); f:Hide() end },
+    } },
+}
+
+SectionTitle(cv, L["Commandes"], 18, -40)
+local cmdIntro = cv:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+cmdIntro:SetPoint("TOPLEFT", 20, -60)
+cmdIntro:SetPoint("RIGHT", -20, 0)
+cmdIntro:SetJustifyH("LEFT")
+cmdIntro:SetText(L["Chaque bouton fait la même chose que la commande écrite dessous: tu peux aussi la taper dans le chat."])
+
+local BTN_W, BTN_H, GAP = 128, 44, 10
+local left = (600 - (4 * BTN_W + 3 * GAP)) / 2
+local y = -86
+CMD.buttons = {}
+for _, sec in ipairs(SECTIONS) do
+    local title = cv:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    title:SetPoint("TOPLEFT", left, y)
+    title:SetText(sec[1])
+    Try(function()
+        title:SetTextColor(1, 0.84, 0.3)
+        local line = Skin.FadeLine(cv, "ARTWORK", 0.6)
+        line:SetPoint("LEFT", title, "RIGHT", 8, 0)
+        line:SetWidth(200)
+    end)
+    for i, item in ipairs(sec[2]) do
+        local b = MakeButton(cv, "", BTN_W, BTN_H)
+        b:SetPoint("TOPLEFT", left + (i - 1) * (BTN_W + GAP), y - 20)
+        b.label = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        b.label:SetPoint("TOP", 0, -8)
+        b.label:SetWidth(BTN_W - 8)
+        b.label:SetText(item[1])
+        b.cmd = b:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        b.cmd:SetPoint("BOTTOM", 0, 7)
+        b.cmd:SetWidth(BTN_W - 8)
+        b.cmd:SetText(item[2])
+        Try(function() b.label:SetTextColor(1, 0.84, 0.25) end)
+        b:SetScript("OnClick", function(self) item[4](self) end)
+        b:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:AddLine(self.label:GetText() or item[1])
+            GameTooltip:AddLine(item[3], 1, 1, 1, true)
+            GameTooltip:AddLine(item[2], 0.6, 0.6, 0.6)
+            GameTooltip:Show()
+        end)
+        b:SetScript("OnLeave", GameTooltip_Hide)
+        CMD.buttons[item[2] .. "|" .. item[1]] = b
+        if item[2] == ns.Cmd("langue") then CMD.lang = b end
+        if item[2] == ns.Cmd("communaute") then CMD.commu = b end
+        if item[2] == ns.Cmd("ignores vider") then CMD.clear = b end
+    end
+    y = y - 20 - BTN_H - 30
+end
+
+local cmdTip = cv:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+cmdTip:SetPoint("TOPLEFT", left, y - 4)
+cmdTip:SetPoint("RIGHT", -20, 0)
+cmdTip:SetJustifyH("LEFT")
+cmdTip:SetText(L["Astuce: fais |cffffd100/who|r dans une zone achalandée (ex. |cffffd100/who 20-30|r) pour repérer d'un coup les guildes francophones autour de toi."])
+
+local function RefreshCommands()
+    if CMD.lang then
+        CMD.lang.label:SetText(L["Langue"] .. " : " .. (ns.db.opts.lang == "fr" and "FR" or ns.db.opts.lang == "en" and "EN" or "Auto"))
+    end
+    if CMD.commu then
+        CMD.commu.label:SetText(ns.CommunityId() and L["Chat commu."] or L["Communauté"])
+    end
+    if CMD.clear then
+        local any = next(ns.db.ignored) ~= nil
+        if any then CMD.clear:Enable() else CMD.clear:Disable() end
+        CMD.clear.label:SetAlpha(any and 1 or 0.4)
+        CMD.clear.cmd:SetAlpha(any and 1 or 0.4)
+    end
+end
+
 function UI.SelectView(i)
     state.view = i
     for k, v in ipairs(views) do v:SetShown(k == i) end
@@ -1329,23 +1626,32 @@ function UI.Refresh()
     if not f:IsShown() or not ns.db then return end
     ns.Prune()
     local status
+    -- Pastilles du jeu (la police de WoW n'a pas le caractère « ● »: il s'affichait comme un petit rectangle)
+    local GREEN = "|TInterface\\COMMON\\Indicator-Green:12:12|t"
     if ns.ChannelIndex() then
-        status = L["|cff33dd55●|r Connecté"]
+        status = GREEN .. " " .. L["Connecté"]
     elseif ns.channelFailed then
-        status = L["|cffff5555●|r Canal indisponible"]
+        status = "|TInterface\\COMMON\\Indicator-Red:12:12|t " .. L["Canal indisponible"]
     else
-        status = L["|cffffd100●|r Connexion..."]
+        status = "|TInterface\\COMMON\\Indicator-Yellow:12:12|t " .. L["Connexion..."]
     end
-    if ns.CommunityId() then status = status .. L["  |cff33dd55●|r Communauté"] end
+    if ns.CommunityId() then status = status .. "   " .. GREEN .. " " .. L["Communauté"] end
+    local nOnline = #ns.OnlineList()
+    if nOnline > 0 then status = status .. "  |cffffd100" .. nOnline .. "|r " .. L["en ligne"] end
     if ns.newVersion then status = status .. "  |cffff8800v" .. ns.newVersion .. L[" disponible|r"] end
     channelStatus:SetText(status)
     UI.UpdateBanner()
+    if UI.UpdateWelcome then UI.UpdateWelcome() end
     if state.view == 1 then
         RefreshGroups()
     elseif state.view == 2 then
         RefreshGuilds()
-    else
+    elseif state.view == 3 then
         RefreshMe()
+    elseif state.view == 4 then
+        RefreshOnline()
+    else
+        RefreshCommands()
     end
 end
 
@@ -1362,12 +1668,233 @@ function UI.Toggle()
     if f:IsShown() then f:Hide() else UI.Open() end
 end
 
-f:SetScript("OnShow", function()
+---------------------------------------------------------------------------
+-- Accueil guidé: s'ouvre une fois, par-dessus la fenêtre (langue, perso, communauté). /bf bienvenue pour le revoir.
+---------------------------------------------------------------------------
+local wz = CreateFrame("Frame", nil, f)
+wz:SetAllPoints(f)
+wz:SetFrameLevel(f:GetFrameLevel() + 40)
+wz:EnableMouse(true)
+wz:EnableMouseWheel(true)
+wz:SetScript("OnMouseWheel", function() end)
+wz:Hide()
+Try(function()
+    local veil = wz:CreateTexture(nil, "BACKGROUND")
+    veil:SetPoint("TOPLEFT", 4, -22)
+    veil:SetPoint("BOTTOMRIGHT", -4, 4)
+    Skin.Gradient(veil, "VERTICAL", 0, 0, 0, 0.92, 0.02, 0.03, 0.06, 0.86)
+end)
+
+local card = CreateFrame("Frame", nil, wz)
+card:SetSize(460, 372)
+card:SetPoint("CENTER", 0, -8)
+Try(function()
+    Skin.GradientFill(card, { 0.03, 0.035, 0.06, 0.98 }, { 0.09, 0.10, 0.16, 0.98 })
+    Skin.Border(card, GOLD, 0.8)
+    local glow = card:CreateTexture(nil, "BORDER")
+    glow:SetPoint("TOPLEFT", 1, -1)
+    glow:SetPoint("TOPRIGHT", -1, -1)
+    glow:SetHeight(120)
+    Skin.Gradient(glow, "VERTICAL", 1, 0.8, 0.35, 0, 1, 0.8, 0.35, 0.10)
+end)
+
+local wzEmblem = card:CreateTexture(nil, "ARTWORK")
+wzEmblem:SetSize(84, 84)
+wzEmblem:SetPoint("TOP", 0, -14)
+wzEmblem:SetTexture(ns.EMBLEM)
+
+local wzTitle = card:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+wzTitle:SetPoint("TOP", 0, -104)
+Try(function() wzTitle:SetTextColor(1, 0.84, 0.3); wzTitle:SetShadowOffset(1, -1) end)
+
+local wzText = card:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+wzText:SetPoint("TOP", 0, -134)
+wzText:SetWidth(400)
+wzText:SetJustifyH("CENTER")
+Try(function() wzText:SetSpacing(2) end)
+
+local wzSkip = CreateFrame("Button", nil, card)
+wzSkip:SetSize(80, 18)
+wzSkip:SetPoint("TOPRIGHT", -8, -6)
+wzSkip.text = wzSkip:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+wzSkip.text:SetPoint("RIGHT")
+wzSkip.text:SetText(L["Passer »"])
+wzSkip:SetScript("OnEnter", function(self) self.text:SetFontObject("GameFontHighlightSmall") end)
+wzSkip:SetScript("OnLeave", function(self) self.text:SetFontObject("GameFontDisableSmall") end)
+
+local steps = {}
+for i = 1, 3 do
+    steps[i] = CreateFrame("Frame", nil, card)
+    steps[i]:SetAllPoints()
+    steps[i]:Hide()
+end
+
+local function SmallLabel(parent, text, y)
+    local s = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    s:SetPoint("TOP", 0, y)
+    s:SetText(text)
+    Try(function() s:SetTextColor(1, 0.84, 0.3) end)
+    return s
+end
+
+-- Étape 1: langue
+SmallLabel(steps[1], "Langue de l'addon  ·  Addon language", -212)
+local langSeg = MakeSegmented(steps[1], { { label = "Français", value = "fr" }, { label = "English", value = "en" } }, 150, 78, -234,
+    function(v) return ns.lang == v end,
+    function(v)
+        if v ~= ns.lang then
+            ns.db.onboardStep = 2          -- après le rechargement, l'accueil reprend à l'étape 2 dans la nouvelle langue
+            ns.SetLanguageChoice(v)
+        end
+    end)
+for _, b in ipairs(langSeg) do b:SetHeight(28) end
+local langNote = steps[1]:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+langNote:SetPoint("TOP", 0, -274)
+langNote:SetWidth(400)
+langNote:SetText(L["Changer de langue recharge l'interface (quelques secondes)."])
+
+-- Étape 2: type de serveur et rôles
+local RS_SHORT = { normal = "PvE", pvp = "PvP", rp = "RP", rp_pvp = "RP-PvP" }
+local rsItems = {}
+for _, id in ipairs(ns.RULESET_ORDER) do tinsert(rsItems, { label = RS_SHORT[id] or ns.RulesetName(id), value = id }) end
+SmallLabel(steps[2], L["Ton type de serveur"], -190)
+local rsSeg = MakeSegmented(steps[2], rsItems, 98, 26, -210,
+    function(v) return ns.MyRuleset() == v end,
+    function(v)
+        ns.db.ruleset = v
+        UI.UpdateWelcome()
+        ns.Refresh()
+    end)
+for _, b in ipairs(rsSeg) do b:SetHeight(26) end
+SmallLabel(steps[2], L["Tes rôles"], -250)
+local wzRoles = MakeRoleIcons(steps[2], 173, -270, 34, function() return ns.db.myRoles end, function() ns.Refresh() end)
+local rsHint = steps[2]:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+rsHint:SetPoint("TOP", 0, -312)
+rsHint:SetWidth(410)
+
+-- Étape 3: la communauté
+local commuStatus = steps[3]:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+commuStatus:SetPoint("TOP", 0, -214)
+commuStatus:SetWidth(410)
+local commuBtn = MakeButton(steps[3], L["Rejoindre la communauté"], 240, 32)
+commuBtn:SetPoint("TOP", 0, -242)
+Skin.Primary(commuBtn)
+commuBtn:SetScript("OnClick", function()
+    if ns.CommunityId() then
+        if ns.ShowCommunityInChat then ns.ShowCommunityInChat(true) end
+    else
+        UI.JoinCommunity()
+    end
+end)
+local commuNote = steps[3]:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+commuNote:SetPoint("TOP", 0, -284)
+commuNote:SetWidth(410)
+
+-- Navigation
+local wzBack = MakeButton(card, L["Précédent"], 110, 28)
+wzBack:SetPoint("BOTTOMLEFT", 16, 14)
+local wzNext = MakeButton(card, L["Suivant"], 150, 28)
+wzNext:SetPoint("BOTTOMRIGHT", -16, 14)
+Skin.Primary(wzNext)
+local dots = {}
+for i = 1, 3 do
+    local d = card:CreateTexture(nil, "OVERLAY")
+    d:SetSize(8, 8)
+    d:SetPoint("BOTTOM", (i - 2) * 16, 24)
+    dots[i] = d
+end
+
+local wzStep = 1
+local function FinishWelcome()
+    ns.db.onboarded = true
+    ns.db.onboardStep = nil
+    wz:Hide()
+    UI.SelectView(ns.MyRuleset() and 1 or 3)
+end
+
+function UI.WelcomeShown()
+    return wz:IsShown()
+end
+
+function UI.UpdateWelcome()
+    if not wz:IsShown() then return end
+    for i, s in ipairs(steps) do s:SetShown(i == wzStep) end
+    for i, d in ipairs(dots) do
+        if i == wzStep then d:SetColorTexture(1, 0.84, 0.3, 1) else d:SetColorTexture(0.4, 0.4, 0.45, 0.8) end
+    end
+    wzBack:SetShown(wzStep > 1)
+    wzNext:SetText(wzStep == 3 and L["C'est parti!"] or L["Suivant"])
+    wzNext:Enable()
+    if wzStep == 1 then
+        wzTitle:SetText(L["Bienvenue!"])
+        wzText:SetText(L["Babillard Forever FR est le point de rencontre des joueurs francophones de WoW Forever : groupes, guildes, communauté et qui est en ligne."])
+        langSeg.Update()
+    elseif wzStep == 2 then
+        wzTitle:SetText(L["Ton personnage"])
+        wzText:SetText(L["Dans Forever, on ne groupe qu'avec le même type de serveur. Ton choix sert à te montrer les bonnes annonces."])
+        rsSeg.Update()
+        wzRoles.Update()
+        if ns.MyRuleset() then
+            rsHint:SetText(L["|cff33dd55Parfait!|r Tes rôles servent aux alertes : l'addon te prévient quand un groupe cherche ton rôle."])
+        else
+            rsHint:SetText(L["|cffff8800Choisis ton type de serveur pour continuer.|r"])
+            wzNext:Disable()
+        end
+    else
+        wzTitle:SetText(L["Rejoins tous les francophones"])
+        wzText:SetText(L["Forever te place sur un serveur parmi plusieurs. La communauté Babillard Forever FR relie les francophones de TOUS les serveurs : son chat, ses annonces et qui est en ligne."])
+        if ns.CommunityId() then
+            commuStatus:SetText("|TInterface\\RaidFrame\\ReadyCheck-Ready:16:16|t " .. L["|cff33dd55Tu fais partie de la communauté!|r"])
+            commuBtn:SetText(L["Afficher son chat"])
+            commuBtn:Show()
+            commuNote:SetText(L["Ajoute le chat de la communauté à ta fenêtre de chat pour parler avec tout le monde."])
+        elseif ns.CommunityInvite() then
+            commuStatus:SetText("")
+            commuBtn:SetText(L["Rejoindre la communauté"])
+            commuBtn:Show()
+            commuNote:SetText(L["Le jeu ouvre sa fenêtre pour rejoindre : accepte, et c'est fait!"])
+        else
+            commuStatus:SetText(L["|cffffd100Pas encore de communauté pour ta faction ou ta région.|r"])
+            commuBtn:Hide()
+            commuNote:SetText(L["Crée-la! Touche J, puis « Créer une communauté » nommée « "] .. ns.COMMUNITY_NAME
+                .. L[" », fais un lien d'invitation qui n'expire pas et envoie-le sur babillard-forever.com."])
+        end
+    end
+end
+
+wzBack:SetScript("OnClick", function()
+    ns.PlayClick()
+    wzStep = math.max(1, wzStep - 1)
+    UI.UpdateWelcome()
+end)
+wzNext:SetScript("OnClick", function()
+    ns.PlayClick()
+    if wzStep >= 3 then FinishWelcome() return end
+    wzStep = wzStep + 1
+    UI.UpdateWelcome()
+end)
+wzSkip:SetScript("OnClick", function()
+    ns.PlayClick()
+    FinishWelcome()
+end)
+
+function UI.ShowWelcome(step)
+    if not f:IsShown() then f:Show() end
+    wzStep = step or ns.db.onboardStep or 1
+    wz:Show()
+    banner:Hide()
+    UI.UpdateWelcome()
+end
+
+f:SetScript("OnShow", function(self)
+    if UIFrameFadeIn then pcall(UIFrameFadeIn, self, 0.15, 0, 1) end
     ns.EnsureChannel()
     ns.RequestAll()
     RestoreFormFromListing()
     UI.UpdateMyPanel()
     UI.SelectView(state.view)
+    if not ns.db.onboarded then UI.ShowWelcome() end
 end)
+
 
 end -- ns.BuildUI

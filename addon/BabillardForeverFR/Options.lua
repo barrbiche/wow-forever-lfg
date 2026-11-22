@@ -53,6 +53,12 @@ local OPTIONS = {
     { "header", L["Chat"] },
     { "chatReading",     L["Lire les annonces du chat et les ajouter au babillard"],
       L["Les annonces « LFM » du chat (un groupe qui cherche des joueurs: général, recherche de groupe, cris) apparaissent avec la mention [chat]. Elles sont lues à l'écran seulement: rien n'est envoyé."] },
+    { "spotFrench",      L["Repérer les joueurs qui parlent français dans le chat"],
+      L["Les joueurs qui écrivent en français dans le chat public (général, dire, crier) apparaissent dans l'onglet En ligne, même sans l'addon. Tout se fait sur ton écran: rien n'est envoyé."] },
+    { "frTag",           L["Afficher [FR] devant les messages des francophones"],
+      L["Dans ta fenêtre de chat seulement: [FR] devant les messages des joueurs qui ont l'addon ou qui ont été repérés en train de parler français."] },
+    { "spotGuilds",      L["Repérer les guildes francophones (d'après le nom de guilde)"],
+      L["Quand tu croises un joueur (survol, cible, noms au-dessus des têtes, groupe, /who), son nom de guilde est vérifié. Les guildes au nom francophone apparaissent dans l'onglet Guildes, et leurs membres croisés dans l'onglet En ligne. Tout se fait sur ton écran: rien n'est envoyé."] },
     { "alsoChat",        L["Publier aussi mon annonce dans le chat"],
       L["Quand tu cliques sur Publier, l'annonce est aussi envoyée dans « Recherche de groupe » (ou « Général »). Une fois par minute au maximum, seulement quand tu cliques."] },
     { "alsoCommunity",   L["Publier aussi mes annonces dans la communauté Babillard Forever FR"],
@@ -126,7 +132,7 @@ function ns.OpenFavMenu(owner)
     MenuUtil.CreateContextMenu(owner or UIParent, function(_, root)
         root:CreateTitle(L["Alertes : activités favorites"])
         for _, cat in ipairs(ns.CATEGORIES) do
-            local sub = root:CreateButton(cat)
+            local sub = root:CreateButton(ns.CatName and ns.CatName(cat) or cat)
             for _, a in ipairs(ns.ACTIVITIES[cat]) do
                 sub:CreateCheckbox(a.name,
                     function() return ns.db.favs[a.key] and true or false end,
@@ -207,23 +213,21 @@ mm:SetFrameStrata("MEDIUM")
 mm:SetFrameLevel(8)
 mm:RegisterForClicks("AnyUp")
 mm:RegisterForDrag("LeftButton")
-mm:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
 
-local bg = mm:CreateTexture(nil, "BACKGROUND")
-bg:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
-bg:SetSize(20, 20)
-bg:SetPoint("TOPLEFT", 7, -5)
-
+-- L'emblème a déjà son anneau doré: pas besoin du cadre rond du jeu.
 local icon = mm:CreateTexture(nil, "ARTWORK")
-icon:SetTexture(ns.ICON)
-icon:SetSize(17, 17)
-icon:SetPoint("TOPLEFT", 7, -6)
-icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-
-local border = mm:CreateTexture(nil, "OVERLAY")
-border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-border:SetSize(53, 53)
-border:SetPoint("TOPLEFT")
+icon:SetTexture(ns.EMBLEM32)
+icon:SetSize(28, 28)
+icon:SetPoint("CENTER")
+mm:SetHighlightTexture(ns.EMBLEM32)
+local hl = mm:GetHighlightTexture()
+if hl then
+    hl:ClearAllPoints()
+    hl:SetSize(28, 28)
+    hl:SetPoint("CENTER")
+    hl:SetBlendMode("ADD")
+    hl:SetAlpha(0.35)
+end
 
 local function UpdatePosition()
     local a = math.rad(ns.db.minimap.angle or 220)
@@ -263,6 +267,8 @@ mm:SetScript("OnEnter", function(self)
     GameTooltip:AddLine("Babillard Forever FR")
     local n = 0
     for _ in pairs(ns.listings) do n = n + 1 end
+    local online = ns.OnlineList and #ns.OnlineList() or 0
+    GameTooltip:AddLine(online .. " " .. L["francophone(s) en ligne"], 1, 0.84, 0.3)
     GameTooltip:AddLine(n .. L[" annonce(s) active(s)"], 0.6, 0.8, 1)
     if ns.my then GameTooltip:AddLine(L["Ton annonce est active"], 0.2, 0.87, 0.33) end
     GameTooltip:AddLine(" ")

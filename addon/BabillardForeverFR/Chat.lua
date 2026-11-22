@@ -251,3 +251,159 @@ function ns.ChatText(l, withTag)
     if withTag then text = text .. " [Babillard FR]" end
     return ns.CutUtf8(text, 250)
 end
+
+---------------------------------------------------------------------------
+-- Repérer le français dans le chat public
+-- Sert à trouver les francophones, même ceux qui n'ont pas l'addon. Prudent: un seul mot ne suffit pas. Il faut au
+-- moins un mot typiquement français, assez d'indices au total, et plus de français que de mots courants d'autres
+-- langues (anglais, espagnol, portugais, néerlandais, allemand, italien).
+---------------------------------------------------------------------------
+local function Set(list)
+    local s = {}
+    for w in list:gmatch("%S+") do s[w] = true end
+    return s
+end
+
+-- Mots qu'on ne voit presque qu'en français (y compris le français du Québec et le langage du chat)
+local FR_STRONG = Set([[
+je vous nous est pas avec pour mais oui merci salut bonjour bonsoir cherche recherche qqn qq1 quelqu dans sur une des
+les aussi très tres alors encore peut veux veut suis chui jsuis fait faire avoir être etre où quoi comment pourquoi
+combien quand rien tout tous toute avez ai moi toi lui leur eux notre votre nos vos ici là déjà deja beaucoup svp stp
+mdr ptdr bcp pk pcq parce jamais toujours besoin manque groupe donjon guilde ça avant après apres demain soir
+pis tsé faque fak chu pantoute icitte tabarnak criss ostie calisse asteure astheure jpense jvais jsais chai bin vais
+sais pense peux dois doit fais merde ouais bienvenue niveau
+]])
+-- Mots courants en français mais aussi dans d'autres langues: ils comptent un peu
+local FR_WEAK = Set([[
+la le de du un et en on ou que qui il elle ils elles mon ton son ma ta sa mes tes ses ce cet cette ces au aux y tu bon
+plus si ne se me te non
+]])
+-- Mots courants d'autres langues: s'ils dominent, ce n'est pas du français
+local OTHER = Set([[
+the and you is are for with what need anyone any have has just this that to in of it my your i im can will would should
+does did dont want looking lf lfm lfg wts wtb pls plz please thanks thx guys group who how why when where there they
+them but not all one get got go going be was were so do he she we us our hello hey yes
+some more like know think tonight today time really good now here out up about from by at an or off see come make
+take let lets
+el los las con para por pero una como es esta está hola gracias alguien busco necesito tengo yo muy más mas
+você voce não nao uma com obrigado alguém eu tem isso
+ik het een niet wat van voor met zijn hebben ook maar nog wie hoe jij jou
+ich und der die das nicht ist mit für fur auch aber noch wer wie sucht suche gruppe kann bin hab habe
+che per sono gli della anche cerco ciao grazie qualcuno
+]])
+-- Préfixes élidés (j'ai, c'est, qu'il, n'importe…): presque uniquement français
+local ELISION_STRONG = Set("j c qu n s m t jai cest")
+local ELISION_WEAK = Set("l d")
+-- Accents très français (è ê à ç ù â î ô û ë ï œ); « é » existe aussi en espagnol et en portugais
+local FR_ACCENTS = { "\195\168", "\195\170", "\195\160", "\195\167", "\195\185", "\195\162", "\195\174", "\195\180",
+    "\195\187", "\195\171", "\195\175", "\197\147" }
+local E_ACUTE = "\195\169"
+
+-- string.lower ne touche pas aux majuscules accentuées (É, À, Ç…): on les met en minuscules nous-mêmes.
+local function LowerFr(s)
+    s = s:lower()
+    return (s:gsub("\195([\128-\158])", function(c) return "\195" .. string.char(c:byte() + 32) end))
+end
+
+function ns.LooksFrench(text)
+    if type(text) ~= "string" then return false end
+    local len = #text
+    if len < 8 or len > 400 then return false end
+    -- liens et couleurs du jeu enlevés, apostrophe typographique remplacée
+    local t = text:gsub("|H.-|h(.-)|h", "%1"):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    t = LowerFr(t:gsub("\226\128\153", "'"))
+    local strong, weak, other, words = 0, 0, 0, 0
+    for w in t:gmatch("[%w\128-\255']+") do
+        words = words + 1
+        local pre, rest = w:match("^(%w+)'(.*)$")
+        if pre then
+            if ELISION_STRONG[pre] then strong = strong + 1 elseif ELISION_WEAK[pre] then weak = weak + 1 end
+            w = rest
+        end
+        w = w:gsub("'", "")
+        if w ~= "" then
+            if FR_STRONG[w] then strong = strong + 1
+            elseif FR_WEAK[w] then weak = weak + 1
+            elseif OTHER[w] then other = other + 1 end
+        end
+    end
+    -- Au moins deux mots typiquement français, ou un seul avec plusieurs petits mots français autour.
+    if words < 3 or strong == 0 or (strong == 1 and weak < 3) then return false end
+    local score = strong * 2 + weak * 0.5
+    for _, a in ipairs(FR_ACCENTS) do
+        if t:find(a, 1, true) then score = score + 1.5 break end
+    end
+    if t:find(E_ACUTE, 1, true) then score = score + 0.5 end
+    return score >= 3 and score > other * 2
+end
+
+---------------------------------------------------------------------------
+-- Repérer un nom de guilde francophone (« Les Fous du Roi », « Ordre de la Lumière », « Québec Libre »…)
+-- Les noms de guilde sont courts: on se fie au vocabulaire typique des guildes en français, aux mots d'identité
+-- (Québec, Belgique, francophone…), aux accents et aux articles. Les mots anglais, espagnols, allemands ou néerlandais
+-- font pencher vers « pas francophone ».
+---------------------------------------------------------------------------
+-- Mots d'identité: un seul suffit
+local GUILD_IDENTITY = Set([[
+québec quebec québécois québécoise québécois quebecois quebecoise qc mtl montréal montreal francophone francophones
+francophonie français française françaises francais francaise francaises franco francos belge belges belgique
+wallonie suisse romandie romand romands acadie acadien acadiens acadienne gaulois gaule bretagne tabarnak tabarnac
+câlisse calisse câlice poutine érable nordiques sacrebleu frenchies french frenchy
+]])
+-- Vocabulaire de guilde typiquement français (orthographe différente de l'anglais)
+local GUILD_FR = Set([[
+les des du aux ordre chevaliers chevalier gardiens gardiennes gardien ombres ombre lames lame loups loup lumière
+lumiere ténèbres tenebres épée épées epee epees flamme flammes cendres cendre étoile étoiles etoile etoiles lune
+soleil ciel enfer paradis âme âmes ame ames coeur coeurs cœur cœurs esprit esprits dieux démons anges ange bêtes
+chasse chasseurs chasseur guerriers guerrier sorciers sorcier voleurs voleur aventuriers explorateurs rebelles rois roi
+reines reine seigneurs seigneur compagnons compagnie confrérie confrerie fraternité fraternite famille amis potes
+copains équipe equipe escouade bande armée armee légion garde gardes cercle conseil royaume terres forêt foret
+montagne montagnes nord sud ouest nuit aube crépuscule crepuscule orage tempête tempete tonnerre glace feu vent
+pierre fer acier argent noir noirs noire noires blanc blancs blanche blanches rouge rouges vert verts sombre sombres
+éternel éternels eternel eternels immortels maudit maudits oubliés oublies perdus sacré sacrés sacre fous fou folie
+joyeux vieux vieilles petits grands nouveau nouvelle derniers premiers élite héros heros héritiers croisés croises
+croisade enfants fils frères freres soeurs sœurs mercenaires pour vive avec sans nous notre nos écarlate ecarlate
+]])
+-- Mots courts partagés avec d'autres langues: un petit indice seulement
+local GUILD_WEAK = Set("la le de et en un une l d")
+-- Mots d'autres langues fréquents dans les noms de guilde
+local GUILD_OTHER = Set([[
+the of and for knights knight order guild club fan team squad legion brotherhood sons children lords lord kings king
+queens queen wolves wolf blades blade shadows shadow light darkness dark black white red blood fire ice storm night day
+dawn sun moon star stars iron steel gold silver heroes hero guardians guardian guard army empire kingdom crusade
+crusaders hunters hunter warriors warrior raiders raid casual casuals hardcore elite gaming gamers friends family
+crew gang house our my we
+los las del el y familia hermandad orden caballeros guardianes
+der die das und von zu
+het van een
+]])
+
+-- Les mots sont comparés sans majuscules; les accents sont gardés (ils comptent comme indice).
+function ns.LooksFrenchGuild(name)
+    if type(name) ~= "string" or name == "" or #name > 60 then return false end
+    local t = LowerFr(name:gsub("\226\128\153", "'"))
+    local identity, strong, weak, other, words = 0, 0, 0, 0, 0
+    for w in t:gmatch("[%w\128-\255']+") do
+        words = words + 1
+        local pre, rest = w:match("^(%w+)'(.*)$")
+        if pre then
+            if GUILD_WEAK[pre] then weak = weak + 1 end
+            w = rest
+        end
+        w = w:gsub("'", "")
+        if w ~= "" then
+            if GUILD_IDENTITY[w] then identity = identity + 1
+            elseif GUILD_FR[w] then strong = strong + 1
+            elseif GUILD_WEAK[w] then weak = weak + 1
+            elseif GUILD_OTHER[w] then other = other + 1 end
+        end
+    end
+    if words == 0 then return false end
+    local score = identity * 3 + strong * 2 + weak * 0.5
+    for _, a in ipairs(FR_ACCENTS) do
+        if t:find(a, 1, true) then score = score + 1.5 break end
+    end
+    if t:find(E_ACUTE, 1, true) then score = score + 1 end
+    if identity > 0 then return other <= identity + strong end
+    return score >= 2.5 and score > other * 2
+end

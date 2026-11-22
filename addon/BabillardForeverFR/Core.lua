@@ -4,6 +4,7 @@ local L = ns.L
 
 ns.listings = {}   -- [expediteur] = annonce de groupe
 ns.guilds   = {}   -- [nomGuilde-faction] = annonce de guilde
+ns.online   = {}   -- [nom] = joueur avec l'addon vu récemment sur mon serveur (voir « Qui est en ligne »)
 ns.my       = nil  -- mon annonce de groupe active
 ns.myGuild  = nil  -- l'annonce de ma guilde active
 
@@ -24,6 +25,9 @@ local DEFAULTS = {
         sameRuleset     = true,
         levelOnly       = true,
         chatReading     = true,    -- lire les annonces du chat (« [chat] »)
+        spotFrench      = true,    -- repérer les joueurs qui parlent français dans le chat public
+        frTag           = true,    -- afficher [FR] devant les messages des francophones dans le chat
+        spotGuilds      = true,    -- repérer les guildes francophones (d'après le nom de guilde)
         alertChat       = false,   -- alertes aussi pour les annonces lues dans le chat
         alsoChat        = false,   -- publier aussi dans le chat (au clic seulement)
         chatTag         = false,   -- ajouter « [Babillard FR] » aux annonces du chat
@@ -36,6 +40,8 @@ local DEFAULTS = {
     favs     = {},     -- activités favorites : [cléActivité] = true
     ignored  = {},     -- joueurs ignorés : [nomEnMinuscules] = true
     known    = {},     -- joueurs qui ont l'addon : [Nom-Royaume] = date
+    francos  = {},     -- joueurs repérés en train de parler français : [Nom] = date
+    frGuilds = {},     -- guildes francophones : [Guilde] = { t = date, who = membre croisé, faction }
     welcomed = false,
 }
 
@@ -43,7 +49,7 @@ local function ApplyDefaults(db, defaults)
     for k, v in pairs(defaults) do
         if db[k] == nil then
             db[k] = (type(v) == "table") and CopyTable(v) or v
-        elseif type(v) == "table" and type(db[k]) == "table" and k ~= "myRoles" and k ~= "known" then
+        elseif type(v) == "table" and type(db[k]) == "table" and k ~= "myRoles" and k ~= "known" and k ~= "francos" and k ~= "frGuilds" then
             ApplyDefaults(db[k], v)
         end
     end
@@ -1330,6 +1336,18 @@ local function AddFlagToTooltip(tt)
         end
         if found then
             tt:AddLine("|cff33aaff[FR]|r |cffaaaaaaBabillard Forever FR|r")
+        else
+            local fr = ns.db.francos
+            local franco = fr[ns.NormalizeName(name)]
+            if not franco and type(realm) == "string" and realm ~= "" then franco = fr[ns.NormalizeName(name .. " " .. realm)] end
+            if franco then
+                tt:AddLine("|cff33aaff[FR]|r |cffaaaaaa" .. L["Francophone"] .. "|r")
+            elseif ns.db.opts.spotGuilds then
+                local guild = GetGuildInfo(unit)
+                if guild and not (issecretvalue and issecretvalue(guild)) and ns.IsFrenchGuild(guild) then
+                    tt:AddLine("|cffc28cff[FR]|r |cffaaaaaa" .. L["Guilde francophone"] .. "|r")
+                end
+            end
         end
     end)
 end
@@ -1338,6 +1356,353 @@ if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and
     TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, AddFlagToTooltip)
 else
     GameTooltip:HookScript("OnTooltipSetUnit", AddFlagToTooltip)
+end
+
+---------------------------------------------------------------------------
+-- Qui est en ligne
+-- Sur mon serveur: chaque addon dit « je suis là » à la connexion (H2) puis toutes les 5 minutes (H3), et répond au
+-- « je suis là » des nouveaux venus. Sur les autres serveurs: les membres en ligne de la communauté, que le jeu connaît.
+---------------------------------------------------------------------------
+ns.ONLINE_TIMEOUT = 12 * 60   -- sans nouvelles depuis 12 min = parti
+local lastPresenceReply = -1000
+
+function ns.SendPresence(cmd)
+    local _, class = UnitClass("player")
+    ns.Send((cmd or "H3") .. ";" .. ns.MyLevel() .. ";" .. (class or "") .. ";" .. ns.VERSION)
+end
+
+function ns.SeenOnline(sender, level, class, version)
+    if not ns.online[sender] then ns.onlineDirty = true end
+    local o = ns.online[sender] or { name = sender }
+    o.seen = GetTime()
+    level = tonumber(level)
+    if level and level > 0 then o.level = level end
+    if type(class) == "string" and class ~= "" then o.class = class end
+    if type(version) == "string" and version ~= "" then o.version = version end
+    ns.online[sender] = o
+end
+
+-- Un nouveau venu dit bonjour: on répond une fois (au hasard dans les secondes qui suivent, pour ne pas que tout
+-- le monde réponde en même temps), au plus une fois par 30 secondes même si plusieurs arrivent ensemble.
+-- Avec beaucoup de monde, seule une partie répond (environ 25 réponses par arrivée): le nouveau venu voit les autres
+-- à leur prochain signal régulier (5 minutes au plus). Ça évite des centaines de messages à chaque connexion.
+local REPLY_TARGET = 25
+local function ReplyPresence()
+    if GetTime() - lastPresenceReply < 30 then return end
+    local n = 0
+    for _ in pairs(ns.online) do n = n + 1 end
+    if n > REPLY_TARGET and math.random() > REPLY_TARGET / n then return end
+    lastPresenceReply = GetTime()
+    C_Timer.After(0.5 + math.random() * 6, function() ns.SendPresence("H3") end)
+end
+
+function ns.PruneOnline()
+    local limit = GetTime() - ns.ONLINE_TIMEOUT
+    for k, o in pairs(ns.online) do
+        if o.seen < limit then ns.online[k] = nil; ns.onlineDirty = true end
+    end
+end
+
+local CLASS_FILES = {}
+local function ClassFile(classID)
+    if not classID then return "" end
+    if CLASS_FILES[classID] == nil then
+        local file
+        if C_CreatureInfo and C_CreatureInfo.GetClassInfo then
+            local ok, info = pcall(C_CreatureInfo.GetClassInfo, classID)
+            if ok and type(info) == "table" then file = info.classFile end
+        end
+        if not file and GetClassInfo then
+            local ok, _, f = pcall(GetClassInfo, classID)
+            if ok then file = f end
+        end
+        CLASS_FILES[classID] = file or ""
+    end
+    return CLASS_FILES[classID]
+end
+
+-- Demande au jeu de tenir à jour qui est en ligne dans la communauté (à l'ouverture de l'onglet En ligne).
+function ns.FocusCommunity()
+    local clubId = ns.CommunityId()
+    if clubId and C_Club and C_Club.FocusMembers then pcall(C_Club.FocusMembers, clubId) end
+end
+
+-- Membres de la communauté en jeu en ce moment (pas ceux sur l'application mobile). Gardé 15 secondes: une grande
+-- communauté peut avoir des centaines de membres, inutile de tout relire à chaque rafraîchissement.
+local commuCache, commuCacheTime = nil, -1000
+
+-- Oublie les recherches gardées en mémoire (on vient de rejoindre ou de quitter une communauté).
+function ns.ResetCommunityCache()
+    commuCacheTime = -1000
+    ns.onlineDirty = true
+    if ns.ResetCommunitySearch then ns.ResetCommunitySearch() end
+end
+
+function ns.CommunityOnline()
+    if commuCache and GetTime() - commuCacheTime < 15 then return commuCache end
+    local out = {}
+    commuCache, commuCacheTime = out, GetTime()
+    local clubId = ns.CommunityId()
+    if not clubId or not C_Club or not C_Club.GetClubMembers then return out end
+    local ok, ids = pcall(C_Club.GetClubMembers, clubId)
+    if not ok or type(ids) ~= "table" then return out end
+    local P = Enum and Enum.ClubMemberPresence
+    for _, id in ipairs(ids) do
+        local ok2, m = pcall(C_Club.GetMemberInfo, clubId, id)
+        if ok2 and type(m) == "table" and not m.isSelf and type(m.name) == "string" then
+            local p = m.presence
+            local inGame = P and (p == P.Online or p == P.Away or p == P.Busy) or (not P and p ~= 3 and p ~= 2)
+            if inGame then
+                tinsert(out, { name = ns.CleanName(m.name), level = m.level, class = ClassFile(m.classID), away = P and p == P.Away })
+            end
+        end
+    end
+    return out
+end
+
+---------------------------------------------------------------------------
+-- Francophones repérés dans le chat public (même sans l'addon)
+---------------------------------------------------------------------------
+ns.francoSeen = {}            -- [nom] = GetTime() du dernier message vu (pour « En ligne »)
+ns.SPOT_ONLINE = 20 * 60      -- vu parler dans les 20 dernières minutes = en ligne
+local lastSpotText, lastSpotSender, lastSpotResult
+
+-- Appelé pour chaque message public (et par le filtre du chat). Rapide: un francophone déjà connu n'est pas réanalysé,
+-- et le même message vu par plusieurs fenêtres de chat n'est analysé qu'une fois.
+function ns.SpotFrench(text, sender)
+    local db = ns.db
+    if not db or not db.opts.spotFrench then return false end
+    if issecretvalue and (issecretvalue(text) or issecretvalue(sender)) then return false end
+    if type(text) ~= "string" or type(sender) ~= "string" or sender == "" then return false end
+    if text == lastSpotText and sender == lastSpotSender then return lastSpotResult end
+    lastSpotText, lastSpotSender = text, sender
+    local name = ns.NormalizeName(sender)
+    if not name or ns.IsMe(name) then lastSpotResult = false return false end
+    local now = GetTime()
+    if db.francos[name] or db.known[name] then
+        if not ns.francoSeen[name] then ns.onlineDirty = true end
+        ns.francoSeen[name] = now
+        lastSpotResult = true
+        return true
+    end
+    lastSpotResult = ns.LooksFrench(text)
+    if lastSpotResult then
+        db.francos[name] = time()
+        ns.francoSeen[name] = now
+        ns.onlineDirty = true
+        ns.RefreshSoon()
+    end
+    return lastSpotResult
+end
+
+function ns.IsFrancophone(name)
+    name = ns.NormalizeName(name)
+    return name and ns.db and (ns.db.known[name] or ns.db.francos[name]) and true or false
+end
+
+-- [FR] devant les messages des francophones (affichage seulement: le message lui-même ne change pas)
+local FR_TAG = "|cff33aaff[FR]|r "
+local function FrTagFilter(_, _, msg, sender, ...)
+    if not ns.db or not ns.db.opts.frTag then return false end
+    if issecretvalue and (issecretvalue(msg) or issecretvalue(sender)) then return false end
+    if type(msg) ~= "string" or type(sender) ~= "string" then return false end
+    ns.SpotFrench(msg, sender)
+    local name = ns.NormalizeName(sender)
+    if name and not ns.IsMe(name) and (ns.db.known[name] or ns.db.francos[name]) then
+        return false, FR_TAG .. msg, sender, ...
+    end
+    return false
+end
+if ChatFrame_AddMessageEventFilter then
+    for _, e in ipairs({ "CHAT_MSG_CHANNEL", "CHAT_MSG_SAY", "CHAT_MSG_YELL" }) do
+        pcall(ChatFrame_AddMessageEventFilter, e, FrTagFilter)
+    end
+end
+
+-- Message pour faire connaître la communauté et l'addon à un francophone repéré (écrit dans la boîte de chuchotement,
+-- envoyé seulement si le joueur appuie sur Entrée).
+function ns.RecruitText()
+    local code = ns.CommunityInvite()
+    local text = L["Salut! On regroupe les francophones de Forever : l'addon Babillard Forever FR (CurseForge)"]
+    if code then
+        text = text .. L[" et la communauté en jeu : "] .. "https://www.worldofwarcraft.com/invite/" .. code
+            .. "?region=" .. ns.MyRegion() .. "&faction=" .. ns.MyFaction()
+    end
+    return ns.CutUtf8(text .. L[". Au plaisir!"], 250)
+end
+
+---------------------------------------------------------------------------
+-- Guildes francophones: le nom de guilde des joueurs croisés (survol, cible, plaques de nom, groupe, /qui)
+-- Une guilde est francophone si son nom l'est (ns.LooksFrenchGuild), si elle est annoncée par l'addon, ou si deux
+-- francophones confirmés (addon ou français dans le chat) en font partie.
+---------------------------------------------------------------------------
+ns.guildSeen = {}         -- [nom] = { t = GetTime(), guild = "Les Fous du Roi" }: membres croisés (pour « En ligne »)
+local guildVerdict = {}   -- [guilde] = true/false: chaque nom de guilde n'est analysé qu'une fois par session
+local guildFrancos = {}   -- [guilde] = { [nom] = true }: francophones confirmés vus dans cette guilde
+
+-- Note une guilde francophone (db.frGuilds[guilde] = { t = date, who = dernier membre croisé, faction = ... }).
+local function RememberGuild(guild, who, faction)
+    local e = ns.db.frGuilds[guild]
+    if type(e) ~= "table" then
+        e = {}
+        ns.db.frGuilds[guild] = e
+    end
+    e.t = time()
+    if who then e.who = who end
+    if faction and faction ~= "" then e.faction = faction end
+    return e
+end
+
+function ns.IsFrenchGuild(guild)
+    if type(guild) ~= "string" or guild == "" or not ns.db then return false end
+    if ns.db.frGuilds[guild] then return true end
+    local v = guildVerdict[guild]
+    if v == nil then
+        v = ns.LooksFrenchGuild(guild) and true or false
+        guildVerdict[guild] = v
+    end
+    if v then RememberGuild(guild) end
+    return v
+end
+
+-- Une guilde annoncée par l'addon est francophone par définition.
+function ns.RememberAnnouncedGuild(guild, who, faction)
+    if ns.db and type(guild) == "string" and guild ~= "" then RememberGuild(guild, who, faction) end
+end
+
+-- Nom complet d'une unité. Forever peut renvoyer le nom de famille comme deuxième valeur (voir ns.MyFullName).
+local function UnitNameFr(unit)
+    local n, r = UnitName(unit)
+    if issecretvalue and (issecretvalue(n) or issecretvalue(r)) then return nil end
+    if type(n) ~= "string" or n == "" or n == UNKNOWNOBJECT then return nil end
+    if type(r) == "string" and r ~= "" and not n:find(" ", 1, true) then n = n .. " " .. r end
+    return ns.NormalizeName(n)
+end
+
+-- Un joueur croisé fait partie d'une guilde: s'il est de ma faction et que la guilde est francophone, il compte.
+local function SeenInGuild(name, guild, faction)
+    if not name or type(guild) ~= "string" or guild == "" or ns.IsMe(name) then return end
+    if issecretvalue and issecretvalue(guild) then return end
+    local db = ns.db
+    if not db.frGuilds[guild] and (db.known[name] or db.francos[name]) then
+        local set = guildFrancos[guild] or {}
+        guildFrancos[guild] = set
+        set[name] = true
+        local n = 0
+        for _ in pairs(set) do n = n + 1 end
+        if n >= 2 then RememberGuild(guild, name, faction) end
+    end
+    if not ns.IsFrenchGuild(guild) then return end
+    local mine = not faction or faction == "" or faction == ns.MyFaction()
+    RememberGuild(guild, mine and name or nil, faction)
+    if mine then
+        if not ns.guildSeen[name] then ns.onlineDirty = true end
+        ns.guildSeen[name] = { t = GetTime(), guild = guild }
+    end
+end
+
+function ns.CheckUnitGuild(unit)
+    if not ns.db or not ns.db.opts.spotGuilds then return end
+    local ok, isPlayer = pcall(UnitIsPlayer, unit)
+    if not ok or not isPlayer or UnitIsUnit(unit, "player") then return end
+    local guild = GetGuildInfo(unit)
+    if not guild then return end
+    local faction = UnitFactionGroup(unit)
+    if issecretvalue and issecretvalue(faction) then faction = nil end
+    SeenInGuild(UnitNameFr(unit), guild, faction)
+end
+
+-- Membres de mon groupe ou de mon raid
+function ns.ScanGroupGuilds()
+    if not ns.db or not ns.db.opts.spotGuilds or not IsInGroup() then return end
+    local raid = IsInRaid()
+    for i = 1, GetNumGroupMembers() do
+        ns.CheckUnitGuild(raid and ("raid" .. i) or ("party" .. i))
+    end
+end
+
+-- Résultats de /qui (ma faction seulement, comme le jeu)
+function ns.ScanWho()
+    if not ns.db or not ns.db.opts.spotGuilds then return end
+    if not C_FriendList or not C_FriendList.GetNumWhoResults or not C_FriendList.GetWhoInfo then return end
+    local ok, n = pcall(C_FriendList.GetNumWhoResults)
+    if not ok or type(n) ~= "number" then return end
+    for i = 1, math.min(n, 50) do
+        local ok2, info = pcall(C_FriendList.GetWhoInfo, i)
+        if ok2 and type(info) == "table" then
+            SeenInGuild(ns.NormalizeName(info.fullName), info.fullGuildName, ns.MyFaction())
+        end
+    end
+    ns.RefreshSoon()
+end
+
+-- Guildes francophones connues, pour l'onglet Guildes: { guild, who, faction, t } triées des plus récentes aux plus vieilles
+function ns.KnownFrenchGuilds()
+    local out = {}
+    for guild, e in pairs(ns.db.frGuilds) do
+        if type(e) == "table" then tinsert(out, { guild = guild, who = e.who, faction = e.faction, t = e.t or 0 }) end
+    end
+    table.sort(out, function(a, b) return a.t > b.t end)
+    return out
+end
+
+-- Liste combinée, sans doublons: { sender, level, class, version, here (mon serveur), commu (communauté) }
+local onlineCache, onlineCacheTime = nil, -1000
+function ns.OnlineList()
+    if onlineCache and not ns.onlineDirty and GetTime() - onlineCacheTime < 1 then return onlineCache end
+    ns.onlineDirty = false
+    ns.PruneOnline()
+    local byName, list = {}, {}
+    local function Get(name)
+        local key = ns.BareName(name)
+        local e = byName[key]
+        if not e then
+            e = { sender = name, level = 0, class = "" }
+            byName[key] = e
+            tinsert(list, e)
+        end
+        return e
+    end
+    for name, o in pairs(ns.online) do
+        if not ns.IsIgnored(name) then
+            local e = Get(name)
+            e.here, e.version = true, o.version
+            e.level = o.level or e.level
+            e.class = o.class or e.class
+        end
+    end
+    for _, m in ipairs(ns.CommunityOnline()) do
+        if not ns.IsIgnored(m.name) then
+            local e = Get(m.name)
+            e.commu, e.away = true, m.away
+            if (e.level or 0) == 0 and m.level then e.level = m.level end
+            if e.class == "" and m.class then e.class = m.class end
+        end
+    end
+    local limit = GetTime() - ns.SPOT_ONLINE
+    for name, t in pairs(ns.francoSeen) do
+        if t < limit then
+            ns.francoSeen[name] = nil
+        elseif not ns.IsIgnored(name) then
+            Get(name).spotted = true
+        end
+    end
+    for name, g in pairs(ns.guildSeen) do
+        if g.t < limit then
+            ns.guildSeen[name] = nil
+        elseif not ns.IsIgnored(name) then
+            Get(name).guildFr = g.guild
+        end
+    end
+    -- Avec l'addon d'abord, puis la communauté, puis les repérés; par nom dans chaque groupe
+    local function Rank(e) return e.here and 1 or (e.commu and 2 or (e.spotted and 3 or 4)) end
+    table.sort(list, function(x, y)
+        local rx, ry = Rank(x), Rank(y)
+        if rx ~= ry then return rx < ry end
+        return ns.BareName(x.sender) < ns.BareName(y.sender)
+    end)
+    onlineCache, onlineCacheTime = list, GetTime()
+    return list
 end
 
 ---------------------------------------------------------------------------
@@ -1361,6 +1726,19 @@ local function OnMessage(msg, sender)
     local f = { strsplit(";", msg) }
     local cmd = f[1]
     ns.MarkKnown(sender)
+    if cmd == "H2" or cmd == "H3" then
+        ns.SeenOnline(sender, f[2], f[3], f[4])
+        if cmd == "H2" then ReplyPresence() end
+    elseif cmd == "L2" then
+        ns.SeenOnline(sender, f[7], f[6], f[14])
+    elseif cmd == "G2" then
+        ns.SeenOnline(sender, f[6], f[5], f[10])
+    elseif cmd == "D2" and f[2] == "P" then
+        ns.online[sender] = nil   -- il se déconnecte
+        ns.onlineDirty = true
+    else
+        ns.SeenOnline(sender)
+    end
 
     if cmd == "L2" then
         local typ, akey = f[2], f[4]
@@ -1394,6 +1772,7 @@ local function OnMessage(msg, sender)
         local guild, focus = f[2], f[3]
         if not guild or guild == "" or not ns.GUILD_FOCUS[focus or ""] then return end
         local faction = f[4] or ""
+        ns.RememberAnnouncedGuild(guild, sender, faction)
         ns.guilds[guild .. "-" .. faction] = {
             sender = sender, guild = guild, focus = focus, faction = faction,
             class = f[5] or "", level = tonumber(f[6]) or 0, note = f[8] or "",
@@ -1459,14 +1838,22 @@ function ns.UpdateRequests()
     end
     for _, unit in ipairs(units) do
         if UnitExists(unit) then
-            local name = UnitName(unit)
+            -- Nom complet: dans Forever, UnitName peut ne donner que le prénom (le nom de famille vient en 2e valeur)
+            local name = UnitNameFr(unit)
             if name then ns.requests[ns.BareName(name)] = nil end
         end
     end
 end
 
 function ns.IsIgnored(name)
-    return ns.db and ns.db.ignored and ns.db.ignored[ns.BareName(name)] and true or false
+    local ignored = ns.db and ns.db.ignored
+    if not ignored or not next(ignored) then return false end
+    local bare = ns.BareName(name)
+    if ignored[bare] then return true end
+    -- Les versions d'avant la 1.7 gardaient seulement le prénom (« chili »). Les noms de Forever ont toujours deux mots:
+    -- une entrée d'un seul mot vient donc d'une ancienne version et vise le prénom.
+    local first = bare:match("^(%S+)%s")
+    return first and ignored[first] and true or false
 end
 
 function ns.Ignore(name)
@@ -1602,14 +1989,20 @@ function ns.CommunityInvite()
 end
 
 local communityId
+local lastCommunitySearch = -1000
+function ns.ResetCommunitySearch()
+    lastCommunitySearch = -1000
+end
 -- Identifiant de la communauté si j'en suis membre, sinon nil. On la reconnaît par son nom.
 function ns.CommunityId()
     if not C_Club or not C_Club.GetSubscribedClubs then return nil end
+    if not communityId and GetTime() - lastCommunitySearch < 10 then return nil end
     if communityId then
         local ok, info = pcall(C_Club.GetClubInfo, communityId)
         if ok and info then return communityId end
         communityId = nil
     end
+    lastCommunitySearch = GetTime()
     local ok, clubs = pcall(C_Club.GetSubscribedClubs)
     if not ok or type(clubs) ~= "table" then return nil end
     local wanted = ns.NormalizeText(ns.COMMUNITY_NAME)
@@ -1637,6 +2030,37 @@ function ns.CommunityAuthorName(clubId, author)
     return ns.CleanName(author.name)
 end
 
+-- Ajoute le fil « Général » de la communauté à la fenêtre de chat principale: sans ça, rejoindre la communauté ne
+-- change rien de visible. Le jeu a changé de fonction selon les versions: on essaie les connues, sinon on explique.
+function ns.ShowCommunityInChat(userClicked)
+    local clubId = ns.CommunityId()
+    if not clubId then
+        if userClicked then ns.ShowCommunityInvite() end
+        return false
+    end
+    local streamId = CommunityStream(clubId)
+    if not streamId then return false end
+    local done = false
+    if ChatFrame_AddNewCommunitiesChannel then
+        done = pcall(ChatFrame_AddNewCommunitiesChannel, 1, clubId, streamId)
+    elseif ChatFrameUtil and ChatFrameUtil.AddNewCommunitiesChannel then
+        done = pcall(ChatFrameUtil.AddNewCommunitiesChannel, 1, clubId, streamId)
+    end
+    if not done and C_Club and C_Club.AddClubStreamChatChannel and ChatFrame_AddChannel and ChatFrame1 then
+        local ok, channel = pcall(C_Club.AddClubStreamChatChannel, clubId, streamId)
+        if ok and type(channel) == "string" then done = pcall(ChatFrame_AddChannel, ChatFrame1, channel) end
+    end
+    if done then
+        ns.db.communityChatAdded = clubId
+        ns.Print(L["le chat de la communauté |cffffd100"] .. ns.COMMUNITY_NAME
+            .. L["|r est maintenant dans ta fenêtre de chat. Pour y écrire, clique sur son nom devant un de ses messages."])
+    elseif userClicked then
+        ns.Print(L["pour voir le chat de la communauté: touche |cffffd100J|r, clic droit sur le fil Général de « "]
+            .. ns.COMMUNITY_NAME .. L[" », puis « Afficher dans la fenêtre de chat »."])
+    end
+    return done
+end
+
 -- Un message arrive dans une communauté: si c'est la nôtre, on le lit comme une annonce du chat.
 function ns.OnCommunityMessage(clubId, streamId, messageId)
     if not clubId or clubId ~= ns.CommunityId() then return end
@@ -1658,6 +2082,7 @@ end
 function ns.ShowCommunityInvite()
     if ns.CommunityId() then
         ns.Print(L["tu es déjà dans la communauté |cffffd100"] .. ns.COMMUNITY_NAME .. L["|r. Tes annonces y sont publiées au clic sur Publier."])
+        if ns.db.communityChatAdded ~= ns.CommunityId() then ns.ShowCommunityInChat(true) end
         return
     end
     if not ns.RequireRuleset() then return end
@@ -1807,15 +2232,47 @@ local function RestoreMyState()
 end
 
 local function PruneKnown()
+    -- Anciennes clés « Nom- » (tiret vide à la fin): même joueur que « Nom »
+    for _, tbl in ipairs({ ns.db.known, ns.db.francos }) do
+        local moves = {}
+        for name, t in pairs(tbl) do
+            local clean = ns.NormalizeName(name)
+            if clean and clean ~= name then moves[name] = clean end
+        end
+        for old, clean in pairs(moves) do
+            local t = tbl[old]
+            tbl[old] = nil
+            if type(t) == "number" and (type(tbl[clean]) ~= "number" or tbl[clean] < t) then tbl[clean] = t end
+        end
+    end
     local limit = time() - 60 * 24 * 3600
     for name, t in pairs(ns.db.known) do
         if type(t) ~= "number" or t < limit then ns.db.known[name] = nil end
+    end
+    -- Francophones repérés: 60 jours, et au plus 3000 noms (on garde les plus récents)
+    local list = {}
+    for name, t in pairs(ns.db.francos) do
+        if type(t) ~= "number" or t < limit then ns.db.francos[name] = nil else tinsert(list, name) end
+    end
+    if #list > 3000 then
+        table.sort(list, function(a, b) return ns.db.francos[a] > ns.db.francos[b] end)
+        for i = 3001, #list do ns.db.francos[list[i]] = nil end
+    end
+    -- Guildes francophones: 60 jours, et au plus 500
+    local guilds = {}
+    for g, e in pairs(ns.db.frGuilds) do
+        if type(e) ~= "table" or (e.t or 0) < limit then ns.db.frGuilds[g] = nil else tinsert(guilds, g) end
+    end
+    if #guilds > 500 then
+        table.sort(guilds, function(a, b) return ns.db.frGuilds[a].t > ns.db.frGuilds[b].t end)
+        for i = 501, #guilds do ns.db.frGuilds[guilds[i]] = nil end
     end
 end
 
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("ADDON_LOADED")
 ev:RegisterEvent("PLAYER_LOGIN")
+ev:RegisterEvent("PLAYER_LOGOUT")
 ev:RegisterEvent("PLAYER_ENTERING_WORLD")
 ev:RegisterEvent("CHAT_MSG_ADDON")
 ev:RegisterEvent("GROUP_ROSTER_UPDATE")
@@ -1823,7 +2280,14 @@ ev:RegisterEvent("PLAYER_LEVEL_UP")
 ev:RegisterEvent("PLAYER_GUILD_UPDATE")
 ev:RegisterEvent("CHAT_MSG_CHANNEL")
 ev:RegisterEvent("CHAT_MSG_YELL")
+ev:RegisterEvent("CHAT_MSG_SAY")
+ev:RegisterEvent("CHAT_MSG_WHISPER")
 pcall(ev.RegisterEvent, ev, "CLUB_MESSAGE_ADDED")   -- communautés (absentes de certaines versions du jeu)
+pcall(ev.RegisterEvent, ev, "CLUB_ADDED")
+ev:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
+ev:RegisterEvent("PLAYER_TARGET_CHANGED")
+pcall(ev.RegisterEvent, ev, "NAME_PLATE_UNIT_ADDED")
+pcall(ev.RegisterEvent, ev, "WHO_LIST_UPDATE")
 pcall(ev.RegisterEvent, ev, "PLAYER_ROLES_ASSIGNED")   -- n'existe pas dans toutes les versions du jeu
 
 ev:SetScript("OnEvent", function(_, event, ...)
@@ -1839,6 +2303,10 @@ ev:SetScript("OnEvent", function(_, event, ...)
         xpcall(ns.BuildOptions, geterrorhandler())
         if ns.OnDBReady then ns.OnDBReady() end
 
+    elseif event == "PLAYER_LOGOUT" then
+        -- Au revoir: les autres me retirent tout de suite de « En ligne » (sinon après 12 minutes).
+        if ns.ChannelIndex() then pcall(ns.Send, "D2;P") end
+
     elseif event == "PLAYER_LOGIN" then
         RestoreMyState()
         -- Une version plus récente vue lors d'une session passée reste affichée tant qu'on ne met pas à jour.
@@ -1850,11 +2318,16 @@ ev:SetScript("OnEvent", function(_, event, ...)
             ns.LeaveLegacyChannel()
             C_Timer.After(10, ns.CommunityReminder)
             C_Timer.After(3, function()
-                local _, class = UnitClass("player")
-                ns.Send("H2;" .. ns.MyLevel() .. ";" .. (class or "") .. ";" .. ns.VERSION)
+                ns.SendPresence("H2")
                 ns.RequestAll()
             end)
         end)
+        -- L'accueil a demandé un changement de langue: après le rechargement, il reprend où il était.
+        if not ns.db.onboarded and ns.db.onboardStep then
+            C_Timer.After(2, function()
+                if ns.UI and ns.UI.ShowWelcome then ns.UI.ShowWelcome() end
+            end)
+        end
         if not ns.db.welcomed then
             ns.db.welcomed = true
             C_Timer.After(8, function()
@@ -1867,6 +2340,12 @@ ev:SetScript("OnEvent", function(_, event, ...)
             CheckReminder()
             ns.Refresh()
         end)
+        -- Signal « toujours là » toutes les 5 minutes environ, décalé au hasard pour que tout le monde n'envoie pas en même temps
+        local function Heartbeat()
+            ns.SendPresence("H3")
+            C_Timer.After(270 + math.random() * 60, Heartbeat)
+        end
+        C_Timer.After(270 + math.random() * 60, Heartbeat)
         C_Timer.NewTicker(30, function()
             if not ChannelIndex() then ns.EnsureChannel() end
         end)
@@ -1882,16 +2361,49 @@ ev:SetScript("OnEvent", function(_, event, ...)
 
     elseif event == "CHAT_MSG_CHANNEL" then
         local text, sender, _, _, _, _, _, _, channelBase = ...
+        ns.SpotFrench(text, sender)
         ns.OnChat(text, sender, channelBase)
 
     elseif event == "CHAT_MSG_YELL" then
         local text, sender = ...
+        ns.SpotFrench(text, sender)
         ns.OnChat(text, sender, "")
+
+    elseif event == "CHAT_MSG_SAY" or event == "CHAT_MSG_WHISPER" then
+        local text, sender = ...
+        ns.SpotFrench(text, sender)
 
     elseif event == "CLUB_MESSAGE_ADDED" then
         ns.OnCommunityMessage(...)
 
+    elseif event == "CLUB_ADDED" then
+        -- Je viens de rejoindre une communauté: si c'est la nôtre, son chat va dans ma fenêtre de chat (une seule fois).
+        ns.ResetCommunityCache()
+        C_Timer.After(2, function()
+            ns.ResetCommunityCache()
+            local id = ns.CommunityId()
+            if id and ns.db.communityChatAdded ~= id then
+                ns.Print(L["bienvenue dans la communauté! Tu vois maintenant les francophones de tous les serveurs dans l'onglet En ligne."])
+                ns.ShowCommunityInChat(false)
+            end
+            ns.Refresh()
+        end)
+
+    elseif event == "UPDATE_MOUSEOVER_UNIT" then
+        ns.CheckUnitGuild("mouseover")
+
+    elseif event == "PLAYER_TARGET_CHANGED" then
+        ns.CheckUnitGuild("target")
+
+    elseif event == "NAME_PLATE_UNIT_ADDED" then
+        local unit = ...
+        if unit then ns.CheckUnitGuild(unit) end
+
+    elseif event == "WHO_LIST_UPDATE" then
+        ns.ScanWho()
+
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" then
+        ns.ScanGroupGuilds()
         CheckAutoRemove()
         ns.AutoUpdateGroup()
         ns.UpdateRequests()
@@ -1914,23 +2426,29 @@ SLASH_BABILLARDFR2 = "/babillard"
 SlashCmdList.BABILLARDFR = function(arg)
     arg = strtrim(arg or ""):lower()
     ns.EnsureChannel()
-    if arg == "site" then
+    if arg == "site" or arg == "website" then
         ns.ShowSiteLink()
+    elseif arg == "commandes" or arg == "commands" or arg == "cmd" then
+        if ns.UI and ns.UI.Open then ns.UI.Open(5) end
+    elseif arg == "bienvenue" or arg == "welcome" then
+        if ns.UI and ns.UI.ShowWelcome then ns.UI.ShowWelcome(1) end
+    elseif arg == "enligne" or arg == "online" or arg == "qui" then
+        if ns.UI and ns.UI.Open then ns.UI.Open(4) end
     elseif arg:match("^lang") then
         -- /bf langue fr | en | auto
         local choice = arg:match("%s(%a+)$")
         if choice then
             ns.SetLanguageChoice(choice)
         else
-            ns.Print("Langue / Language : " .. ns.LanguageName(ns.db.opts.lang) .. " — /bf langue fr, en, auto")
+            ns.Print("Langue / Language : " .. ns.LanguageName(ns.db.opts.lang) .. " - " .. ns.Cmd("langue") .. " fr, en, auto")
         end
-    elseif arg == "communaute" or arg == "communauté" or arg == "commu" then
+    elseif arg == "communaute" or arg == "communauté" or arg == "commu" or arg == "community" then
         ns.ShowCommunityInvite()
     elseif arg == "options" then
         if ns.OpenOptions then ns.OpenOptions() end
-    elseif arg == "favoris" then
+    elseif arg == "favoris" or arg == "favorites" or arg == "favs" then
         ns.OpenFavMenu()
-    elseif arg == "demandes" then
+    elseif arg == "demandes" or arg == "requests" then
         local n = 0
         for _, r in pairs(ns.requests) do
             n = n + 1
@@ -1940,34 +2458,37 @@ SlashCmdList.BABILLARDFR = function(arg)
                 (age > 300 and L[", sans réponse"] or "") .. ")")
         end
         if n == 0 then ns.Print(L["aucune demande en cours. Elles s'affichent ici après un clic sur Chuchoter."]) end
-    elseif arg == "ignores" or arg == "ignorés" then
+    elseif arg == "ignores" or arg == "ignorés" or arg == "ignored" or arg == "ignore" then
         local names = {}
         for bare in pairs(ns.db.ignored) do tinsert(names, bare) end
         table.sort(names)
         if #names == 0 then ns.Print(L["aucun joueur ignoré."]) else ns.Print(L["joueurs ignorés : "] .. table.concat(names, ", ")) end
-    elseif arg == "ignores vider" then
+    elseif arg == "ignores vider" or arg == "ignored clear" or arg == "ignore clear" then
         wipe(ns.db.ignored)
         ns.Print(L["la liste des joueurs ignorés est vide."])
         ns.Refresh()
-    elseif arg == "guildes" then
+    elseif arg == "guildes" or arg == "guilds" then
         if ns.UI then ns.UI.Open(2) end
-    elseif arg == "perso" or arg == "code" then
+    elseif arg == "perso" or arg == "code" or arg == "character" or arg == "char" then
         if ns.UI then ns.UI.Open(3) end
     elseif arg == "diag" then
         ns.ShowCopy(L["Diagnostic Babillard Forever FR (colle-le dans la conversation):"], ns.Diagnostic())
-    elseif arg == "aide" then
+    elseif arg == "aide" or arg == "help" then
         ns.Print(L["commandes :"])
         print(L["  |cffffd100/bf|r : ouvrir ou fermer le babillard"])
         print(L["  |cffffd100/bf guildes|r : guildes francophones"])
         print(L["  |cffffd100/bf perso|r : mon personnage et code pour le site"])
         print(L["  |cffffd100/bf site|r : lien du site"])
+        print(L["  |cffffd100/bf enligne|r : francophones en ligne"])
+        print(L["  |cffffd100/bf bienvenue|r : revoir l'accueil"])
+        print(L["  |cffffd100/bf commandes|r : tous ces boutons dans la fenêtre"])
         print(L["  |cffffd100/bf communaute|r : rejoindre les francophones de tous les serveurs"])
         print(L["  |cffffd100/bf diag|r : diagnostic (si les talents ou l'équipement n'apparaissent pas)"])
         print(L["  |cffffd100/bf favoris|r : choisir les activités qui déclenchent une alerte"])
         print(L["  |cffffd100/bf demandes|r : les groupes à qui tu as chuchoté"])
         print(L["  |cffffd100/bf ignores|r : joueurs ignorés (|cffffd100/bf ignores vider|r pour tout retirer)"])
         print(L["  |cffffd100/bf options|r : options"])
-        print("  |cffffd100/bf langue fr|r, |cffffd100en|r ou |cffffd100auto|r : Langue / Language")
+        print(L["  |cffffd100/bf langue fr|r, |cffffd100en|r ou |cffffd100auto|r : langue de l'addon"])
     else
         if ns.UI then ns.UI.Toggle() end
     end
