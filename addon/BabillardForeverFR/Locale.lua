@@ -46,7 +46,7 @@ end
 local CMD_EN = {
     guildes = "guilds", perso = "character", enligne = "online", communaute = "community", bienvenue = "welcome",
     commandes = "commands", favoris = "favorites", demandes = "requests", ignores = "ignored",
-    ["ignores vider"] = "ignored clear", aide = "help", langue = "language",
+    ["ignores vider"] = "ignored clear", aide = "help", langue = "language", partager = "share",
 }
 function ns.Cmd(word)
     if not word or word == "" then return "/bf" end
@@ -445,3 +445,44 @@ EN["Aucune"] = "None"
 EN["Aucun"] = "None"
 EN["Inconnu"] = "Unknown"
 EN["  |cffffd100/bf langue fr|r, |cffffd100en|r ou |cffffd100auto|r : langue de l'addon"] = "  |cffffd100/bf language fr|r, |cffffd100en|r or |cffffd100auto|r : addon language"
+-- 2.4: onglet Chat
+EN["le jeu ne laisse pas l'addon écrire dans la communauté: écris dans ta fenêtre de chat, sur le canal de la communauté."] = "the game doesn't let the addon write in the community: write in your chat window, on the community channel."
+EN["  |cffffd100/bf chat|r : le chat de la communauté"] = "  |cffffd100/bf chat|r : the community chat"
+EN["Chat de la communauté"] = "Community chat"
+EN["Écris ton message et appuie sur Entrée"] = "Type your message and press Enter"
+EN["Envoyer"] = "Send"
+EN["Les francophones de tous les serveurs"] = "French speakers from every server"
+EN["membre(s) en ligne"] = "member(s) online"
+EN["Aussi dans ma fenêtre de chat"] = "Also in my chat window"
+EN["Aucun message pour l'instant. Dis bonjour!"] = "No messages yet. Say hi!"
+EN["Tu n'es pas encore dans la communauté."] = "You're not in the community yet."
+EN["Rejoins la communauté pour discuter avec les francophones de tous les serveurs."] = "Join the community to chat with French speakers from every server."
+EN["Pas encore de communauté pour ta faction ou ta région: crée-la (onglet Commandes, bouton Accueil)."] = "No community for your faction or region yet: create it (Commands tab, Welcome button)."
+EN["Le chat de la communauté: parle avec les francophones de tous les serveurs."] = "The community chat: talk with French speakers from every server."
+EN["nouveau(x) message(s) dans le chat"] = "new message(s) in the chat"
+-- 2.5: tout le monde visible, même hors de mon niveau
+EN["Cacher les groupes qui ne sont pas de mon niveau"] = "Hide groups that aren't at my level"
+EN["Décoché (par défaut): tout le monde est affiché, et les groupes qui ne sont pas de ton niveau sont en gris, à la fin de la liste."] = "Unchecked (default): everyone is shown, and groups that aren't at your level are greyed out at the end of the list."
+EN["Coché: cache les groupes qui ne sont pas de ton niveau. Décoché: tout le monde est affiché, et ces groupes sont en gris à la fin de la liste."] = "Checked: hides groups that aren't at your level. Unchecked: everyone is shown, and those groups are greyed out at the end of the list."
+EN[" (pas ton niveau)"] = " (not your level)"
+-- 2.6: personne de caché (faction, type de serveur)
+EN["Autre faction : vous ne pouvez pas grouper ni vous chuchoter."] = "Other faction: you can't group or whisper each other."
+EN["Autre type de serveur ("] = "Other server type ("
+EN[") : vous ne pouvez pas grouper ensemble."] = "): you can't group together."
+EN["Cacher l'autre faction"] = "Hide the other faction"
+EN["Décoché (par défaut): les groupes, guildes et joueurs de l'autre faction sont affichés en gris, à la fin. On ne peut pas grouper ni se chuchoter entre factions."] = "Unchecked (default): groups, guilds and players of the other faction are greyed out at the end. You can't group or whisper across factions."
+EN["Cacher les autres types de serveur (PvE, PvP, RP)"] = "Hide other server types (PvE, PvP, RP)"
+EN["Décoché (par défaut): ils sont affichés en gris, à la fin. On ne peut pas grouper entre types de serveur. Choisis ton type dans l'onglet Mon perso."] = "Unchecked (default): they are greyed out at the end. You can't group across server types. Choose your type in the My character tab."
+-- 2.7: partage automatique des communautés
+EN["une communauté francophone vient d'être partagée pour ta faction"] = "a French-speaking community was just shared for your faction"
+EN["merci! Le lien de ta communauté est maintenant partagé avec les francophones de ta combinaison ("] = "thanks! Your community's link is now shared with French speakers of your combination ("
+EN["). Ceux qui la rejoignent le partagent à leur tour."] = "). Those who join it share it in turn."
+EN["pour partager ta communauté avec les autres francophones, fais un lien d'invitation qui |cffffd100n'expire jamais|r et |cffffd100sans limite|r (touche J, Inviter). Ou colle ton lien avec |cffffd100/bf partager <lien>|r."] = "to share your community with other French speakers, make an invite link that |cffffd100never expires|r with |cffffd100no limit|r (J key, Invite). Or paste your link with |cffffd100/bf share <link>|r."
+EN["colle le lien d'invitation de ta communauté: |cffffd100/bf partager https://www.worldofwarcraft.com/invite/XXXX|r"] = "paste your community's invite link: |cffffd100/bf share https://www.worldofwarcraft.com/invite/XXXX|r"
+EN["crée (ou rejoins) d'abord la communauté « "] = "first create (or join) the '"
+EN[" »: le lien doit être le sien."] = "' community: the link must be its own."
+EN["  |cffffd100/bf partager <lien>|r : partager le lien de ta communauté (si tu l'as créée)"] = "  |cffffd100/bf share <link>|r : share your community's link (if you created it)"
+EN["partagée par "] = "shared by "
+EN[" » (touche J), puis un lien d'invitation qui n'expire jamais: l'addon le partagera tout seul."] = "' (J key), then an invite link that never expires: the addon will share it on its own."
+EN["Communauté partagée par "] = "Community shared by "
+EN[" », puis un lien d'invitation qui n'expire jamais et sans limite: l'addon le partagera tout seul avec les autres francophones."] = "', then an invite link that never expires with no limit: the addon will share it with other French speakers on its own."

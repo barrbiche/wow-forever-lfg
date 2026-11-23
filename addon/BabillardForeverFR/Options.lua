@@ -72,10 +72,12 @@ local OPTIONS = {
     { "autoUpdate",      L["Mettre à jour mon annonce quand des joueurs rejoignent mon groupe"],
       L["Met à jour le nombre de joueurs et retire le rôle tank ou soigneur quand quelqu'un du groupe l'a d'assigné."] },
     { "header", L["Affichage"] },
-    { "sameFaction",     L["Montrer seulement ma faction"] },
-    { "sameRuleset",     L["Montrer seulement mon type de serveur (PvE, PvP, RP)"],
-      L["Cache les annonces d'un autre type de serveur: on ne peut pas grouper ensemble. Choisis ton type dans l'onglet Mon perso."] },
-    { "levelOnly",       L["Montrer seulement les activités à mon niveau"] },
+    { "sameFaction",     L["Cacher l'autre faction"],
+      L["Décoché (par défaut): les groupes, guildes et joueurs de l'autre faction sont affichés en gris, à la fin. On ne peut pas grouper ni se chuchoter entre factions."] },
+    { "sameRuleset",     L["Cacher les autres types de serveur (PvE, PvP, RP)"],
+      L["Décoché (par défaut): ils sont affichés en gris, à la fin. On ne peut pas grouper entre types de serveur. Choisis ton type dans l'onglet Mon perso."] },
+    { "levelOnly",       L["Cacher les groupes qui ne sont pas de mon niveau"],
+      L["Décoché (par défaut): tout le monde est affiché, et les groupes qui ne sont pas de ton niveau sont en gris, à la fin de la liste."] },
     { "tooltipFlag",     L["Afficher [FR] dans l'info-bulle des joueurs qui ont l'addon"] },
     { "minimap",         L["Afficher le bouton de la minimap"] },
 }
@@ -269,6 +271,9 @@ mm:SetScript("OnEnter", function(self)
     for _ in pairs(ns.listings) do n = n + 1 end
     local online = ns.OnlineList and #ns.OnlineList() or 0
     GameTooltip:AddLine(online .. " " .. L["francophone(s) en ligne"], 1, 0.84, 0.3)
+    if (ns.chatUnread or 0) > 0 then
+        GameTooltip:AddLine(ns.chatUnread .. " " .. L["nouveau(x) message(s) dans le chat"], 0.4, 0.67, 1)
+    end
     GameTooltip:AddLine(n .. L[" annonce(s) active(s)"], 0.6, 0.8, 1)
     if ns.my then GameTooltip:AddLine(L["Ton annonce est active"], 0.2, 0.87, 0.33) end
     GameTooltip:AddLine(" ")

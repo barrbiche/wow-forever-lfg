@@ -496,6 +496,16 @@ local function HeaderLine(list)
     Skin.Gradient(right, "HORIZONTAL", GOLD[1], GOLD[2], GOLD[3], 0.8, GOLD[1], GOLD[2], GOLD[3], 0.1)
 end
 
+-- Pourquoi on ne peut pas grouper avec ce joueur (nil si on peut)
+local function CantGroupReason(faction, ruleset)
+    if faction and faction ~= "" and faction ~= ns.MyFaction() then
+        return L["Autre faction : vous ne pouvez pas grouper ni vous chuchoter."]
+    end
+    if not ns.RulesetMatches(ruleset) then
+        return L["Autre type de serveur ("] .. (ns.RulesetName(ruleset) or "?") .. L[") : vous ne pouvez pas grouper ensemble."]
+    end
+end
+
 local function FactionTag(faction)
     if faction == ns.MyFaction() then return "" end
     if faction == "Horde" then return " |cffff5555[H]|r" end
@@ -562,7 +572,7 @@ end)
 
 
 local views = {}
-for i = 1, 5 do
+for i = 1, 6 do
     views[i] = CreateFrame("Frame", nil, f)
     views[i]:SetAllPoints()
     views[i]:Hide()
@@ -608,6 +618,7 @@ banner:Hide()
 function UI.JoinCommunity()
     ns.PlayClick()
     local code = ns.CommunityInvite()
+    if code and ns.RememberJoinAttempt then ns.RememberJoinAttempt(code) end
     if code and SetItemRef then
         -- Comme un clic sur le lien dans le chat: le jeu ouvre sa fenêtre pour rejoindre la communauté.
         local link = "clubTicket:" .. code
@@ -636,11 +647,13 @@ function UI.UpdateBanner()
     elseif ns.CommunityInvite() then
         banner.title:SetText(L["|cffffd100Joue avec les francophones de TOUS les serveurs!|r"])
         banner.text:SetText(L["Forever te place sur un serveur parmi plusieurs: sans la communauté, tu ne vois que le tien. Rejoins « "]
-            .. ns.COMMUNITY_NAME .. L[" » en un clic."])
+            .. ns.COMMUNITY_NAME .. L[" » en un clic."]
+            .. ((ns.CommunityInviteBy and ns.CommunityInviteBy()) and ("  |cff999999(" .. L["partagée par "]
+            .. ns.ShortName(ns.CommunityInviteBy()) .. ")|r") or ""))
         banner.join:Show()
     else
         banner.title:SetText(L["|cffffd100Aucune communauté francophone pour ta faction... crée-la!|r"])
-        banner.text:SetText(L["Crée une communauté nommée « "] .. ns.COMMUNITY_NAME .. L[" » (touche J), fais un lien d'invitation qui n'expire pas et envoie-le sur babillard-forever.com."])
+        banner.text:SetText(L["Crée une communauté nommée « "] .. ns.COMMUNITY_NAME .. L[" » (touche J), puis un lien d'invitation qui n'expire jamais: l'addon le partagera tout seul."])
         banner.join:Hide()
     end
     banner:Show()
@@ -670,7 +683,7 @@ end)
 
 -- Onglets du bas
 local tabs = {}
-local TAB_NAMES = { L["Groupes"], L["Guildes"], L["Mon perso"], L["En ligne"], L["Commandes"] }
+local TAB_NAMES = { L["Groupes"], L["Guildes"], L["Mon perso"], L["En ligne"], L["Chat"], L["Commandes"] }
 for i, name in ipairs(TAB_NAMES) do
     local t = ns.SafeCreate("Button", "BabillardFRFrameTab" .. i, f, "PanelTabButtonTemplate", "UIPanelButtonTemplate")
     t:SetID(i)
@@ -831,7 +844,7 @@ G.levelCB:SetScript("OnClick", function(self)
     state.scroll = 0
     UI.Refresh()
 end)
-Tooltip(G.levelCB, L["À mon niveau"], L["Cache les annonces pour des activités que tu ne peux pas faire."])
+Tooltip(G.levelCB, L["À mon niveau"], L["Coché: cache les groupes qui ne sont pas de ton niveau. Décoché: tout le monde est affiché, et ces groupes sont en gris à la fin de la liste."])
 
 local glist = MakePanel(gv, -258, 32)
 HeaderText(glist, L["Type"], 8)
@@ -857,7 +870,14 @@ local function GroupTooltip(d)
     GameTooltip:AddLine(" ")
     GameTooltip:AddLine("|c" .. t.color .. t.name .. "|r")
     GameTooltip:AddLine("|c" .. (ns.CAT_COLORS[d.cat] or "ffffffff") .. ns.CatName(d.cat) .. "|r : " .. a.name, 1, 1, 1, true)
-    GameTooltip:AddLine(L["Niveaux "] .. a.min .. L[" à "] .. a.max, 0.6, 0.8, 1)
+    local why = CantGroupReason(d.faction, d.ruleset)
+    if why then GameTooltip:AddLine(why, 1, 0.45, 0.45, true) end
+    local levels = a.min == a.max and (L["Niveau "] .. a.min) or (L["Niveaux "] .. a.min .. L[" à "] .. a.max)
+    if ns.ActivityInRange(a, ns.MyLevel()) then
+        GameTooltip:AddLine(levels, 0.6, 0.8, 1)
+    else
+        GameTooltip:AddLine(levels .. L[" (pas ton niveau)"], 1, 0.6, 0.2)
+    end
     local hasRoles = next(d.roles) ~= nil
     if d.type == "LFM" then
         if hasRoles then GameTooltip:AddLine(L["Recherche : "] .. ns.RolesText(d.roles, d.counts), 1, 0.82, 0) end
@@ -901,7 +921,7 @@ for i = 1, GROUP_ROWS do
     row.age:SetPoint("RIGHT", -6, 0)
     -- Boutons au survol (le premier ajouté est le plus à droite)
     AddRowAction(row, L["Chuchoter"], 80,
-        function(d) return not ns.IsMe(d.sender) end,
+        function(d) return not ns.IsMe(d.sender) and ns.CanGroupWith(d.faction, d.ruleset) end,
         function(d) DoWhisper(d.sender, d) end)
     AddRowAction(row, L["Ignorer"], 60,
         function(d) return not ns.IsMe(d.sender) end,
@@ -960,6 +980,8 @@ local function RefreshGroups()
     local myLevel, myFaction = ns.MyLevel(), ns.MyFaction()
     local counts = { Tous = 0 }
     local visible = {}
+    local outOfRange = {}       -- [annonce] = true: activité hors de mon niveau (affichée en gris, après les autres)
+    local cantGroup = {}        -- [annonce] = true: autre faction ou autre type de serveur (en gris, tout à la fin)
     local hiddenByOptions = 0   -- annonces cachées par les options (niveau, faction, type de serveur, lecture du chat)
 
     -- Une seule annonce par joueur (la plus récente), même si le jeu a écrit son royaume de deux façons.
@@ -973,9 +995,13 @@ local function RefreshGroups()
         local a = ns.ACT_BY_KEY[l.akey]
         local show = a ~= nil
         if show and l.source == "chat" and not o.chatReading then show = false end
-        if show and o.levelOnly and not ns.ActivityInRange(a, myLevel) then show = false end
-        if show and o.sameFaction and l.faction ~= myFaction then show = false end
-        if show and not ns.RulesetOK(l.ruleset) then show = false end
+        if show and not ns.ActivityInRange(a, myLevel) then
+            if o.levelOnly then show = false else outOfRange[l] = true end
+        end
+        if show and not ns.CanGroupWith(l.faction, l.ruleset) then
+            if (o.sameFaction and l.faction ~= myFaction) or not ns.RulesetOK(l.ruleset) then show = false
+            else cantGroup[l] = true end
+        end
         if ns.IsMe(l.sender) then show = true end
         if not show and a then hiddenByOptions = hiddenByOptions + 1 end
         if show then
@@ -988,6 +1014,8 @@ local function RefreshGroups()
     end
     table.sort(visible, function(x, y)
         if ns.IsMe(x.sender) ~= ns.IsMe(y.sender) then return ns.IsMe(x.sender) end
+        if (cantGroup[x] or false) ~= (cantGroup[y] or false) then return not cantGroup[x] end
+        if (outOfRange[x] or false) ~= (outOfRange[y] or false) then return not outOfRange[x] end
         return x.time > y.time
     end)
 
@@ -1025,7 +1053,12 @@ local function RefreshGroups()
             if state.filterCat == "Tous" then
                 txt = "|c" .. (ns.CAT_COLORS[d.cat] or "ffffffff") .. ns.CatName(d.cat) .. "|r  "
             end
-            txt = txt .. a.name
+            if outOfRange[d] then
+                local lv = a.min == a.max and tostring(a.min) or (a.min .. "-" .. a.max)
+                txt = txt .. "|cff8a8a8a" .. a.name .. "|r |cff8a8a8a(" .. L["niv "] .. lv .. ")|r"
+            else
+                txt = txt .. a.name
+            end
             if ns.HasRequest(d.sender) then txt = txt .. L["  |cff88ccff[demandé]|r"] end
             if d.source == "chat" then
                 txt = txt .. L["  |cff33aaff[chat]|r"]
@@ -1034,6 +1067,7 @@ local function RefreshGroups()
                 if d.note ~= "" then txt = txt .. "  |cff888888" .. d.note .. "|r" end
             end
             row.activity:SetText(txt)
+            row:SetAlpha(cantGroup[d] and 0.55 or (outOfRange[d] and 0.75 or 1))
             row.age:SetText(ns.Ago(d.time))
             row:Show()
             if row:IsMouseOver() then row:GetScript("OnEnter")(row) end
@@ -1125,8 +1159,10 @@ HeaderText(gulist, L["Description"], 392)
 HeaderLine(gulist)
 
 local function GuildTooltip(d)
+    local why = CantGroupReason(d.faction, d.ruleset)
     if d.detected then
         GameTooltip:AddLine("|cffc28cff<" .. d.guild .. ">|r" .. FactionTag(d.faction))
+        if why then GameTooltip:AddLine(why, 1, 0.45, 0.45, true) end
         GameTooltip:AddLine(L["Guilde francophone repérée en jeu, pas encore annoncée avec l'addon."], 1, 1, 1, true)
         if d.sender ~= "" then GameTooltip:AddLine(L["Dernier membre croisé : "] .. ns.ShortName(d.sender), 0.8, 0.8, 0.8) end
         GameTooltip:AddLine(L["Vue le "] .. date(ns.lang == "en" and "%Y-%m-%d" or "%d/%m/%Y", d.seenAt), 0.5, 0.5, 0.5)
@@ -1167,7 +1203,7 @@ for i = 1, GUILD_ROWS do
     row.desc:SetJustifyH("LEFT")
     row.desc:SetWordWrap(false)
     AddRowAction(row, L["Chuchoter"], 80,
-        function(d) return d.sender ~= "" and not ns.IsMe(d.sender) end,
+        function(d) return d.sender ~= "" and not ns.IsMe(d.sender) and ns.CanGroupWith(d.faction, d.ruleset) end,
         function(d) DoWhisper(d.sender) end)
     GU.rows[i] = row
 end
@@ -1209,7 +1245,12 @@ local function RefreshGuilds()
     for _, g in pairs(ns.guilds) do
         if (not o.sameFaction or g.faction == ns.MyFaction()) and ns.RulesetOK(g.ruleset) then tinsert(visible, g) end
     end
-    table.sort(visible, function(x, y) return x.time > y.time end)
+    -- Celles qu'on peut rejoindre d'abord; les autres (autre faction, autre type de serveur) en gris à la fin
+    table.sort(visible, function(x, y)
+        local cx, cy = ns.CanGroupWith(x.faction, x.ruleset), ns.CanGroupWith(y.faction, y.ruleset)
+        if cx ~= cy then return cx end
+        return x.time > y.time
+    end)
     -- Puis les guildes francophones repérées en jeu qui ne sont pas (encore) annoncées avec l'addon
     if o.spotGuilds then
         local announced = {}
@@ -1222,12 +1263,20 @@ local function RefreshGuilds()
             end
         end
     end
+    -- Repérées de ma faction avant celles de l'autre faction (l'ordre des plus récentes est gardé)
+    local first, last = {}, {}
+    for _, g in ipairs(visible) do
+        if g.detected and not ns.CanGroupWith(g.faction) then tinsert(last, g) else tinsert(first, g) end
+    end
+    visible = first
+    for _, g in ipairs(last) do tinsert(visible, g) end
 
     local maxOffset = math.max(0, #visible - GUILD_ROWS)
     state.guildScroll = math.min(state.guildScroll, maxOffset)
     for i, row in ipairs(GU.rows) do
         local d = visible[i + state.guildScroll]
         row.data = d
+        if d then row:SetAlpha(ns.CanGroupWith(d.faction, d.ruleset) and 1 or 0.55) end
         if d and d.detected then
             row.guild:SetText("|cffc28cff<" .. d.guild .. ">|r" .. FactionTag(d.faction))
             row.focus:SetText("|cffc28cff" .. L["Repérée"] .. "|r")
@@ -1281,6 +1330,7 @@ M.ruleset:SetScript("OnClick", function()
         if id == current then nextIndex = i % #order + 1 end
     end
     ns.db.ruleset = order[nextIndex]
+    if ns.RequestInvite then C_Timer.After(1, ns.RequestInvite) end
     ns.PlayClick()
     ns.Refresh()
 end)
@@ -1389,7 +1439,9 @@ local function WhereColor(d)
 end
 
 local function OnlineTooltip(d)
-    GameTooltip:AddLine("|c" .. ns.ClassHex(d.class) .. ns.ShortName(d.sender) .. "|r")
+    GameTooltip:AddLine("|c" .. ns.ClassHex(d.class) .. ns.ShortName(d.sender) .. "|r" .. FactionTag(d.faction))
+    local why = CantGroupReason(d.faction, d.ruleset)
+    if why then GameTooltip:AddLine(why, 1, 0.45, 0.45, true) end
     if (d.level or 0) > 0 then GameTooltip:AddLine(L["Niveau "] .. d.level, 0.8, 0.8, 0.8) end
     GameTooltip:AddLine(WhereText(d), 0.6, 0.8, 1)
     if d.version then
@@ -1428,13 +1480,13 @@ for i = 1, ONLINE_ROWS do
     row.age = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")   -- version (cachée au survol)
     row.age:SetPoint("LEFT", 402, 0)
     AddRowAction(row, L["Chuchoter"], 80,
-        function(d) return not ns.IsMe(d.sender) end,
+        function(d) return not ns.IsMe(d.sender) and d.canGroup ~= false end,
         function(d) DoWhisper(d.sender) end)
     AddRowAction(row, L["Inviter"], 60,
-        function(d) return not ns.IsMe(d.sender) end,
+        function(d) return not ns.IsMe(d.sender) and d.canGroup ~= false end,
         function(d) ns.PlayClick(); DoInvite(d.sender) end)
     AddRowAction(row, L["Faire connaître"], 110,
-        function(d) return (d.spotted or d.guildFr) and not d.here and not d.commu end,
+        function(d) return (d.spotted or d.guildFr) and not d.here and not d.commu and d.canGroup ~= false end,
         function(d) DoWhisper(d.sender, nil, ns.RecruitText()) end)
     O.rows[i] = row
 end
@@ -1477,7 +1529,9 @@ local function RefreshOnline()
         local d = list[i + state.onlineScroll]
         row.data = d
         if d then
-            row.name:SetText("|c" .. ns.ClassHex(d.class) .. ns.ShortName(d.sender) .. "|r" .. (d.away and (" |cffff9933" .. L["(absent)"] .. "|r") or ""))
+            row.name:SetText("|c" .. ns.ClassHex(d.class) .. ns.ShortName(d.sender) .. "|r" .. FactionTag(d.faction)
+                .. (d.away and (" |cffff9933" .. L["(absent)"] .. "|r") or ""))
+            row:SetAlpha(d.canGroup == false and 0.55 or 1)
             row.level:SetText((d.level or 0) > 0 and d.level or "")
             row.where:SetText(WhereColor(d) .. WhereText(d) .. "|r")
             row.age:SetText(d.version and ("v" .. d.version) or "-")
@@ -1496,10 +1550,157 @@ local function RefreshOnline()
 end
 
 ---------------------------------------------------------------------------
--- Vue 5 : Commandes. Un bouton par commande /bf, avec la commande écrite dessous pour l'apprendre.
+-- Vue 5 : Chat. Le fil Général de la communauté, dans la fenêtre du babillard.
+---------------------------------------------------------------------------
+local chv = views[5]
+local CH = {}
+
+SectionTitle(chv, L["Chat de la communauté"], 18, -40)
+CH.status = chv:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+CH.status:SetPoint("TOPLEFT", 20, -64)
+CH.status:SetPoint("RIGHT", -250, 0)
+CH.status:SetJustifyH("LEFT")
+
+-- Rejoindre la communauté, ou la mettre aussi dans la fenêtre de chat du jeu
+CH.top = MakeButton(chv, "", 230, 24)
+CH.top:SetPoint("TOPRIGHT", -18, -34)
+Skin.Primary(CH.top)
+CH.top:SetScript("OnClick", function()
+    if ns.CommunityId() then ns.PlayClick(); ns.ShowCommunityInChat(true) else UI.JoinCommunity() end
+end)
+
+local cpanel = MakePanel(chv, -84, 66)
+
+local smf = CreateFrame("ScrollingMessageFrame", nil, cpanel)
+smf:SetPoint("TOPLEFT", 10, -8)
+smf:SetPoint("BOTTOMRIGHT", -10, 8)
+smf:SetFontObject(ChatFontNormal or GameFontHighlight)
+smf:SetJustifyH("LEFT")
+smf:SetFading(false)
+smf:SetMaxLines(250)
+Try(function() smf:SetInsertMode("BOTTOM") end)
+Try(function() smf:SetHyperlinksEnabled(true) end)
+-- Clic sur un nom: chuchoter (clic gauche) ou menu du joueur (clic droit), comme dans le chat du jeu
+smf:SetScript("OnHyperlinkClick", function(_, link, text, button)
+    pcall(SetItemRef, link, text, button, DEFAULT_CHAT_FRAME)
+end)
+smf:EnableMouseWheel(true)
+smf:SetScript("OnMouseWheel", function(self, delta)
+    if IsShiftKeyDown() then
+        if delta > 0 then self:ScrollToTop() else self:ScrollToBottom() end
+    elseif delta > 0 then
+        self:ScrollUp()
+    else
+        self:ScrollDown()
+    end
+end)
+
+CH.empty = cpanel:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+CH.empty:SetPoint("CENTER")
+CH.empty:SetWidth(460)
+
+-- Champ pour écrire + Envoyer
+CH.input = MakeInput(chv, L["Écris ton message et appuie sur Entrée"], 440, 255, 0, 0)
+CH.input:ClearAllPoints()
+CH.input:SetPoint("TOPLEFT", cpanel, "BOTTOMLEFT", 4, -8)
+CH.send = MakeButton(chv, L["Envoyer"], 100, 24)
+CH.send:SetPoint("LEFT", CH.input, "RIGHT", 10, 0)
+Skin.Primary(CH.send)
+
+local function SendFromInput()
+    local text = CH.input:GetText()
+    if ns.SendCommunityChat(text) then
+        CH.input:SetText("")
+    end
+end
+CH.input:SetScript("OnEnterPressed", function(self)
+    SendFromInput()
+    self:ClearFocus()
+end)
+CH.input:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+CH.send:SetScript("OnClick", function()
+    ns.PlayClick()
+    SendFromInput()
+end)
+
+-- Une ligne de chat: [heure] Nom: message. Le nom est cliquable et a la couleur de sa classe.
+local function ChatLine(e)
+    local name = ns.ShortName(e.name)
+    local link = "|Hplayer:" .. e.name .. "|h|c" .. ns.ClassHex(e.class) .. name .. "|r|h"
+    local text = e.text
+    -- Mon prénom dans le message: la ligne ressort en doré
+    local me = ns.BareName(ns.MyFullName()):match("^%S+")
+    if not e.self and me and me ~= "" and text:lower():find(me, 1, true) then
+        text = "|cffffd100" .. text .. "|r"
+    end
+    return "|cff7f8c9f" .. date("%H:%M", e.t) .. "|r  " .. link .. ": " .. text
+end
+
+-- Texte de l'onglet: « Chat (3) » quand des messages attendent
+function UI.UpdateChatTab()
+    local t = tabs[5]
+    if not t then return end
+    local n = ns.chatUnread or 0
+    t:SetText(L["Chat"] .. (n > 0 and (" |cffffd100(" .. (n > 99 and "99+" or n) .. ")|r") or ""))
+    if PanelTemplates_TabResize then pcall(PanelTemplates_TabResize, t, 0) end
+end
+
+function UI.RefreshChat()
+    smf:Clear()
+    for _, e in ipairs(ns.chatLog) do
+        smf:AddMessage(ChatLine(e), 0.92, 0.94, 1)
+    end
+    smf:ScrollToBottom()
+end
+
+-- Nouveau message (appelé par Core): affiché tout de suite si l'onglet est ouvert, sinon compté comme non lu
+function UI.OnChatMessage(e)
+    if f:IsShown() and state.view == 5 then
+        ns.chatUnread = 0
+        smf:AddMessage(ChatLine(e), 0.92, 0.94, 1)
+        CH.empty:Hide()
+    end
+    UI.UpdateChatTab()
+end
+
+local function RefreshChatView()
+    ns.chatUnread = 0
+    UI.UpdateChatTab()
+    local member = ns.CommunityId()
+    if member then
+        local online = 0
+        for _, d in ipairs(ns.OnlineList()) do if d.commu then online = online + 1 end end
+        CH.status:SetText(L["Les francophones de tous les serveurs"] .. "  ·  |cff66aaff" .. online .. "|r "
+            .. L["membre(s) en ligne"])
+        CH.top:SetText(L["Aussi dans ma fenêtre de chat"])
+        CH.top:SetShown(ns.db.communityChatAdded ~= member)
+        CH.input:Show()
+        CH.send:Show()
+        CH.empty:SetText(L["Aucun message pour l'instant. Dis bonjour!"])
+        CH.empty:SetShown(#ns.chatLog == 0)
+    else
+        CH.status:SetText(L["Tu n'es pas encore dans la communauté."])
+        CH.top:SetText(L["Rejoindre la communauté"])
+        CH.top:SetShown(ns.CommunityInvite() ~= nil)
+        CH.input:Hide()
+        CH.send:Hide()
+        CH.empty:SetText(ns.CommunityInvite()
+            and L["Rejoins la communauté pour discuter avec les francophones de tous les serveurs."]
+            or L["Pas encore de communauté pour ta faction ou ta région: crée-la (onglet Commandes, bouton Accueil)."])
+        CH.empty:Show()
+    end
+end
+
+chv:SetScript("OnShow", function()
+    ns.LoadChatHistory()
+    UI.RefreshChat()
+end)
+
+---------------------------------------------------------------------------
+-- Vue 6 : Commandes. Un bouton par commande /bf, avec la commande écrite dessous pour l'apprendre.
 -- Chaque bouton fait exactement la même chose que la commande tapée dans le chat.
 ---------------------------------------------------------------------------
-local cv = views[5]
+local cv = views[6]
 local CMD = {}
 
 StaticPopupDialogs["BABILLARDFR_CLEAR_IGNORED"] = {
@@ -1525,10 +1726,10 @@ local SECTIONS = {
         { L["En ligne"], ns.Cmd("enligne"), L["Les francophones en ligne en ce moment."], function() UI.SelectView(4) end },
     } },
     { L["Communauté"], {
+        { L["Chat"], ns.Cmd("chat"), L["Le chat de la communauté: parle avec les francophones de tous les serveurs."], function() UI.SelectView(5) end },
         { L["Communauté"], ns.Cmd("communaute"), L["Rejoindre la communauté qui réunit les francophones de tous les serveurs, ou afficher son chat si tu en fais déjà partie."], function() ns.PlayClick(); RunSlash("communaute") end },
         { L["Site web"], ns.Cmd("site"), L["Le lien de babillard-forever.com, prêt à copier."], function() ns.PlayClick(); RunSlash("site") end },
         { L["Accueil"], ns.Cmd("bienvenue"), L["Revoir l'accueil: langue, type de serveur, rôles et communauté."], function() ns.PlayClick(); RunSlash("bienvenue") end },
-        { L["Aide"], ns.Cmd("aide"), L["Écrit la liste de toutes les commandes dans le chat."], function() ns.PlayClick(); RunSlash("aide") end },
     } },
     { L["Alertes et joueurs"], {
         { L["Favoris"], ns.Cmd("favoris"), L["Choisir les activités qui déclenchent une alerte."], function(b) ns.PlayClick(); if ns.OpenFavMenu then ns.OpenFavMenu(b) end end },
@@ -1540,7 +1741,7 @@ local SECTIONS = {
         { L["Options"], ns.Cmd("options"), L["Alertes, chat, affichage et repérage des francophones."], function() ns.PlayClick(); RunSlash("options") end },
         { L["Langue"], ns.Cmd("langue"), L["Français, English ou Auto (la langue du jeu). Un clic passe à la suivante; l'interface se recharge."], function() ns.PlayClick(); RunSlash("langue " .. (LANG_NEXT[ns.db.opts.lang or "auto"] or "auto")) end },
         { L["Diagnostic"], ns.Cmd("diag"), L["Un texte à copier si les talents ou l'équipement n'apparaissent pas sur le site."], function() ns.PlayClick(); RunSlash("diag") end },
-        { L["Fermer"], L["Échap"], L["Ferme la fenêtre du babillard."], function() ns.PlayClick(); f:Hide() end },
+        { L["Aide"], ns.Cmd("aide"), L["Écrit la liste de toutes les commandes dans le chat."], function() ns.PlayClick(); RunSlash("aide") end },
     } },
 }
 
@@ -1641,6 +1842,7 @@ function UI.Refresh()
     if ns.newVersion then status = status .. "  |cffff8800v" .. ns.newVersion .. L[" disponible|r"] end
     channelStatus:SetText(status)
     UI.UpdateBanner()
+    if UI.UpdateChatTab then UI.UpdateChatTab() end
     if UI.UpdateWelcome then UI.UpdateWelcome() end
     if state.view == 1 then
         RefreshGroups()
@@ -1650,6 +1852,8 @@ function UI.Refresh()
         RefreshMe()
     elseif state.view == 4 then
         RefreshOnline()
+    elseif state.view == 5 then
+        RefreshChatView()
     else
         RefreshCommands()
     end
@@ -1762,6 +1966,7 @@ local rsSeg = MakeSegmented(steps[2], rsItems, 98, 26, -210,
     function(v) return ns.MyRuleset() == v end,
     function(v)
         ns.db.ruleset = v
+        if ns.RequestInvite then C_Timer.After(1, ns.RequestInvite) end
         UI.UpdateWelcome()
         ns.Refresh()
     end)
@@ -1852,12 +2057,14 @@ function UI.UpdateWelcome()
             commuStatus:SetText("")
             commuBtn:SetText(L["Rejoindre la communauté"])
             commuBtn:Show()
-            commuNote:SetText(L["Le jeu ouvre sa fenêtre pour rejoindre : accepte, et c'est fait!"])
+            local by = ns.CommunityInviteBy and ns.CommunityInviteBy()
+            commuNote:SetText(L["Le jeu ouvre sa fenêtre pour rejoindre : accepte, et c'est fait!"]
+                .. (by and ("\n|cff999999" .. L["Communauté partagée par "] .. ns.ShortName(by) .. "|r") or ""))
         else
             commuStatus:SetText(L["|cffffd100Pas encore de communauté pour ta faction ou ta région.|r"])
             commuBtn:Hide()
             commuNote:SetText(L["Crée-la! Touche J, puis « Créer une communauté » nommée « "] .. ns.COMMUNITY_NAME
-                .. L[" », fais un lien d'invitation qui n'expire pas et envoie-le sur babillard-forever.com."])
+                .. L[" », puis un lien d'invitation qui n'expire jamais et sans limite: l'addon le partagera tout seul avec les autres francophones."])
         end
     end
 end

@@ -21,9 +21,9 @@ local DEFAULTS = {
         autoRemove      = true,
         remind          = true,
         tooltipFlag     = true,
-        sameFaction     = true,
-        sameRuleset     = true,
-        levelOnly       = true,
+        sameFaction     = false,   -- cacher l'autre faction (sinon affichée en gris: on ne peut pas grouper ensemble)
+        sameRuleset     = false,   -- cacher les autres types de serveur (sinon affichés en gris)
+        levelOnly       = false,   -- cacher les groupes hors de mon niveau (sinon ils sont affichés en gris)
         chatReading     = true,    -- lire les annonces du chat (« [chat] »)
         spotFrench      = true,    -- repérer les joueurs qui parlent français dans le chat public
         frTag           = true,    -- afficher [FR] devant les messages des francophones dans le chat
@@ -42,6 +42,7 @@ local DEFAULTS = {
     known    = {},     -- joueurs qui ont l'addon : [Nom-Royaume] = date
     francos  = {},     -- joueurs repérés en train de parler français : [Nom] = date
     frGuilds = {},     -- guildes francophones : [Guilde] = { t = date, who = membre croisé, faction }
+    sharedInvites = {},-- liens de communauté partagés: ["US|normal|Horde"] = { [code] = { by, first, t, L, M, R } }
     welcomed = false,
 }
 
@@ -204,6 +205,19 @@ end
 
 -- Les annonces d'un autre type de serveur (ex. PvP quand je suis PvE) sont cachées: on ne peut pas grouper ensemble.
 -- Si l'un des deux ne connaît pas son type (ancienne version de l'addon, choix pas fait), on montre quand même.
+-- Même type de serveur que moi (inconnu = on ne sait pas, donc oui)
+function ns.RulesetMatches(r)
+    local mine = ns.MyRuleset()
+    if not mine or not r or r == "" then return true end
+    return r == mine
+end
+
+-- On peut grouper (et se chuchoter) seulement avec sa faction et son type de serveur.
+function ns.CanGroupWith(faction, ruleset)
+    if faction and faction ~= "" and faction ~= ns.MyFaction() then return false end
+    return ns.RulesetMatches(ruleset)
+end
+
 function ns.RulesetOK(r)
     local o = ns.db and ns.db.opts
     if not o or not o.sameRuleset then return true end
@@ -669,8 +683,7 @@ function ns.CheckAlert(l)
     if o.favsOnly and ns.db.favs and next(ns.db.favs) and not ns.db.favs[l.akey] then return end
     if InCombatLockdown() then return end
     if IsInInstance() and not o.alertInInstance then return end
-    if o.sameFaction and l.faction ~= ns.MyFaction() then return end
-    if not ns.RulesetOK(l.ruleset) then return end
+    if not ns.CanGroupWith(l.faction, l.ruleset) then return end
     if GetTime() - lastAlert < 15 then return end
 
     local a = ns.ACT_BY_KEY[l.akey]
@@ -1368,10 +1381,11 @@ local lastPresenceReply = -1000
 
 function ns.SendPresence(cmd)
     local _, class = UnitClass("player")
-    ns.Send((cmd or "H3") .. ";" .. ns.MyLevel() .. ";" .. (class or "") .. ";" .. ns.VERSION)
+    ns.Send((cmd or "H3") .. ";" .. ns.MyLevel() .. ";" .. (class or "") .. ";" .. ns.VERSION .. ";" .. ns.MyFaction()
+        .. ";" .. (ns.MyRuleset() or ""))
 end
 
-function ns.SeenOnline(sender, level, class, version)
+function ns.SeenOnline(sender, level, class, version, faction, ruleset)
     if not ns.online[sender] then ns.onlineDirty = true end
     local o = ns.online[sender] or { name = sender }
     o.seen = GetTime()
@@ -1379,6 +1393,8 @@ function ns.SeenOnline(sender, level, class, version)
     if level and level > 0 then o.level = level end
     if type(class) == "string" and class ~= "" then o.class = class end
     if type(version) == "string" and version ~= "" then o.version = version end
+    if faction == "Alliance" or faction == "Horde" then o.faction = faction end
+    if type(ruleset) == "string" and ns.RULESETS[ruleset] then o.ruleset = ruleset end
     ns.online[sender] = o
 end
 
@@ -1595,10 +1611,8 @@ local function SeenInGuild(name, guild, faction)
     if not ns.IsFrenchGuild(guild) then return end
     local mine = not faction or faction == "" or faction == ns.MyFaction()
     RememberGuild(guild, mine and name or nil, faction)
-    if mine then
-        if not ns.guildSeen[name] then ns.onlineDirty = true end
-        ns.guildSeen[name] = { t = GetTime(), guild = guild }
-    end
+    if not ns.guildSeen[name] then ns.onlineDirty = true end
+    ns.guildSeen[name] = { t = GetTime(), guild = guild, faction = (faction ~= "" and faction) or nil }
 end
 
 function ns.CheckUnitGuild(unit)
@@ -1669,6 +1683,7 @@ function ns.OnlineList()
             e.here, e.version = true, o.version
             e.level = o.level or e.level
             e.class = o.class or e.class
+            e.faction, e.ruleset = o.faction, o.ruleset
         end
     end
     for _, m in ipairs(ns.CommunityOnline()) do
@@ -1691,12 +1706,17 @@ function ns.OnlineList()
         if g.t < limit then
             ns.guildSeen[name] = nil
         elseif not ns.IsIgnored(name) then
-            Get(name).guildFr = g.guild
+            local e = Get(name)
+            e.guildFr = g.guild
+            e.faction = e.faction or g.faction
         end
     end
+    -- La communauté et le chat général sont de ma faction; la présence dit la faction des autres
+    for _, e in ipairs(list) do e.canGroup = ns.CanGroupWith(e.faction, e.ruleset) end
     -- Avec l'addon d'abord, puis la communauté, puis les repérés; par nom dans chaque groupe
     local function Rank(e) return e.here and 1 or (e.commu and 2 or (e.spotted and 3 or 4)) end
     table.sort(list, function(x, y)
+        if x.canGroup ~= y.canGroup then return x.canGroup end
         local rx, ry = Rank(x), Rank(y)
         if rx ~= ry then return rx < ry end
         return ns.BareName(x.sender) < ns.BareName(y.sender)
@@ -1727,15 +1747,19 @@ local function OnMessage(msg, sender)
     local cmd = f[1]
     ns.MarkKnown(sender)
     if cmd == "H2" or cmd == "H3" then
-        ns.SeenOnline(sender, f[2], f[3], f[4])
+        ns.SeenOnline(sender, f[2], f[3], f[4], f[5], f[6])
         if cmd == "H2" then ReplyPresence() end
     elseif cmd == "L2" then
-        ns.SeenOnline(sender, f[7], f[6], f[14])
+        ns.SeenOnline(sender, f[7], f[6], f[14], f[8], f[13])
     elseif cmd == "G2" then
-        ns.SeenOnline(sender, f[6], f[5], f[10])
+        ns.SeenOnline(sender, f[6], f[5], f[10], f[4], f[9])
     elseif cmd == "D2" and f[2] == "P" then
         ns.online[sender] = nil   -- il se déconnecte
         ns.onlineDirty = true
+    elseif cmd == "K1" or cmd == "K2" then
+        ns.SeenOnline(sender)
+        if ns.OnInviteMessage then ns.OnInviteMessage(cmd, f, sender) end
+        return
     else
         ns.SeenOnline(sender)
     end
@@ -1986,6 +2010,11 @@ function ns.CommunityInvite()
     local byFaction = type(byRuleset) == "table" and byRuleset[ns.MyRuleset() or ""]
     local code = type(byFaction) == "table" and byFaction[ns.MyFaction()]
     if type(code) == "string" and code ~= "" then return code end
+    -- Pas de lien officiel: celui que les joueurs ont partagé (voir « Partage automatique des communautés »)
+    if ns.SharedInvite and ns.MyInviteKey then
+        local shared = ns.SharedInvite(ns.MyInviteKey())
+        if shared then return shared end
+    end
 end
 
 local communityId
@@ -2061,13 +2090,125 @@ function ns.ShowCommunityInChat(userClicked)
     return done
 end
 
--- Un message arrive dans une communauté: si c'est la nôtre, on le lit comme une annonce du chat.
+---------------------------------------------------------------------------
+-- Chat de la communauté (onglet Chat)
+-- Les messages du fil Général de la communauté: ils traversent les serveurs, et Blizzard les modère (signalement,
+-- joueurs ignorés). L'addon les affiche dans sa fenêtre et permet d'y écrire; il ne crée pas de chat à lui.
+---------------------------------------------------------------------------
+ns.chatLog = {}          -- { { key, t (secondes), name, class, text, self } } dans l'ordre chronologique
+ns.chatUnread = 0        -- messages des autres arrivés pendant que l'onglet Chat n'était pas affiché
+local chatSeen = {}      -- [clé] = true: l'historique et les nouveaux messages peuvent se recouper
+local CHAT_KEEP = 200
+
+local function MessageKey(m)
+    local id = m.messageId
+    if type(id) == "table" then return tostring(id.epoch) .. ":" .. tostring(id.position) end
+    return tostring(m.timestamp) .. ":" .. tostring(m.content)
+end
+
+local function ChatEntry(m)
+    local a = type(m.author) == "table" and m.author or {}
+    local ts = tonumber(m.timestamp)
+    return {
+        key = MessageKey(m),
+        t = ts and math.floor(ts / 1000000) or time(),   -- le jeu donne des microseconds
+        name = ns.CleanName(a.name) or "?",
+        class = ClassFile(a.classID),
+        text = m.content or "",
+        self = a.isSelf and true or false,
+    }
+end
+
+-- Ajoute un message au journal. Retourne true s'il était nouveau.
+local function AddChatEntry(e)
+    if chatSeen[e.key] then return false end
+    chatSeen[e.key] = true
+    tinsert(ns.chatLog, e)
+    local n = #ns.chatLog
+    if n > 1 and ns.chatLog[n - 1].t > e.t then
+        table.sort(ns.chatLog, function(x, y) return x.t < y.t end)   -- un message de l'historique, plus vieux
+    end
+    while #ns.chatLog > CHAT_KEEP do
+        local old = table.remove(ns.chatLog, 1)
+        chatSeen[old.key] = nil
+    end
+    return true
+end
+
+-- Messages déjà téléchargés par le jeu pour ce fil (historique)
+function ns.ReadChatHistory(clubId, streamId)
+    if not C_Club or not C_Club.GetMessageRanges or not C_Club.GetMessagesInRange then return end
+    local ok, ranges = pcall(C_Club.GetMessageRanges, clubId, streamId)
+    if not ok or type(ranges) ~= "table" then return end
+    local added = false
+    for _, r in ipairs(ranges) do
+        local ok2, msgs = pcall(C_Club.GetMessagesInRange, clubId, streamId, r.oldestMessageId, r.newestMessageId)
+        if ok2 and type(msgs) == "table" then
+            for _, m in ipairs(msgs) do
+                if type(m) == "table" and not m.destroyed and type(m.content) == "string" then
+                    if AddChatEntry(ChatEntry(m)) then added = true end
+                end
+            end
+        end
+    end
+    if added and ns.UI and ns.UI.RefreshChat then ns.UI.RefreshChat() end
+end
+
+-- À l'ouverture de l'onglet Chat: on demande au jeu les derniers messages (une fois), puis on lit ce qu'il a.
+local historyAsked = false
+function ns.LoadChatHistory()
+    local clubId = ns.CommunityId()
+    if not clubId or not C_Club then return end
+    local streamId = CommunityStream(clubId)
+    if not streamId then return end
+    if C_Club.FocusStream then pcall(C_Club.FocusStream, clubId, streamId) end
+    if not historyAsked and C_Club.RequestMoreMessagesBefore then
+        historyAsked = true
+        pcall(C_Club.RequestMoreMessagesBefore, clubId, streamId, nil, 50)
+    end
+    ns.ReadChatHistory(clubId, streamId)
+end
+
+-- Écrire dans le chat de la communauté. Appelé seulement quand le joueur appuie sur Entrée ou clique sur Envoyer.
+local lastChatSend = -10
+function ns.SendCommunityChat(text)
+    text = strtrim(text or "")
+    if text == "" then return false end
+    local clubId = ns.CommunityId()
+    if not clubId then
+        ns.ShowCommunityInvite()
+        return false
+    end
+    local streamId = CommunityStream(clubId)
+    if not streamId then return false end
+    if GetTime() - lastChatSend < 1 then return false end   -- un message par seconde au plus
+    text = ns.CutUtf8(text, 255)
+    if C_Club.SendMessage and pcall(C_Club.SendMessage, clubId, streamId, text) then
+        lastChatSend = GetTime()
+        return true
+    end
+    -- Le jeu refuse que l'addon écrive: on met le chat de la communauté dans la fenêtre de chat du jeu
+    ns.Print(L["le jeu ne laisse pas l'addon écrire dans la communauté: écris dans ta fenêtre de chat, sur le canal de la communauté."])
+    ns.ShowCommunityInChat(true)
+    return false
+end
+
+-- Un message arrive dans une communauté: si c'est la nôtre, il va dans le chat de l'addon, et on le lit aussi comme
+-- une annonce du chat.
 function ns.OnCommunityMessage(clubId, streamId, messageId)
     if not clubId or clubId ~= ns.CommunityId() then return end
     local ok, info = pcall(C_Club.GetMessageInfo, clubId, streamId, messageId)
     if not ok or type(info) ~= "table" or type(info.content) ~= "string" then return end
     local author = info.author
-    if type(author) ~= "table" or author.isSelf or type(author.name) ~= "string" then return end
+    if type(author) ~= "table" or type(author.name) ~= "string" then return end
+    if not info.destroyed then
+        local e = ChatEntry(info)
+        if AddChatEntry(e) then
+            if not e.self then ns.chatUnread = ns.chatUnread + 1 end
+            if ns.UI and ns.UI.OnChatMessage then ns.UI.OnChatMessage(e) end
+        end
+    end
+    if author.isSelf then return end
     -- Les annonces de l'addon finissent par « (type de serveur) »: le filtre par type de serveur s'applique alors.
     local ruleset
     for _, names in ipairs({ ns.RULESETS_FR, ns.RULESETS }) do
@@ -2106,6 +2247,291 @@ function ns.CommunityReminder()
     ns.db.communityAsked = today
     local code = ns.CommunityInvite()
     ns.Print(L["joueurs francophones sur les autres serveurs de Forever: |cff66ccff|HclubTicket:"] .. code .. L["|h[Rejoindre "] .. ns.COMMUNITY_NAME .. L["]|h|r (ou |cffffd100/bf communaute|r)"])
+end
+
+---------------------------------------------------------------------------
+-- Partage automatique des communautés
+-- Quand un joueur crée « Babillard Forever FR » pour sa région, son type de serveur et sa faction, et fait un lien
+-- d'invitation qui n'expire pas, son addon trouve ce lien et le partage. Ceux qui rejoignent par ce lien le confirment
+-- et le repartagent aux nouveaux, sur tous les serveurs où ils jouent: plus besoin d'une mise à jour par communauté.
+--   K1;région;type;faction                 « je n'ai pas de communauté pour ma combinaison »
+--   K2;région;type;faction;code;rôle       un lien, avec le rôle de celui qui l'envoie:
+--                                          L = chef de la communauté, M = membre entré par ce lien, R = relais
+-- Les liens officiels (Data.lua) gagnent toujours. Si deux liens circulent pour la même combinaison, celui qui a le
+-- plus de chefs et de membres derrière lui l'emporte: un farceur seul ne remplace pas une vraie communauté.
+---------------------------------------------------------------------------
+local VALID_REGION = { US = true, EU = true, KR = true, TW = true, CN = true }
+local ROLE_WEIGHT = { L = 2, M = 1, R = 0.1 }
+
+local function InviteKey(region, ruleset, faction)
+    return region .. "|" .. ruleset .. "|" .. faction
+end
+
+-- Ma combinaison (nil tant que le type de serveur n'est pas choisi)
+function ns.MyInviteKey()
+    local region, ruleset, faction = ns.MyRegion(), ns.MyRuleset(), ns.MyFaction()
+    if region == "" or not ruleset or (faction ~= "Alliance" and faction ~= "Horde") then return nil end
+    return InviteKey(region, ruleset, faction)
+end
+
+-- Un code d'invitation n'a que des lettres et des chiffres: rien d'autre ne passe (il finit dans un lien cliquable).
+local function ValidCode(code)
+    return type(code) == "string" and #code >= 6 and #code <= 32 and code:match("^%w+$") ~= nil
+end
+ns.ValidInviteCode = ValidCode
+
+local function Count(t)
+    local n = 0
+    for _ in pairs(t or {}) do n = n + 1 end
+    return n
+end
+
+-- Lien officiel (Data.lua) pour une combinaison
+function ns.OfficialInvite(key)
+    if not key then return nil end
+    local region, ruleset, faction = strsplit("|", key)
+    local byRuleset = ns.COMMUNITY_INVITES and ns.COMMUNITY_INVITES[region]
+    local byFaction = type(byRuleset) == "table" and byRuleset[ruleset]
+    local code = type(byFaction) == "table" and byFaction[faction]
+    if type(code) == "string" and code ~= "" then return code end
+end
+
+-- Meilleur lien partagé pour une combinaison: code, nom de celui qui l'a partagé en premier, score
+function ns.SharedInvite(key)
+    local entry = key and ns.db and ns.db.sharedInvites[key]
+    if type(entry) ~= "table" then return nil end
+    local best, bestScore, bestSeq
+    for code, c in pairs(entry) do
+        local score = 0
+        for role, w in pairs(ROLE_WEIGHT) do
+            score = score + w * Count(c[role])
+        end
+        -- Égalité: le premier lien arrivé garde sa place (un farceur qui arrive après ne le remplace pas)
+        local seq = c.seq or math.huge
+        if not best or score > bestScore or (score == bestScore and seq < bestSeq) then
+            best, bestScore, bestSeq = code, score, seq
+        end
+    end
+    if best then return best, entry[best].by, bestScore end
+end
+
+-- Note un lien. Retourne true s'il a été gardé.
+local function RecordInvite(key, code, sender, role)
+    if not ValidCode(code) or not ROLE_WEIGHT[role] then return false end
+    local all = ns.db.sharedInvites
+    local entry = all[key]
+    if type(entry) ~= "table" then
+        entry = {}
+        all[key] = entry
+    end
+    local c = entry[code]
+    if not c then
+        if Count(entry) >= 5 then return false end   -- trop de liens différents pour la même combinaison
+        ns.db.inviteSeq = (ns.db.inviteSeq or 0) + 1
+        c = { by = sender, first = time(), seq = ns.db.inviteSeq }
+        entry[code] = c
+    end
+    c.t = time()
+    c[role] = c[role] or {}
+    if c[role][sender] or Count(c[role]) < 50 then c[role][sender] = time() end
+    return true
+end
+
+-- Mon rôle pour ce lien: chef, membre entré par ce lien, ou simple relais
+local function MyRoleFor(key, code)
+    local db = ns.db
+    if type(db.myLeaderCode) == "table" and db.myLeaderCode.key == key and db.myLeaderCode.code == code then return "L" end
+    if type(db.memberCode) == "table" and db.memberCode[key] == code then return "M" end
+    return "R"
+end
+
+local function SendInvite(key, code)
+    local region, ruleset, faction = strsplit("|", key)
+    return ns.Send("K2;" .. region .. ";" .. ruleset .. ";" .. faction .. ";" .. code .. ";" .. MyRoleFor(key, code))
+end
+
+-- Texte lisible d'une combinaison: « US · Normal (PvE) · Horde »
+function ns.InviteKeyText(key)
+    if not key then return "?" end
+    local region, ruleset, faction = strsplit("|", key)
+    return region .. " · " .. (ns.RulesetName(ruleset) or ruleset) .. " · " .. faction
+end
+
+-- Qui a partagé le lien que j'utiliserais (nil si c'est un lien officiel ou s'il n'y en a pas)
+function ns.CommunityInviteBy()
+    local key = ns.MyInviteKey()
+    if not key or ns.OfficialInvite(key) then return nil end
+    local _, by = ns.SharedInvite(key)
+    return by
+end
+
+-- Un lien vient d'arriver pour ma combinaison: on le dit une fois, avec le lien cliquable.
+local function AnnounceInvite(code, by)
+    local db = ns.db
+    db.inviteAnnounced = db.inviteAnnounced or {}
+    if db.inviteAnnounced[code] or ns.CommunityId() then return end
+    db.inviteAnnounced[code] = true
+    ns.Print(L["une communauté francophone vient d'être partagée pour ta faction"] .. (by and (" (" .. ns.ShortName(by) .. ")") or "")
+        .. ": |cff66ccff|HclubTicket:" .. code .. "|h[" .. L["Rejoindre"] .. " " .. ns.COMMUNITY_NAME .. "]|h|r")
+    ns.RefreshSoon()
+end
+
+-- Je n'ai pas de communauté pour ma combinaison: je demande aux autres (au plus une fois par 5 minutes)
+local lastInviteRequest = -1000
+function ns.RequestInvite()
+    if not ns.db or ns.CommunityId() or ns.CommunityInvite() then return end
+    local key = ns.MyInviteKey()
+    if not key or GetTime() - lastInviteRequest < 300 then return end
+    lastInviteRequest = GetTime()
+    local region, ruleset, faction = strsplit("|", key)
+    ns.Send("K1;" .. region .. ";" .. ruleset .. ";" .. faction)
+end
+
+-- Quelqu'un demande: si j'ai un lien pour sa combinaison, je réponds après un délai au hasard, sauf si un autre
+-- a déjà répondu entre-temps (une seule réponse suffit).
+local lastK2Seen = {}
+local function ReplyInvite(key)
+    local code = ns.OfficialInvite(key) or ns.SharedInvite(key)
+    if not code then return end
+    local asked = GetTime()
+    C_Timer.After(1 + math.random() * 5, function()
+        if (lastK2Seen[key] or -1) > asked then return end
+        lastK2Seen[key] = GetTime()
+        SendInvite(key, code)
+    end)
+end
+
+-- Messages K1 et K2 (appelé par la réception des messages)
+function ns.OnInviteMessage(cmd, f, sender)
+    local region, ruleset, faction = f[2], f[3], f[4]
+    if not VALID_REGION[region or ""] or not ns.RULESETS[ruleset or ""] then return end
+    if faction ~= "Alliance" and faction ~= "Horde" then return end
+    local key = InviteKey(region, ruleset, faction)
+    if cmd == "K1" then
+        ReplyInvite(key)
+        return
+    end
+    local code, role = f[5], f[6]
+    if not ValidCode(code) then return end
+    lastK2Seen[key] = GetTime()
+    if not ROLE_WEIGHT[role or ""] then role = "R" end
+    local before = ns.CommunityInvite()
+    if RecordInvite(key, code, sender, role) and key == ns.MyInviteKey() then
+        local now = ns.CommunityInvite()
+        if now and now ~= before then AnnounceInvite(now, ns.CommunityInviteBy()) end
+    end
+end
+
+-- Je suis chef de la communauté: on demande ses liens d'invitation au jeu (réponse: CLUB_TICKETS_RECEIVED).
+function ns.CheckLeaderInvite()
+    local clubId = ns.CommunityId()
+    if not clubId or not C_Club or not C_Club.RequestTickets then return end
+    if C_Club.GetMemberInfoForSelf then
+        local ok, me = pcall(C_Club.GetMemberInfoForSelf, clubId)
+        local R = Enum and Enum.ClubRoleIdentifier
+        if ok and type(me) == "table" and R and me.role and me.role ~= R.Owner and me.role ~= R.Leader
+            and me.role ~= R.Moderator then
+            return   -- simple membre: le jeu ne lui montre pas les liens d'invitation
+        end
+    end
+    pcall(C_Club.RequestTickets, clubId)
+end
+
+-- Ma communauté devient le lien partagé pour ma combinaison (lien trouvé par l'addon, ou collé avec /bf partager).
+local lastLeaderShare = -1000
+local function ShareAsLeader(code)
+    local key = ns.MyInviteKey()
+    if not key then return false end
+    local changed = not (type(ns.db.myLeaderCode) == "table" and ns.db.myLeaderCode.code == code and ns.db.myLeaderCode.key == key)
+    ns.db.myLeaderCode = { key = key, code = code }
+    RecordInvite(key, code, ns.Me(), "L")
+    if changed or GetTime() - lastLeaderShare > 1800 then
+        lastLeaderShare = GetTime()
+        SendInvite(key, code)
+    end
+    if changed then
+        ns.Print(L["merci! Le lien de ta communauté est maintenant partagé avec les francophones de ta combinaison ("]
+            .. ns.InviteKeyText(key) .. L["). Ceux qui la rejoignent le partagent à leur tour."])
+    end
+    return true
+end
+
+-- Le jeu a envoyé les liens d'invitation de ma communauté: on garde celui qui n'expire pas et n'a pas de limite.
+local leaderHintShown = false
+function ns.OnTicketsReceived(clubId)
+    if not clubId or clubId ~= ns.CommunityId() or not C_Club.GetTickets then return end
+    local ok, tickets = pcall(C_Club.GetTickets, clubId)
+    if not ok or type(tickets) ~= "table" or not ns.MyInviteKey() then return end
+    -- Le lien officiel de ma combinaison existe déjà: rien à partager
+    if ns.OfficialInvite(ns.MyInviteKey()) then return end
+    for _, tk in ipairs(tickets) do
+        local never = type(tk) == "table" and (not tk.expirationTime or tk.expirationTime == 0)
+        local unlimited = type(tk) == "table" and (not tk.allowedRedeemCount or tk.allowedRedeemCount == 0)
+        if never and unlimited and ValidCode(tk.ticketId) then
+            ShareAsLeader(tk.ticketId)
+            return
+        end
+    end
+    if not leaderHintShown and #tickets > 0 then
+        leaderHintShown = true
+        ns.Print(L["pour partager ta communauté avec les autres francophones, fais un lien d'invitation qui |cffffd100n'expire jamais|r et |cffffd100sans limite|r (touche J, Inviter). Ou colle ton lien avec |cffffd100/bf partager <lien>|r."])
+    end
+end
+
+-- /bf partager <lien ou code>: pour un chef, si l'addon ne trouve pas le lien tout seul
+function ns.ShareInviteManually(text)
+    local code = type(text) == "string" and (text:match("/invite/(%w+)") or text:match("^%s*(%w+)%s*$"))
+    if not ValidCode(code) then
+        ns.Print(L["colle le lien d'invitation de ta communauté: |cffffd100/bf partager https://www.worldofwarcraft.com/invite/XXXX|r"])
+        return
+    end
+    if not ns.CommunityId() then
+        ns.Print(L["crée (ou rejoins) d'abord la communauté « "] .. ns.COMMUNITY_NAME .. L[" »: le lien doit être le sien."])
+        return
+    end
+    if not ns.MyInviteKey() then
+        ns.RequireRuleset()
+        return
+    end
+    ShareAsLeader(code)
+end
+
+-- J'ai cliqué sur « Rejoindre »: si j'entre dans la communauté, je confirme ce lien (et je le partagerai).
+function ns.RememberJoinAttempt(code)
+    local key = ns.MyInviteKey()
+    if key and ValidCode(code) then ns.db.pendingJoin = { key = key, code = code, t = time() } end
+end
+
+function ns.ConfirmJoinedInvite()
+    local p = ns.db.pendingJoin
+    if type(p) ~= "table" or not ns.CommunityId() then return end
+    ns.db.pendingJoin = nil
+    if time() - (p.t or 0) > 1800 then return end
+    ns.db.memberCode = ns.db.memberCode or {}
+    ns.db.memberCode[p.key] = p.code
+    RecordInvite(p.key, p.code, ns.Me(), "M")
+    SendInvite(p.key, p.code)
+end
+
+-- Ménage: confirmations de plus de 60 jours, et liens que plus personne ne confirme
+function ns.PruneInvites()
+    local limit = time() - 60 * 24 * 3600
+    for key, entry in pairs(ns.db.sharedInvites) do
+        if type(entry) ~= "table" then
+            ns.db.sharedInvites[key] = nil
+        else
+            for code, c in pairs(entry) do
+                local alive = 0
+                for role in pairs(ROLE_WEIGHT) do
+                    for who, t in pairs(c[role] or {}) do
+                        if type(t) ~= "number" or t < limit then c[role][who] = nil else alive = alive + 1 end
+                    end
+                end
+                if alive == 0 or not ValidCode(code) then entry[code] = nil end
+            end
+            if not next(entry) then ns.db.sharedInvites[key] = nil end
+        end
+    end
 end
 
 local lastCommunityPost = -1000
@@ -2258,6 +2684,7 @@ local function PruneKnown()
         table.sort(list, function(a, b) return ns.db.francos[a] > ns.db.francos[b] end)
         for i = 3001, #list do ns.db.francos[list[i]] = nil end
     end
+    if ns.PruneInvites then ns.PruneInvites() end
     -- Guildes francophones: 60 jours, et au plus 500
     local guilds = {}
     for g, e in pairs(ns.db.frGuilds) do
@@ -2284,6 +2711,9 @@ ev:RegisterEvent("CHAT_MSG_SAY")
 ev:RegisterEvent("CHAT_MSG_WHISPER")
 pcall(ev.RegisterEvent, ev, "CLUB_MESSAGE_ADDED")   -- communautés (absentes de certaines versions du jeu)
 pcall(ev.RegisterEvent, ev, "CLUB_ADDED")
+pcall(ev.RegisterEvent, ev, "CLUB_MESSAGE_HISTORY_RECEIVED")
+pcall(ev.RegisterEvent, ev, "CLUB_TICKETS_RECEIVED")
+pcall(ev.RegisterEvent, ev, "CLUB_TICKET_CREATED")
 ev:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
 ev:RegisterEvent("PLAYER_TARGET_CHANGED")
 pcall(ev.RegisterEvent, ev, "NAME_PLATE_UNIT_ADDED")
@@ -2297,6 +2727,17 @@ ev:SetScript("OnEvent", function(_, event, ...)
         ns.db = BabillardForeverFRDB
         ApplyDefaults(ns.db, DEFAULTS)
         PruneKnown()
+        -- 2.5: tout le monde est visible par défaut, même hors de mon niveau (les groupes hors niveau sont en gris).
+        if not ns.db.levelOnlyReset then
+            ns.db.opts.levelOnly = false
+            ns.db.levelOnlyReset = true
+        end
+        -- 2.6: même chose pour la faction et le type de serveur (on rassemble: personne de caché par défaut)
+        if not ns.db.filtersReset26 then
+            ns.db.opts.sameFaction = false
+            ns.db.opts.sameRuleset = false
+            ns.db.filtersReset26 = true
+        end
         -- La langue d'abord: les fenêtres sont bâties avec les textes de la langue choisie.
         ns.SetupLanguage()
         xpcall(ns.BuildUI, geterrorhandler())
@@ -2320,6 +2761,10 @@ ev:SetScript("OnEvent", function(_, event, ...)
             C_Timer.After(3, function()
                 ns.SendPresence("H2")
                 ns.RequestAll()
+            end)
+            C_Timer.After(15, function()
+                ns.RequestInvite()
+                ns.CheckLeaderInvite()
             end)
         end)
         -- L'accueil a demandé un changement de langue: après le rechargement, il reprend où il était.
@@ -2376,6 +2821,17 @@ ev:SetScript("OnEvent", function(_, event, ...)
     elseif event == "CLUB_MESSAGE_ADDED" then
         ns.OnCommunityMessage(...)
 
+    elseif event == "CLUB_TICKETS_RECEIVED" then
+        ns.OnTicketsReceived(...)
+
+    elseif event == "CLUB_TICKET_CREATED" then
+        -- Un chef vient de créer un lien d'invitation: on le récupère pour le partager
+        C_Timer.After(1, ns.CheckLeaderInvite)
+
+    elseif event == "CLUB_MESSAGE_HISTORY_RECEIVED" then
+        local clubId, streamId = ...
+        if clubId and clubId == ns.CommunityId() then ns.ReadChatHistory(clubId, streamId) end
+
     elseif event == "CLUB_ADDED" then
         -- Je viens de rejoindre une communauté: si c'est la nôtre, son chat va dans ma fenêtre de chat (une seule fois).
         ns.ResetCommunityCache()
@@ -2385,6 +2841,10 @@ ev:SetScript("OnEvent", function(_, event, ...)
             if id and ns.db.communityChatAdded ~= id then
                 ns.Print(L["bienvenue dans la communauté! Tu vois maintenant les francophones de tous les serveurs dans l'onglet En ligne."])
                 ns.ShowCommunityInChat(false)
+            end
+            if id then
+                ns.ConfirmJoinedInvite()   -- entré par un lien partagé: on le confirme
+                ns.CheckLeaderInvite()     -- je viens de la créer: son lien sera partagé dès qu'il existe
             end
             ns.Refresh()
         end)
@@ -2424,12 +2884,17 @@ end)
 SLASH_BABILLARDFR1 = "/bf"
 SLASH_BABILLARDFR2 = "/babillard"
 SlashCmdList.BABILLARDFR = function(arg)
-    arg = strtrim(arg or ""):lower()
+    local raw = strtrim(arg or "")
+    arg = raw:lower()
     ns.EnsureChannel()
     if arg == "site" or arg == "website" then
         ns.ShowSiteLink()
-    elseif arg == "commandes" or arg == "commands" or arg == "cmd" then
+    elseif arg:match("^partager") or arg:match("^share") then
+        ns.ShareInviteManually((raw:gsub("^%S+%s*", "")))
+    elseif arg == "chat" then
         if ns.UI and ns.UI.Open then ns.UI.Open(5) end
+    elseif arg == "commandes" or arg == "commands" or arg == "cmd" then
+        if ns.UI and ns.UI.Open then ns.UI.Open(6) end
     elseif arg == "bienvenue" or arg == "welcome" then
         if ns.UI and ns.UI.ShowWelcome then ns.UI.ShowWelcome(1) end
     elseif arg == "enligne" or arg == "online" or arg == "qui" then
@@ -2480,6 +2945,8 @@ SlashCmdList.BABILLARDFR = function(arg)
         print(L["  |cffffd100/bf perso|r : mon personnage et code pour le site"])
         print(L["  |cffffd100/bf site|r : lien du site"])
         print(L["  |cffffd100/bf enligne|r : francophones en ligne"])
+        print(L["  |cffffd100/bf chat|r : le chat de la communauté"])
+        print(L["  |cffffd100/bf partager <lien>|r : partager le lien de ta communauté (si tu l'as créée)"])
         print(L["  |cffffd100/bf bienvenue|r : revoir l'accueil"])
         print(L["  |cffffd100/bf commandes|r : tous ces boutons dans la fenêtre"])
         print(L["  |cffffd100/bf communaute|r : rejoindre les francophones de tous les serveurs"])
