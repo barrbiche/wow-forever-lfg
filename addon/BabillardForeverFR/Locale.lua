@@ -53,6 +53,12 @@ function ns.Cmd(word)
     return "/bf " .. ((ns.lang == "en" and CMD_EN[word]) or word)
 end
 
+-- Pluriel: « 0 groupe, 1 groupe, 2 groupes » en français; « 0 groups, 1 group, 2 groups » en anglais.
+function ns.Plural(n, one, many)
+    local single = (ns.lang == "en") and (n == 1) or (n <= 1)
+    return n .. " " .. (single and one or many)
+end
+
 function ns.LanguageName(choice)
     if choice == "fr" then return "Français" end
     if choice == "en" then return "English" end
@@ -486,3 +492,33 @@ EN["partagée par "] = "shared by "
 EN[" » (touche J), puis un lien d'invitation qui n'expire jamais: l'addon le partagera tout seul."] = "' (J key), then an invite link that never expires: the addon will share it on its own."
 EN["Communauté partagée par "] = "Community shared by "
 EN[" », puis un lien d'invitation qui n'expire jamais et sans limite: l'addon le partagera tout seul avec les autres francophones."] = "', then an invite link that never expires with no limit: the addon will share it with other French speakers on its own."
+-- 2.8: nouvelle fenêtre (en-tête, onglets avec pastilles, lignes à deux étages)
+EN["Alertes, chat, affichage, taille de la fenêtre et repérage des francophones."] = "Alerts, chat, display, window size and spotting French speakers."
+EN["Cacher la bannière jusqu'à ta prochaine connexion."] = "Hide the banner until your next login."
+EN["Joue avec les francophones de TOUS les serveurs!"] = "Play with French speakers from EVERY server!"
+EN["Sans la communauté, tu ne vois que les joueurs de ton serveur. Un clic pour la rejoindre."] = "Without the community, you only see players on your own server. One click to join it."
+EN["Aucune communauté francophone pour ta faction... crée-la!"] = "No French-speaking community for your faction yet... create it!"
+EN["Note : QC, vocal Discord, débutants bienvenus"] = "Note: QC, Discord voice, beginners welcome"
+EN["Voir qui est en ligne"] = "See who's online"
+EN["Aucun groupe pour l'instant.\nPublie le tien en haut: les francophones qui ont l'addon le verront tout de suite."] = "No groups right now.\nPost yours above: French speakers who have the addon will see it right away."
+EN["C'est tranquille pour l'instant. Plus il y a de francophones avec l'addon, plus le babillard se remplit: parles-en à tes amis et à ta guilde!"] = "It's quiet for now. The more French speakers have the addon, the busier the board gets: tell your friends and your guild!"
+EN["guilde"] = "guild"
+EN["guildes"] = "guilds"
+EN["|cffffd1003.|r Sur |cff33aaffbabillard-forever.com|r, va dans ton profil et colle le code."] = "|cffffd1003.|r On |cff33aaffbabillard-forever.com|r, go to your profile and paste the code."
+EN["Sans guilde"] = "No guild"
+EN["autre serveur"] = "other server"
+EN["repéré au chat"] = "spotted in chat"
+EN["par sa guilde"] = "by their guild"
+EN["membre en ligne"] = "member online"
+EN["membres en ligne"] = "members online"
+EN["Pas dans la communauté"] = "Not in the community"
+EN["francophone en ligne"] = "French speaker online"
+EN["francophones en ligne"] = "French speakers online"
+EN["groupe"] = "group"
+EN["groupes"] = "groups"
+EN["Le point de rencontre des francophones de Forever"] = "The meeting place for French speakers on Forever"
+EN["Taille de la fenêtre du babillard : "] = "Board window size: "
+EN["annonce active"] = "active listing"
+EN["annonces actives"] = "active listings"
+EN["nouveau message dans le chat"] = "new message in the chat"
+EN["nouveaux messages dans le chat"] = "new messages in the chat"

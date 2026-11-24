@@ -34,8 +34,9 @@ local DEFAULTS = {
         alsoCommunity   = true,    -- publier aussi dans la communauté Babillard Forever FR (au clic seulement)
         autoUpdate      = true,    -- mettre à jour tout seul le nombre de joueurs et les rôles manquants
         favsOnly        = false,   -- alertes seulement pour mes activités favorites
-        whisperTemplate = true,
-        lang            = "auto",  -- langue: "auto" (celle du jeu), "fr" ou "en" (après /reload)    -- Chuchoter écrit déjà un message de présentation (jamais envoyé tout seul)
+        whisperTemplate = true,    -- Chuchoter écrit déjà un message de présentation (jamais envoyé tout seul)
+        lang            = "auto",  -- langue: "auto" (celle du jeu), "fr" ou "en" (après /reload)
+        uiScale         = 1,       -- taille de la fenêtre du babillard (0,7 à 1,5)
     },
     favs     = {},     -- activités favorites : [cléActivité] = true
     ignored  = {},     -- joueurs ignorés : [nomEnMinuscules] = true

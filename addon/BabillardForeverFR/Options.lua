@@ -174,11 +174,37 @@ langBtn:SetScript("OnClick", function()
     LangText()
 end)
 
+-- Taille de la fenêtre du babillard: de 70 % à 150 %, par pas de 5 %
+local scaleLabel = content:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+scaleLabel:SetPoint("TOPLEFT", 20, y - 86)
+local function ScaleText()
+    local s = math.floor(((ns.db and ns.db.opts.uiScale) or 1) * 100 + 0.5)
+    scaleLabel:SetText(L["Taille de la fenêtre du babillard : "] .. s .. " %")
+end
+local function ScaleButton(text, delta, x)
+    local b = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+    if ns.Skin and ns.Skin.Button then ns.Skin.Button(b) end
+    b:SetSize(32, 22)
+    b:SetPoint("TOPLEFT", x, y - 82)
+    b:SetText(text)
+    b:SetScript("OnClick", function()
+        local s = (ns.db.opts.uiScale or 1) + delta
+        ns.db.opts.uiScale = math.max(0.7, math.min(1.5, math.floor(s * 20 + 0.5) / 20))
+        ScaleText()
+        if ns.UI and ns.UI.ApplyScale then ns.UI.ApplyScale() end
+    end)
+    return b
+end
+ScaleButton("-", -0.05, 330)
+ScaleButton("+", 0.05, 366)
+ScaleText()
+
 -- Hauteur du contenu: jusqu'en bas des boutons, plus une marge.
-content:SetHeight(math.max(100, -(y - 48) + 24 + 24))
+content:SetHeight(math.max(100, -(y - 86) + 24 + 24))
 
 panel:SetScript("OnShow", function()
     if not ns.db then return end
+    ScaleText()
     for _, cb in ipairs(checks) do
         if cb.key == "minimap" then
             cb:SetChecked(not ns.db.minimap.hide)
@@ -270,11 +296,11 @@ mm:SetScript("OnEnter", function(self)
     local n = 0
     for _ in pairs(ns.listings) do n = n + 1 end
     local online = ns.OnlineList and #ns.OnlineList() or 0
-    GameTooltip:AddLine(online .. " " .. L["francophone(s) en ligne"], 1, 0.84, 0.3)
+    GameTooltip:AddLine(ns.Plural(online, L["francophone en ligne"], L["francophones en ligne"]), 1, 0.84, 0.3)
     if (ns.chatUnread or 0) > 0 then
-        GameTooltip:AddLine(ns.chatUnread .. " " .. L["nouveau(x) message(s) dans le chat"], 0.4, 0.67, 1)
+        GameTooltip:AddLine(ns.Plural(ns.chatUnread, L["nouveau message dans le chat"], L["nouveaux messages dans le chat"]), 0.4, 0.67, 1)
     end
-    GameTooltip:AddLine(n .. L[" annonce(s) active(s)"], 0.6, 0.8, 1)
+    GameTooltip:AddLine(ns.Plural(n, L["annonce active"], L["annonces actives"]), 0.6, 0.8, 1)
     if ns.my then GameTooltip:AddLine(L["Ton annonce est active"], 0.2, 0.87, 0.33) end
     GameTooltip:AddLine(" ")
     GameTooltip:AddLine(L["Clic gauche : ouvrir le babillard"], 1, 1, 1)
