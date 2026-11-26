@@ -998,31 +998,9 @@ Try(function()
     line:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], 0.3)
 end)
 
-local siteBtn = CreateFrame("Button", nil, foot)
-siteBtn:SetHeight(FOOT_H - 1)
-siteBtn:SetPoint("RIGHT", -10, 0)
-siteBtn.icon = Icon(siteBtn, "globe", 12, "ARTWORK", 0.45, 0.72, 1)
-siteBtn.icon:SetPoint("LEFT", 0, 0)
-siteBtn.text = Text(siteBtn, "Link")
-siteBtn.text:SetPoint("LEFT", siteBtn.icon, "RIGHT", 5, 0)
-siteBtn.text:SetText("babillard-forever.com")
-siteBtn:SetWidth((siteBtn.text:GetStringWidth() or 120) + 18)
-siteBtn:SetScript("OnClick", function() ns.PlayClick(); ns.ShowSiteLink() end)
-siteBtn:SetScript("OnEnter", function(self)
-    self.text:SetTextColor(0.75, 0.88, 1)
-    GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:AddLine(L["Le site du Babillard"])
-    GameTooltip:AddLine(L["Annonces, guildes et profils, même hors du jeu."], 1, 1, 1, true)
-    GameTooltip:Show()
-end)
-siteBtn:SetScript("OnLeave", function(self)
-    self.text:SetTextColor(0.45, 0.72, 1)
-    GameTooltip:Hide()
-end)
-
 local channelStatus = Text(foot, "Tiny")
 channelStatus:SetPoint("LEFT", 12, 0)
-channelStatus:SetPoint("RIGHT", siteBtn, "LEFT", -12, 0)
+channelStatus:SetPoint("RIGHT", -12, 0)
 channelStatus:SetJustifyH("LEFT")
 channelStatus:SetWordWrap(false)
 
@@ -1824,32 +1802,6 @@ rh:SetWidth(WIN_W - 2 * PAD - 154 - 3 * 28 - 16 - 16 - 16)
 rh:SetJustifyH("LEFT")
 rh:SetText(L["Utilisés pour les alertes: l'addon te prévient quand un groupe cherche un de tes rôles."])
 
-SectionTitle(mv, L["Lier mon personnage au site"], PAD, -282)
-local ep = MakePanel(mv, -302, -446)
-local steps = Text(ep, "Small")
-steps:SetPoint("TOPLEFT", 16, -16)
-steps:SetPoint("TOPRIGHT", -232, -16)
-steps:SetJustifyH("LEFT")
-steps:SetSpacing(5)
-steps:SetText(
-    L["|cffffd1001.|r Clique sur « Copier mon code ».\n"] ..
-    L["|cffffd1002.|r Fais |cffffd100Ctrl+C|r pour le copier.\n"] ..
-    L["|cffffd1003.|r Sur |cff33aaffbabillard-forever.com|r, va dans ton profil et colle le code."])
-local stepsNote = Text(ep, "Tiny")
-stepsNote:SetPoint("TOPLEFT", steps, "BOTTOMLEFT", 0, -12)
-stepsNote:SetWidth(WIN_W - 2 * PAD - 32)
-stepsNote:SetJustifyH("LEFT")
-stepsNote:SetSpacing(2)
-stepsNote:SetText(L["|cffaaaaaaLe code contient ton nom, ton niveau, ta classe, ta guilde, tes rôles, tes métiers, ton équipement "] ..
-    L["et tes talents. Génère un nouveau code quand tu changes d'équipement ou de talents pour garder ton profil à jour.|r"])
-
-M.export = NewButton(ep, L["Copier mon code"], 200, 32, "primary")
-M.export:SetPoint("TOPRIGHT", -16, -18)
-M.export:SetScript("OnClick", function()
-    ns.PlayClick()
-    ns.ShowCopy(L["Ton code pour babillard-forever.com :"], ns.BuildExportCode())
-end)
-
 local function RefreshMe()
     local c = ns.GetCharacterInfo()
     M.name:SetText("|c" .. ns.ClassHex(c.classFile) .. c.name .. "|r" .. ((c.realm or "") ~= "" and ("|cff8a93a6 - " .. c.realm .. "|r") or ""))
@@ -2210,13 +2162,12 @@ local SECTIONS = {
     { L["Babillard"], {
         { L["Groupes"], ns.Cmd(""), L["Ouvre ou ferme le babillard des groupes."], function() UI.SelectView(1) end, "party" },
         { L["Guildes"], ns.Cmd("guildes"), L["Les guildes francophones qui recrutent ou qui ont été repérées."], function() UI.SelectView(2) end, "banner" },
-        { L["Mon perso"], ns.Cmd("perso"), L["Ton personnage, tes rôles et ton code pour le site."], function() UI.SelectView(3) end, "card" },
+        { L["Mon perso"], ns.Cmd("perso"), L["Ton personnage et tes rôles."], function() UI.SelectView(3) end, "card" },
         { L["En ligne"], ns.Cmd("enligne"), L["Les francophones en ligne en ce moment."], function() UI.SelectView(4) end, "online" },
     } },
     { L["Communauté"], {
         { L["Chat"], ns.Cmd("chat"), L["Le chat de la communauté: parle avec les francophones de tous les serveurs."], function() UI.SelectView(5) end, "chat" },
         { L["Communauté"], ns.Cmd("communaute"), L["Rejoindre la communauté qui réunit les francophones de tous les serveurs, ou afficher son chat si tu en fais déjà partie."], function() ns.PlayClick(); RunSlash("communaute") end, "link" },
-        { L["Site web"], ns.Cmd("site"), L["Le lien de babillard-forever.com, prêt à copier."], function() ns.PlayClick(); RunSlash("site") end, "globe" },
         { L["Accueil"], ns.Cmd("bienvenue"), L["Revoir l'accueil: langue, type de serveur, rôles et communauté."], function() ns.PlayClick(); RunSlash("bienvenue") end, "other" },
     } },
     { L["Alertes et joueurs"], {
@@ -2228,7 +2179,7 @@ local SECTIONS = {
     { L["Réglages"], {
         { L["Options"], ns.Cmd("options"), L["Alertes, chat, affichage et repérage des francophones."], function() ns.PlayClick(); RunSlash("options") end, "gear" },
         { L["Langue"], ns.Cmd("langue"), L["Français, English ou Auto (la langue du jeu). Un clic passe à la suivante; l'interface se recharge."], function() ns.PlayClick(); RunSlash("langue " .. (LANG_NEXT[ns.db.opts.lang or "auto"] or "auto")) end, "chat" },
-        { L["Diagnostic"], ns.Cmd("diag"), L["Un texte à copier si les talents ou l'équipement n'apparaissent pas sur le site."], function() ns.PlayClick(); RunSlash("diag") end, "search" },
+        { L["Diagnostic"], ns.Cmd("diag"), L["Un texte à copier si les talents ou l'équipement ne s'affichent pas bien."], function() ns.PlayClick(); RunSlash("diag") end, "search" },
         { L["Aide"], ns.Cmd("aide"), L["Écrit la liste de toutes les commandes dans le chat."], function() ns.PlayClick(); RunSlash("aide") end, "terminal" },
     } },
 }

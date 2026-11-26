@@ -1,10 +1,9 @@
 -- Babillard Forever FR - Données (activités, rôles, constantes)
 local ADDON, ns = ...
 
-ns.VERSION       = "2.8.0"
+ns.VERSION       = "2.8.1"
 ns.PREFIX        = "BabillardFR"          -- préfixe des messages d'addon
 ns.CHANNEL       = "BabillardFR"          -- canal caché commun (voir ns.ChannelName)
-ns.SITE_URL      = "https://babillard-forever.com"
 
 -- Communauté WoW commune: elle traverse les serveurs internes de Forever (pas le canal caché).
 -- COMMUNITY_NAME: le nom exact de la communauté dans le jeu (on la reconnaît par son nom).

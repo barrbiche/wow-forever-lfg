@@ -152,13 +152,6 @@ favBtn:SetPoint("TOPLEFT", 20, y - 16)
 favBtn:SetText(L["Activités favorites"])
 favBtn:SetScript("OnClick", function(self) ns.OpenFavMenu(self) end)
 
-local siteBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
-if ns.Skin and ns.Skin.Button then ns.Skin.Button(siteBtn) end
-siteBtn:SetSize(200, 24)
-siteBtn:SetPoint("TOPLEFT", 230, y - 16)
-siteBtn:SetText(L["Lien du site"])
-siteBtn:SetScript("OnClick", function() ns.ShowSiteLink() end)
-
 -- Langue: un clic passe à la suivante (Auto → Français → English).
 local langBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
 if ns.Skin and ns.Skin.Button then ns.Skin.Button(langBtn) end
@@ -283,9 +276,7 @@ mm:SetScript("OnDragStop", function(self) self:SetScript("OnUpdate", nil) end)
 
 mm:SetScript("OnClick", function(_, button)
     ns.EnsureChannel()
-    if button == "RightButton" then
-        ns.ShowSiteLink()
-    elseif ns.UI then
+    if ns.UI then
         ns.UI.Toggle()
     end
 end)
@@ -304,7 +295,6 @@ mm:SetScript("OnEnter", function(self)
     if ns.my then GameTooltip:AddLine(L["Ton annonce est active"], 0.2, 0.87, 0.33) end
     GameTooltip:AddLine(" ")
     GameTooltip:AddLine(L["Clic gauche : ouvrir le babillard"], 1, 1, 1)
-    GameTooltip:AddLine(L["Clic droit : lien du site"], 1, 1, 1)
     GameTooltip:AddLine(L["Glisser : déplacer ce bouton"], 0.7, 0.7, 0.7)
     GameTooltip:Show()
 end)
@@ -314,9 +304,7 @@ mm:SetScript("OnLeave", GameTooltip_Hide)
 -- au cas où le bouton rond serait caché par une autre interface.
 function BabillardFR_OnCompartmentClick(_, button)
     ns.EnsureChannel()
-    if button == "RightButton" then
-        ns.ShowSiteLink()
-    elseif ns.UI then
+    if ns.UI then
         ns.UI.Toggle()
     end
 end

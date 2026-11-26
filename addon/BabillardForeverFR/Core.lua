@@ -241,7 +241,7 @@ function ns.CheckVersion(v)
     if theirs > (ns.db.newestSeen or 0) then
         ns.db.newestSeen, ns.db.newestText = theirs, v
         ns.newVersion = v
-        ns.Print(L["une nouvelle version de l'addon est disponible ("] .. v .. L["). Tape |cffffd100/bf site|r pour le lien de téléchargement."])
+        ns.Print(L["une nouvelle version de l'addon est disponible ("] .. v .. L["). Mets-le à jour avec CurseForge."])
         ns.Refresh()
     end
 end
@@ -796,12 +796,8 @@ function ns.ShowCopy(title, value)
     StaticPopup_Show("BABILLARDFR_COPY", title)
 end
 
-function ns.ShowSiteLink()
-    ns.ShowCopy(L["Lien du site Babillard Forever :"], ns.SITE_URL)
-end
-
 ---------------------------------------------------------------------------
--- Mon personnage + code d'export pour le site
+-- Mon personnage
 ---------------------------------------------------------------------------
 function ns.GetProfessions()
     local out = {}
@@ -2888,9 +2884,7 @@ SlashCmdList.BABILLARDFR = function(arg)
     local raw = strtrim(arg or "")
     arg = raw:lower()
     ns.EnsureChannel()
-    if arg == "site" or arg == "website" then
-        ns.ShowSiteLink()
-    elseif arg:match("^partager") or arg:match("^share") then
+    if arg:match("^partager") or arg:match("^share") then
         ns.ShareInviteManually((raw:gsub("^%S+%s*", "")))
     elseif arg == "chat" then
         if ns.UI and ns.UI.Open then ns.UI.Open(5) end
@@ -2943,8 +2937,7 @@ SlashCmdList.BABILLARDFR = function(arg)
         ns.Print(L["commandes :"])
         print(L["  |cffffd100/bf|r : ouvrir ou fermer le babillard"])
         print(L["  |cffffd100/bf guildes|r : guildes francophones"])
-        print(L["  |cffffd100/bf perso|r : mon personnage et code pour le site"])
-        print(L["  |cffffd100/bf site|r : lien du site"])
+        print(L["  |cffffd100/bf perso|r : mon personnage et ses rôles"])
         print(L["  |cffffd100/bf enligne|r : francophones en ligne"])
         print(L["  |cffffd100/bf chat|r : le chat de la communauté"])
         print(L["  |cffffd100/bf partager <lien>|r : partager le lien de ta communauté (si tu l'as créée)"])
